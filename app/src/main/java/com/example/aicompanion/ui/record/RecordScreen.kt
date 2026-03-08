@@ -1,9 +1,7 @@
 package com.example.aicompanion.ui.record
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -74,7 +72,6 @@ fun RecordScreen(
     viewModel: RecordViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val activity = context.findActivity()
     val uiState by viewModel.uiState.collectAsState()
 
     var hasAudioPermission by remember {
@@ -234,10 +231,7 @@ fun RecordScreen(
                 if (!hasTranscript && !uiState.isTranscribing) {
                     item {
                         Button(
-                            onClick = {
-                                activity?.let { viewModel.transcribe(it) }
-                            },
-                            enabled = activity != null,
+                            onClick = { viewModel.transcribe() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Filled.Transcribe, "Transcribe", Modifier.size(18.dp))
@@ -446,12 +440,6 @@ fun RecordScreen(
             }
         }
     }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
 
 private fun shareTranscriptFile(context: Context, filePath: String) {

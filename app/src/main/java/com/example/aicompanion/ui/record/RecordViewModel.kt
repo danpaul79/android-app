@@ -88,7 +88,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun transcribe(activityContext: Context) {
+    fun transcribe() {
         val audioPath = _uiState.value.audioFilePath ?: return
         val audioFile = File(audioPath)
         if (!audioFile.exists()) return

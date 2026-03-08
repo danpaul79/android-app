@@ -36,9 +36,4 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun deleteVoiceNote(id: Long) {
-        viewModelScope.launch {
-            repository.deleteVoiceNote(id)
-        }
-    }
 }
