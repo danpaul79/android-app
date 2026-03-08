@@ -110,6 +110,8 @@ class TaskRepository(
         actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis()))
     }
 
+    suspend fun setDueDate(id: Long, dueDate: Long?) = actionItemDao.setDueDate(id, dueDate)
+
     suspend fun deleteTask(id: Long) = actionItemDao.deleteById(id)
 
     // --- Sources ---

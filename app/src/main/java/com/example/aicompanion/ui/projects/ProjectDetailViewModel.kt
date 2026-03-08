@@ -15,8 +15,11 @@ import kotlinx.coroutines.launch
 data class ProjectDetailUiState(
     val project: Project? = null,
     val items: List<ActionItem> = emptyList(),
-    val isLoading: Boolean = true
-)
+    val isLoading: Boolean = true,
+    val selectedIds: Set<Long> = emptySet()
+) {
+    val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
+}
 
 class ProjectDetailViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = (application as AICompanionApplication).container.taskRepository
@@ -33,7 +36,8 @@ class ProjectDetailViewModel(application: Application) : AndroidViewModel(applic
                 ProjectDetailUiState(
                     project = project,
                     items = items,
-                    isLoading = false
+                    isLoading = false,
+                    selectedIds = _uiState.value.selectedIds
                 )
             }.collect { _uiState.value = it }
         }
@@ -50,5 +54,37 @@ class ProjectDetailViewModel(application: Application) : AndroidViewModel(applic
     fun deleteProject() {
         val projectId = _uiState.value.project?.id ?: return
         viewModelScope.launch { repo.deleteProject(projectId) }
+    }
+
+    fun toggleSelection(id: Long) {
+        val current = _uiState.value.selectedIds.toMutableSet()
+        if (id in current) current.remove(id) else current.add(id)
+        _uiState.value = _uiState.value.copy(selectedIds = current)
+    }
+
+    fun selectAll() {
+        _uiState.value = _uiState.value.copy(
+            selectedIds = _uiState.value.items.map { it.id }.toSet()
+        )
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedIds = emptySet())
+    }
+
+    fun deleteSelected() {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.deleteTask(it) }
+            clearSelection()
+        }
+    }
+
+    fun setDueDateForSelected(dueDate: Long?) {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.setDueDate(it, dueDate) }
+            clearSelection()
+        }
     }
 }

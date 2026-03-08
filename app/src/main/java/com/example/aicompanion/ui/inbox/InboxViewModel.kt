@@ -88,4 +88,12 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
             clearSelection()
         }
     }
+
+    fun setDueDateForSelected(dueDate: Long?) {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.setDueDate(it, dueDate) }
+            clearSelection()
+        }
+    }
 }

@@ -84,6 +84,9 @@ interface ActionItemDao {
     @Query("UPDATE action_items SET reminderFired = 1 WHERE id = :id")
     suspend fun markReminderFired(id: Long)
 
+    @Query("UPDATE action_items SET dueDate = :dueDate, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setDueDate(id: Long, dueDate: Long?, updatedAt: Long = System.currentTimeMillis())
+
     @Query("DELETE FROM action_items WHERE id = :id")
     suspend fun deleteById(id: Long)
 

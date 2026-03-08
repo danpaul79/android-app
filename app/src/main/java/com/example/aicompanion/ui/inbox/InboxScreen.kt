@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
@@ -25,6 +26,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -141,6 +145,7 @@ fun InboxScreen(
                     selectedCount = uiState.selectedIds.size,
                     projects = uiState.projects,
                     onAssignToProject = { projectId -> viewModel.assignSelectedToProject(projectId) },
+                    onSetDueDate = { dueDate -> viewModel.setDueDateForSelected(dueDate) },
                     onDelete = { viewModel.deleteSelected() }
                 )
             }
@@ -148,14 +153,35 @@ fun InboxScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SelectionActionBar(
     selectedCount: Int,
     projects: List<com.example.aicompanion.data.local.entity.Project>,
     onAssignToProject: (Long) -> Unit,
+    onSetDueDate: (Long?) -> Unit,
     onDelete: () -> Unit
 ) {
     var showProjectMenu by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSetDueDate(datePickerState.selectedDateMillis)
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     BottomAppBar(
         containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -163,7 +189,7 @@ private fun SelectionActionBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -171,7 +197,7 @@ private fun SelectionActionBar(
                 "$selectedCount task${if (selectedCount != 1) "s" else ""} selected",
                 style = MaterialTheme.typography.bodyMedium
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Box {
                     Button(onClick = { showProjectMenu = true }) {
                         Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -200,6 +226,11 @@ private fun SelectionActionBar(
                             }
                         }
                     }
+                }
+                OutlinedButton(onClick = { showDatePicker = true }) {
+                    Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Due")
                 }
                 OutlinedButton(onClick = onDelete) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
