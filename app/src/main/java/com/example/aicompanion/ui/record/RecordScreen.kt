@@ -1,5 +1,9 @@
 package com.example.aicompanion.ui.record
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,12 +40,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.speech.SpeechRecognizerManager
 import com.example.aicompanion.speech.SpeechState
@@ -59,6 +66,23 @@ fun RecordScreen(
     val context = LocalContext.current
     val speechManager = remember { SpeechRecognizerManager(context) }
     val uiState by viewModel.uiState.collectAsState()
+
+    var hasAudioPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasAudioPermission = granted
+        if (granted) {
+            viewModel.startRecording()
+        }
+    }
 
     LaunchedEffect(speechManager) {
         viewModel.initSpeechManager(speechManager)
@@ -124,8 +148,13 @@ fun RecordScreen(
                         )
                         FloatingActionButton(
                             onClick = {
-                                if (isListening) viewModel.stopRecording()
-                                else viewModel.startRecording()
+                                if (isListening) {
+                                    viewModel.stopRecording()
+                                } else if (hasAudioPermission) {
+                                    viewModel.startRecording()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
                             },
                             modifier = Modifier.size(72.dp),
                             containerColor = buttonColor
