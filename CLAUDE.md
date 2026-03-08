@@ -14,6 +14,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save
+- **Project creation from voice**: say "create a new project called X" during recording; AI detects intent, creates project, assigns extracted tasks
 - **Transcript-only mode**: toggle on Capture screen to skip extraction and just get a transcript
 - **Task Detail**: view/edit task name, change due date, change project, add notes, see source info
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
@@ -60,7 +61,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - DB version: 3 (uses fallbackToDestructiveMigration — bumping version wipes data)
 
 ### Screen Flow
-- **Dashboard** — overdue, today, upcoming tasks; long-press → multi-select mode
+- **Dashboard** — overdue, today, upcoming tasks; recently completed section; long-press → multi-select mode
 - **Inbox** — unassigned tasks; long-press → multi-select mode
 - **Projects** — list of projects with task counts; trash icon → Trash screen
 - **Project Detail** — tasks within a project; long-press → multi-select mode
@@ -101,6 +102,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - Extraction is automatic: record → transcribe → extract (full pipeline on stop, unless transcript-only mode)
 - **Phase 2 (done)**: prompt includes existing project names for smart project suggestion + priority inference from language cues
 - Extracted items include `suggestedProject` (mapped to project ID on save) and `priority` (NONE/LOW/MEDIUM/HIGH/URGENT)
+- **Project creation from voice**: Gemini detects "create a new project called X" intent, returns `newProject` name; CaptureViewModel creates the project on save and assigns tasks
 - When recording from a project, all items auto-assign to that project (overrides AI suggestion)
 
 ## Git Workflow
