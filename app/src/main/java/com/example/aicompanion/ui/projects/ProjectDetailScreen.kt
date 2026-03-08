@@ -318,7 +318,11 @@ private fun ProjectTaskCard(
     onLongClick: () -> Unit,
     onTrash: () -> Unit
 ) {
-    val isOverdue = item.dueDate != null && item.dueDate < System.currentTimeMillis() && !item.isCompleted
+    val dayStart = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+    val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
 
     Card(
         modifier = Modifier

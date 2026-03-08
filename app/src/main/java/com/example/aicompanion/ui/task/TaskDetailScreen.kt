@@ -9,16 +9,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,8 +51,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.SourceType
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
+
+private fun utcPickerToLocalNoon(utcMillis: Long): Long {
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    utcCal.timeInMillis = utcMillis
+    val localCal = Calendar.getInstance()
+    localCal.set(utcCal.get(Calendar.YEAR), utcCal.get(Calendar.MONTH), utcCal.get(Calendar.DAY_OF_MONTH), 12, 0, 0)
+    localCal.set(Calendar.MILLISECOND, 0)
+    return localCal.timeInMillis
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +73,31 @@ fun TaskDetailScreen(
     viewModel: TaskDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(taskId) { viewModel.loadTask(taskId) }
     LaunchedEffect(uiState.isDeleted) { if (uiState.isDeleted) onNavigateBack() }
 
     val item = uiState.item
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val utc = datePickerState.selectedDateMillis
+                    if (utc != null) viewModel.setDueDate(utcPickerToLocalNoon(utc))
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -90,6 +127,11 @@ fun TaskDetailScreen(
             return@Scaffold
         }
 
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -98,30 +140,67 @@ fun TaskDetailScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Completed toggle + task text
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Completed toggle + editable task name
+            Row(verticalAlignment = Alignment.Top) {
                 Checkbox(
                     checked = item.isCompleted,
-                    onCheckedChange = { viewModel.toggleCompleted() }
+                    onCheckedChange = { viewModel.toggleCompleted() },
+                    modifier = Modifier.padding(top = 4.dp)
                 )
-                Text(
-                    text = item.text,
-                    style = MaterialTheme.typography.titleMedium,
-                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
-                    modifier = Modifier.weight(1f)
+                var taskText by remember(item.text) { mutableStateOf(item.text) }
+                OutlinedTextField(
+                    value = taskText,
+                    onValueChange = {
+                        taskText = it
+                        if (it.isNotBlank()) viewModel.updateText(it)
+                    },
+                    modifier = Modifier.weight(1f),
+                    textStyle = MaterialTheme.typography.titleMedium.copy(
+                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
+                    ),
+                    minLines = 2
                 )
             }
 
-            // Due date
-            if (item.dueDate != null) {
-                val dateStr = SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault())
-                    .format(Date(item.dueDate))
-                val isOverdue = item.dueDate < System.currentTimeMillis() && !item.isCompleted
-                Text(
-                    text = "Due: $dateStr",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isOverdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            // Due date row with picker and clear
+            val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.CalendarMonth,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = when {
+                        isOverdue -> MaterialTheme.colorScheme.error
+                        item.dueDate != null -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = { showDatePicker = true }) {
+                    val label = if (item.dueDate != null) {
+                        SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault()).format(Date(item.dueDate))
+                    } else {
+                        "Set due date"
+                    }
+                    Text(
+                        text = label,
+                        color = when {
+                            isOverdue -> MaterialTheme.colorScheme.error
+                            item.dueDate != null -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+                if (item.dueDate != null) {
+                    IconButton(onClick = { viewModel.setDueDate(null) }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Clear due date",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             // Priority
