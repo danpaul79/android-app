@@ -43,9 +43,13 @@ class TranscriptionClient {
 
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
-                    return@withContext Result.failure(
-                        Exception("Transcription failed (${response.code}): $errorBody")
-                    )
+                    val message = if (response.code == 413) {
+                        val sizeMb = audioFile.length() / (1024 * 1024)
+                        "File too large (${sizeMb}MB). Cloud Functions limit is ~32MB. Try a shorter recording."
+                    } else {
+                        "Transcription failed (${response.code}): $errorBody"
+                    }
+                    return@withContext Result.failure(Exception(message))
                 }
 
                 val responseBody = response.body?.string()

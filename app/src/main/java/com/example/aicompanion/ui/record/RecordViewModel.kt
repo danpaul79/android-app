@@ -103,12 +103,16 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
             result.fold(
                 onSuccess = { transcriptionResult ->
-                    // Save transcript file alongside the audio
+                    val originalName = _uiState.value.selectedFileName
+                    // Save transcript file alongside audio + to Downloads
                     val transcriptPath = TranscriptFileHelper.saveTranscript(
-                        audioPath, transcriptionResult.transcript
+                        getApplication<Application>(),
+                        audioPath,
+                        transcriptionResult.transcript,
+                        originalName
                     )
                     TranscriptFileHelper.saveRawJson(
-                        audioPath, transcriptionResult.rawJson
+                        audioPath, transcriptionResult.rawJson, originalName
                     )
 
                     // Extract action items from the transcript
