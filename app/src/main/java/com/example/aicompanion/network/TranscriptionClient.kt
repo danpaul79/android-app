@@ -1,11 +1,14 @@
 package com.example.aicompanion.network
 
+import com.example.aicompanion.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody
+import okio.BufferedSink
+import okio.source
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -18,24 +21,42 @@ data class TranscriptionResult(
 class TranscriptionClient {
 
     companion object {
-        const val CLOUD_FUNCTION_URL =
-            "https://us-central1-transcription-app-481721.cloudfunctions.net/stream-audio-to-deepgram"
+        private const val DEEPGRAM_URL =
+            "https://api.deepgram.com/v1/listen?model=nova-3&language=en&smart_format=true&utterances=true&diarize=true&paragraphs=true"
     }
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(600, TimeUnit.SECONDS) // long recordings can take a while
+        .readTimeout(600, TimeUnit.SECONDS)
         .writeTimeout(600, TimeUnit.SECONDS)
         .build()
 
     suspend fun transcribe(audioFile: File): Result<TranscriptionResult> {
+        val apiKey = BuildConfig.DEEPGRAM_API_KEY
+        if (apiKey.isBlank()) {
+            return Result.failure(
+                Exception("Deepgram API key not configured. Add DEEPGRAM_API_KEY to local.properties.")
+            )
+        }
+
         return withContext(Dispatchers.IO) {
             try {
                 val mimeType = guessMimeType(audioFile.name)
-                val requestBody = audioFile.asRequestBody(mimeType.toMediaType())
+
+                // Stream the file to Deepgram without buffering entirely in memory
+                val requestBody = object : RequestBody() {
+                    override fun contentType() = mimeType.toMediaType()
+                    override fun contentLength() = audioFile.length()
+                    override fun writeTo(sink: BufferedSink) {
+                        audioFile.source().use { source ->
+                            sink.writeAll(source)
+                        }
+                    }
+                }
 
                 val request = Request.Builder()
-                    .url(CLOUD_FUNCTION_URL)
+                    .url(DEEPGRAM_URL)
+                    .addHeader("Authorization", "Token $apiKey")
                     .post(requestBody)
                     .build()
 
@@ -43,13 +64,9 @@ class TranscriptionClient {
 
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
-                    val message = if (response.code == 413) {
-                        val sizeMb = audioFile.length() / (1024 * 1024)
-                        "File too large (${sizeMb}MB). Cloud Functions limit is ~32MB. Try a shorter recording."
-                    } else {
-                        "Transcription failed (${response.code}): $errorBody"
-                    }
-                    return@withContext Result.failure(Exception(message))
+                    return@withContext Result.failure(
+                        Exception("Transcription failed (${response.code}): $errorBody")
+                    )
                 }
 
                 val responseBody = response.body?.string()

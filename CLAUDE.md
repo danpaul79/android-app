@@ -33,31 +33,33 @@
 - `ui/record/` - Record screen (record/pick audio, transcribe, save)
 - `ui/detail/` - Detail screen (view note + action items)
 
-## Cloud Functions
-- **`stream-audio-to-deepgram`** - Accepts direct audio upload, forwards to Deepgram
-  - URL: `https://us-central1-transcription-app-481721.cloudfunctions.net/stream-audio-to-deepgram`
-  - Currently **publicly accessible** (--allow-unauthenticated) as a workaround
-  - OAuth flow was not working from the Android app, so auth was removed
-  - Deepgram Nova-3 with diarize=true, paragraphs=true, smart_format=true
-  - us-central1, gen2, python312, 1GiB memory, 540s timeout
-- **`stream-drive-file-to-deepgram`** - Existing function used by Apps Script pipeline
+## Transcription
+- **Calls Deepgram API directly** from the Android app (no cloud function middleman)
+- Deepgram Nova-3 with diarize=true, paragraphs=true, smart_format=true
+- API key stored in `local.properties` as `DEEPGRAM_API_KEY` (gitignored)
+- Exposed via `BuildConfig.DEEPGRAM_API_KEY` at build time
+- No file size limit (Deepgram supports up to 2GB)
+- Audio is streamed to Deepgram without buffering entirely in memory
+
+## Cloud Functions (legacy, no longer used by mobile app)
+- **`stream-audio-to-deepgram`** - Was used before direct Deepgram integration
+  - Had 32MB request body limit from Cloud Functions platform
+- **`stream-drive-file-to-deepgram`** - Used by Apps Script pipeline only
   - This one should NOT be modified — it's used by the transcription-appScript project
-  - May need a separate copy of stream-audio-to-deepgram for the mobile app
-    to avoid conflicts with the Apps Script usage
 
 ## Auth Status
 - GoogleAuthManager uses `GetSignInWithGoogleOption` (Credential Manager API)
 - Web Client ID: `809575369316-gntgmi8hd2m4rcd8danc15r0oa47ij17.apps.googleusercontent.com`
 - Auth manager is initialized in AppContainer but **not currently used** for transcription
-- The transcription flow sends audio directly without an Authorization header
-- TODO: Either re-enable auth with a dedicated cloud function, or add API key auth
 
 ## Audio Recording
 - MediaRecorder: AAC codec, 44.1kHz, .m4a format
 - Files saved to app's external files dir under `recordings/`
 - File picker supports `audio/*` MIME types
-- Transcripts saved as .txt alongside audio files with timestamps
+- Transcripts saved as .txt alongside audio files with timestamps (named after source file)
 - Raw Deepgram JSON also saved alongside for future analysis
+- Transcripts also saved to Downloads/AI Companion for easy access
+- Share button available to share transcript via any app
 
 ## Related Projects
 - **transcription-appScript**: `C:\repos\github_personal\transcription-appScript`
