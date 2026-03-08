@@ -14,4 +14,5 @@ sealed class NavRoutes(val route: String) {
     data object TaskDetail : NavRoutes("task/{taskId}") {
         fun createRoute(id: Long) = "task/$id"
     }
+    data object Search : NavRoutes("search")
 }

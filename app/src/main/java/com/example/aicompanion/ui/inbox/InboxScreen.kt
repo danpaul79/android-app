@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inbox
@@ -219,6 +220,7 @@ fun InboxScreen(
                     projects = uiState.projects,
                     onAssignToProject = { projectId -> viewModel.assignSelectedToProject(projectId) },
                     onSetDueDate = { showDatePicker = true },
+                    onComplete = { viewModel.completeSelected() },
                     onRename = { showRenameDialog = true },
                     onTrash = { viewModel.trashSelected() }
                 )
@@ -235,6 +237,7 @@ private fun SelectionActionBar(
     projects: List<com.example.aicompanion.data.local.entity.Project>,
     onAssignToProject: (Long) -> Unit,
     onSetDueDate: () -> Unit,
+    onComplete: () -> Unit,
     onRename: () -> Unit,
     onTrash: () -> Unit
 ) {
@@ -288,6 +291,11 @@ private fun SelectionActionBar(
                     Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Due")
+                }
+                OutlinedButton(onClick = onComplete) {
+                    Icon(Icons.Filled.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Done")
                 }
                 if (isSingleSelection) {
                     OutlinedButton(onClick = onRename) {

@@ -82,6 +82,14 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun completeSelected() {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.toggleCompleted(it, true) }
+            clearSelection()
+        }
+    }
+
     fun trashSelected() {
         val ids = _uiState.value.selectedIds.toList()
         viewModelScope.launch {

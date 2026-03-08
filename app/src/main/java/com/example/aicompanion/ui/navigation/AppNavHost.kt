@@ -31,6 +31,7 @@ import com.example.aicompanion.ui.dashboard.DashboardScreen
 import com.example.aicompanion.ui.inbox.InboxScreen
 import com.example.aicompanion.ui.projects.ProjectDetailScreen
 import com.example.aicompanion.ui.projects.ProjectsScreen
+import com.example.aicompanion.ui.search.SearchScreen
 import com.example.aicompanion.ui.task.TaskDetailScreen
 import com.example.aicompanion.ui.trash.TrashScreen
 
@@ -104,6 +105,9 @@ fun AppNavHost(navController: NavHostController) {
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))
                     },
+                    onNavigateToSearch = {
+                        navController.navigate("search")
+                    },
                     onNavigateToInbox = {
                         navController.navigate("inbox") {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -166,6 +170,15 @@ fun AppNavHost(navController: NavHostController) {
             composable("trash") {
                 TrashScreen(
                     onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable("search") {
+                SearchScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTask = { id ->
+                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                    }
                 )
             }
 

@@ -109,8 +109,8 @@ fun TaskDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.deleteTask() }) {
-                        Icon(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                    IconButton(onClick = { viewModel.trashTask() }) {
+                        Icon(Icons.Filled.Delete, "Move to trash", tint = MaterialTheme.colorScheme.error)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

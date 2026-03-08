@@ -154,6 +154,10 @@ class TaskRepository(
 
     suspend fun markReminderFired(id: Long) = actionItemDao.markReminderFired(id)
 
+    // --- Search ---
+
+    fun searchItems(query: String): Flow<List<ActionItem>> = actionItemDao.searchItems(query)
+
     // --- AI helpers ---
 
     suspend fun getAllActiveItemTexts(): List<ActionItem> = actionItemDao.getAllActiveItemTexts()

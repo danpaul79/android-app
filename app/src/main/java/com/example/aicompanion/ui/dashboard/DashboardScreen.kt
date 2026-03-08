@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
@@ -34,9 +35,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.foundation.background
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -79,6 +84,7 @@ private fun utcPickerToLocalNoon(utcMillis: Long): Long {
 @Composable
 fun DashboardScreen(
     onNavigateToTask: (Long) -> Unit,
+    onNavigateToSearch: () -> Unit,
     onNavigateToInbox: () -> Unit,
     onNavigateToCapture: () -> Unit,
     viewModel: DashboardViewModel = viewModel()
@@ -189,6 +195,11 @@ fun DashboardScreen(
             } else {
                 TopAppBar(
                     title = { Text("AI Companion") },
+                    actions = {
+                        IconButton(onClick = onNavigateToSearch) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search tasks")
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -289,6 +300,8 @@ fun DashboardScreen(
                                 else onNavigateToTask(item.id)
                             },
                             onLongClick = { viewModel.toggleSelection(item.id) },
+                            onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
+                            onSwipeTrash = { viewModel.trashTask(item.id) },
                             isOverdue = true
                         )
                     }
@@ -307,7 +320,9 @@ fun DashboardScreen(
                                 if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
                                 else onNavigateToTask(item.id)
                             },
-                            onLongClick = { viewModel.toggleSelection(item.id) }
+                            onLongClick = { viewModel.toggleSelection(item.id) },
+                            onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
+                            onSwipeTrash = { viewModel.trashTask(item.id) }
                         )
                     }
                 }
@@ -325,7 +340,9 @@ fun DashboardScreen(
                                 if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
                                 else onNavigateToTask(item.id)
                             },
-                            onLongClick = { viewModel.toggleSelection(item.id) }
+                            onLongClick = { viewModel.toggleSelection(item.id) },
+                            onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
+                            onSwipeTrash = { viewModel.trashTask(item.id) }
                         )
                     }
                 }
@@ -401,7 +418,7 @@ private fun SectionHeader(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun TaskRow(
     item: ActionItem,
@@ -410,7 +427,71 @@ private fun TaskRow(
     onToggle: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onSwipeComplete: () -> Unit,
+    onSwipeTrash: () -> Unit,
     isOverdue: Boolean = false
+) {
+    if (isSelectionMode) {
+        TaskRowCard(item, isSelectionMode, isSelected, onToggle, onClick, onLongClick, isOverdue)
+    } else {
+        val dismissState = rememberSwipeToDismissBoxState(
+            confirmValueChange = { value ->
+                when (value) {
+                    SwipeToDismissBoxValue.StartToEnd -> { onSwipeComplete(); true }
+                    SwipeToDismissBoxValue.EndToStart -> { onSwipeTrash(); true }
+                    SwipeToDismissBoxValue.Settled -> false
+                }
+            }
+        )
+        SwipeToDismissBox(
+            state = dismissState,
+            backgroundContent = {
+                val direction = dismissState.dismissDirection
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            when (direction) {
+                                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primaryContainer
+                                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                                else -> MaterialTheme.colorScheme.surface
+                            }
+                        )
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = when (direction) {
+                        SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                        else -> Alignment.CenterEnd
+                    }
+                ) {
+                    Icon(
+                        imageVector = when (direction) {
+                            SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.CheckCircle
+                            else -> Icons.Filled.Delete
+                        },
+                        contentDescription = null,
+                        tint = when (direction) {
+                            SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.error
+                        }
+                    )
+                }
+            }
+        ) {
+            TaskRowCard(item, isSelectionMode, isSelected, onToggle, onClick, onLongClick, isOverdue)
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TaskRowCard(
+    item: ActionItem,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onToggle: () -> Unit,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    isOverdue: Boolean
 ) {
     Card(
         modifier = Modifier

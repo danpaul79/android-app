@@ -72,6 +72,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         _uiState.value = _uiState.value.copy(selectedIds = emptySet())
     }
 
+    fun trashTask(id: Long) {
+        viewModelScope.launch { repo.trashTask(id) }
+    }
+
     fun trashSelected() {
         val ids = _uiState.value.selectedIds.toList()
         viewModelScope.launch {

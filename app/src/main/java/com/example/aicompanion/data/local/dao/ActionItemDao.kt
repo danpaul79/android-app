@@ -108,4 +108,13 @@ interface ActionItemDao {
 
     @Query("SELECT * FROM action_items WHERE isCompleted = 0 AND isTrashed = 0 ORDER BY text")
     suspend fun getAllActiveItemTexts(): List<ActionItem>
+
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isTrashed = 0
+        AND (text LIKE '%' || :query || '%' OR notes LIKE '%' || :query || '%')
+        ORDER BY isCompleted ASC, updatedAt DESC
+        LIMIT 50
+    """)
+    fun searchItems(query: String): Flow<List<ActionItem>>
 }

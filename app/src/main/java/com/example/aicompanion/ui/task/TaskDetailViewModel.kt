@@ -72,10 +72,10 @@ class TaskDetailViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch { repo.setDueDate(item.id, dueDate) }
     }
 
-    fun deleteTask() {
+    fun trashTask() {
         val item = _uiState.value.item ?: return
         viewModelScope.launch {
-            repo.deleteTask(item.id)
+            repo.trashTask(item.id)
             _uiState.value = _uiState.value.copy(isDeleted = true)
         }
     }
