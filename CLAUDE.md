@@ -7,7 +7,8 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 **Phase 1+ complete.** Core task hub is fully operational with multi-select, trash, and batch editing. See `RESTRUCTURE_PLAN.md` for the full plan.
 
 ### What works now:
-- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash
+- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash
+- **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
 - **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash
 - **Projects**: create projects, view tasks per project, trash icon navigates to Trash screen
 - **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash
@@ -81,6 +82,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - `ui/projects/` - Projects list + detail (multi-select in detail)
 - `ui/capture/` - Capture screen (voice notes + future sources)
 - `ui/task/` - Task detail/edit screen
+- `ui/search/` - Search screen (task name + notes search)
 - `ui/trash/` - Trash screen (restore / permanent delete)
 
 ## Transcription
