@@ -1,4 +1,26 @@
-# AI Companion Android App
+# AI Companion — Personal Task Hub
+
+## Vision
+A "second brain" that ingests tasks from multiple sources (voice notes, email, texts, chat), extracts action items using AI, and organizes them into projects. The user interacts primarily with **tasks organized by project**, not with individual voice notes or messages. Sources are just how items arrive.
+
+## Current Status
+**Phase 1 complete.** The app has been restructured from a voice-note-centric tool into a project-based task hub. See `RESTRUCTURE_PLAN.md` for the full plan.
+
+### What works now (Phase 1):
+- **Dashboard**: overdue, today, upcoming tasks at a glance
+- **Inbox**: unassigned tasks with project assignment dropdown
+- **Projects**: create projects, view tasks per project, voice capture within a project
+- **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel
+- **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → save
+- **Task Detail**: view/edit task, change project, add notes, see source info
+- **Bottom nav**: Dashboard | Inbox | Capture | Projects
+- Voice notes recorded within a project auto-assign extracted items to that project
+- Screen stays on during recording
+- CI/CD: push to main → GitHub Actions → Firebase App Distribution
+
+### Next phases:
+- **Phase 2**: Smarter AI — project-aware extraction prompts, priority inference, duplicate detection
+- **Phase 3**: More input sources — Gmail, SMS, Google Chat
 
 ## Project Overview
 - **Package**: com.example.aicompanion
@@ -16,22 +38,41 @@
 
 ## Architecture
 - Single-activity app (MainActivity) with Compose Navigation
-- Screens: Home → Record → Detail
 - Manual DI via `AppContainer` in `di/` (no Hilt)
-- Room DB: `VoiceNote` + `ActionItem` entities with FK relationship
-- `ActionItemExtractor` interface with `GeminiExtractor` impl (uses Gemini 2.0 Flash via REST API)
 - WorkManager for hourly reminder checks
 
+### Data Model
+```
+Project (id, name, color, icon, sortOrder, isArchived, createdAt)
+ActionItem (id, projectId, sourceId, text, notes, dueDate, priority, isCompleted, completedAt, reminderFired, createdAt, updatedAt)
+Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, processedAt, createdAt)
+```
+- ActionItems with projectId=null live in the **Inbox**
+- Sources track provenance (where a task came from)
+- Projects organize tasks by life area (Work, Home, Health, etc.)
+
+### Screen Flow
+- **Dashboard** — overdue, today, upcoming tasks at a glance
+- **Inbox** — unassigned tasks waiting for project assignment
+- **Projects** — list of projects with task counts
+- **Project Detail** — tasks within a project
+- **Capture** — voice note recording/transcription/extraction (future: other sources)
+- **Task Detail** — view/edit a single task
+- Bottom navigation: Dashboard | Inbox | Capture | Projects
+
 ## Key Packages
-- `auth/` - Google Sign-In via Credential Manager (GoogleAuthManager)
+- `auth/` - Google Sign-In via Credential Manager (dormant, needed for Gmail in Phase 3)
 - `audio/` - MediaRecorder wrapper (AudioRecorder), transcript file helpers
-- `network/` - TranscriptionClient (Deepgram), GeminiClient (action item extraction)
-- `data/local/` - Room DB, DAOs, entities
-- `data/repository/` - CaptureRepository
-- `domain/extraction/` - Action item extraction from transcripts
-- `ui/home/` - Home screen (list of voice notes)
-- `ui/record/` - Record screen (record/pick audio, transcribe, save)
-- `ui/detail/` - Detail screen (view note + action items)
+- `network/` - TranscriptionClient (Deepgram), GeminiClient (extraction)
+- `data/local/` - Room DB, DAOs, entities, type converters
+- `data/repository/` - TaskRepository (replaces CaptureRepository)
+- `domain/extraction/` - Action item extraction from text
+- `domain/model/` - DashboardState, ProjectSummary
+- `ui/dashboard/` - Dashboard screen
+- `ui/inbox/` - Inbox screen
+- `ui/projects/` - Projects list + detail
+- `ui/capture/` - Capture screen (voice notes + future sources)
+- `ui/task/` - Task detail/edit screen
 
 ## Transcription
 - **Calls Deepgram API directly** from the Android app (no cloud function middleman)
@@ -45,36 +86,36 @@
 - Uses **Gemini 2.0 Flash** via REST API (`generativelanguage.googleapis.com`)
 - API key stored in `local.properties` as `GEMINI_API_KEY` (gitignored)
 - Exposed via `BuildConfig.GEMINI_API_KEY` at build time
-- Extracts action items + topic from transcripts via `GeminiClient`
-- `HeuristicExtractor` still available as fallback (regex-based, no API needed)
-- Extraction is user-triggered (button), not automatic after transcription
+- `GeminiExtractor` is the primary implementation; `HeuristicExtractor` is a fallback
+- Extraction is automatic: record → transcribe → extract (full pipeline on stop)
+- **Phase 2**: prompt will include existing project names for smart assignment, priority extraction, duplicate detection
 
 ## CI/CD
 - **GitHub Actions** workflow at `.github/workflows/build-and-distribute.yml`
 - Triggers on push to `main`, builds release APK, uploads to **Firebase App Distribution**
 - Signing config in `app/build.gradle.kts` reads from env vars (CI) or `local.properties` (local)
-- See plan file for full Firebase setup instructions
 - Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`
 
 ## Cloud Functions (legacy, no longer used by mobile app)
-- **`stream-audio-to-deepgram`** - Was used before direct Deepgram integration
-  - Had 32MB request body limit from Cloud Functions platform
-- **`stream-drive-file-to-deepgram`** - Used by Apps Script pipeline only
-  - This one should NOT be modified — it's used by the transcription-appScript project
+- **`stream-drive-file-to-deepgram`** - Used by Apps Script pipeline only. Do NOT modify.
+- **`stream-audio-to-deepgram`** - Was used before direct Deepgram integration. Legacy.
 
-## Auth Status
+## Auth
 - GoogleAuthManager uses `GetSignInWithGoogleOption` (Credential Manager API)
 - Web Client ID: `809575369316-gntgmi8hd2m4rcd8danc15r0oa47ij17.apps.googleusercontent.com`
-- Auth manager is initialized in AppContainer but **not currently used** for transcription
+- **Not currently used** — will be re-enabled for Gmail integration in Phase 3
 
 ## Audio Recording
 - MediaRecorder: AAC codec, 44.1kHz, .m4a format
+- Pause/resume support (API 24+)
+- Real-time amplitude monitoring for waveform visualization
+- Recording timer (mm:ss) with color-coded states
+- Cancel button deletes partial recording file
+- Keep screen on during recording (via `View.keepScreenOn`)
 - Files saved to app's external files dir under `recordings/`
 - File picker supports `audio/*` MIME types
-- Transcripts saved as .txt alongside audio files with timestamps (named after source file)
+- Transcripts saved as .txt alongside audio + to Downloads/AI Companion
 - Raw Deepgram JSON also saved alongside for future analysis
-- Transcripts also saved to Downloads/AI Companion for easy access
-- Share button available to share transcript via any app
 
 ## Related Projects
 - **transcription-appScript**: `C:\repos\github_personal\transcription-appScript`

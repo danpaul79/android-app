@@ -4,19 +4,24 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.example.aicompanion.data.local.dao.ActionItemDao
-import com.example.aicompanion.data.local.dao.VoiceNoteDao
+import com.example.aicompanion.data.local.dao.ProjectDao
+import com.example.aicompanion.data.local.dao.SourceDao
 import com.example.aicompanion.data.local.entity.ActionItem
-import com.example.aicompanion.data.local.entity.VoiceNote
+import com.example.aicompanion.data.local.entity.Project
+import com.example.aicompanion.data.local.entity.Source
 
 @Database(
-    entities = [VoiceNote::class, ActionItem::class],
-    version = 1,
+    entities = [Project::class, ActionItem::class, Source::class],
+    version = 2,
     exportSchema = false
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun voiceNoteDao(): VoiceNoteDao
+    abstract fun projectDao(): ProjectDao
     abstract fun actionItemDao(): ActionItemDao
+    abstract fun sourceDao(): SourceDao
 
     companion object {
         @Volatile
@@ -28,7 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "ai_companion.db"
-                ).build().also { INSTANCE = it }
+                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
             }
         }
     }

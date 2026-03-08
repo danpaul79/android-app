@@ -3,13 +3,13 @@ package com.example.aicompanion.data.local.relation
 import androidx.room.Embedded
 import androidx.room.Relation
 import com.example.aicompanion.data.local.entity.ActionItem
-import com.example.aicompanion.data.local.entity.VoiceNote
+import com.example.aicompanion.data.local.entity.Project
 
-data class VoiceNoteWithActionItems(
-    @Embedded val voiceNote: VoiceNote,
+data class ProjectWithActionItems(
+    @Embedded val project: Project,
     @Relation(
         parentColumn = "id",
-        entityColumn = "voiceNoteId"
+        entityColumn = "projectId"
     )
     val actionItems: List<ActionItem>
 )

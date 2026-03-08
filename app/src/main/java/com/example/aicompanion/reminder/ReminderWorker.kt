@@ -15,7 +15,7 @@ class ReminderWorker(
 
     override suspend fun doWork(): Result {
         val app = applicationContext as? AICompanionApplication ?: return Result.failure()
-        val repository = app.container.repository
+        val repository = app.container.taskRepository
         val notificationHelper = NotificationHelper(applicationContext)
 
         val now = System.currentTimeMillis()

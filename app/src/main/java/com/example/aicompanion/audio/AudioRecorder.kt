@@ -14,6 +14,7 @@ import java.util.Locale
 sealed class RecorderState {
     data object Idle : RecorderState()
     data class Recording(val filePath: String, val startTime: Long) : RecorderState()
+    data class Paused(val filePath: String, val startTime: Long, val elapsedBeforePause: Long) : RecorderState()
     data class Completed(val filePath: String) : RecorderState()
     data class Error(val message: String) : RecorderState()
 }
@@ -24,6 +25,19 @@ class AudioRecorder(private val context: Context) {
     val state: StateFlow<RecorderState> = _state.asStateFlow()
 
     private var recorder: MediaRecorder? = null
+
+    /**
+     * Returns the current amplitude (0-32767) from the mic.
+     * Call this periodically (e.g. every 100ms) to build a waveform visualization.
+     * Returns 0 if not recording.
+     */
+    fun getMaxAmplitude(): Int {
+        return try {
+            recorder?.maxAmplitude ?: 0
+        } catch (_: Exception) {
+            0
+        }
+    }
 
     fun startRecording(): String? {
         val outputDir = getRecordingsDir()
@@ -52,9 +66,49 @@ class AudioRecorder(private val context: Context) {
         }
     }
 
+    fun pauseRecording() {
+        val currentState = _state.value
+        if (currentState !is RecorderState.Recording) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                recorder?.pause()
+                val elapsed = System.currentTimeMillis() - currentState.startTime
+                _state.value = RecorderState.Paused(
+                    filePath = currentState.filePath,
+                    startTime = currentState.startTime,
+                    elapsedBeforePause = elapsed
+                )
+            } catch (e: Exception) {
+                _state.value = RecorderState.Error("Failed to pause: ${e.message}")
+            }
+        }
+    }
+
+    fun resumeRecording() {
+        val currentState = _state.value
+        if (currentState !is RecorderState.Paused) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                recorder?.resume()
+                _state.value = RecorderState.Recording(
+                    filePath = currentState.filePath,
+                    startTime = System.currentTimeMillis() - currentState.elapsedBeforePause
+                )
+            } catch (e: Exception) {
+                _state.value = RecorderState.Error("Failed to resume: ${e.message}")
+            }
+        }
+    }
+
     fun stopRecording(): String? {
         val currentState = _state.value
-        if (currentState !is RecorderState.Recording) return null
+        val filePath = when (currentState) {
+            is RecorderState.Recording -> currentState.filePath
+            is RecorderState.Paused -> currentState.filePath
+            else -> return null
+        }
 
         return try {
             recorder?.apply {
@@ -62,14 +116,43 @@ class AudioRecorder(private val context: Context) {
                 release()
             }
             recorder = null
-            _state.value = RecorderState.Completed(currentState.filePath)
-            currentState.filePath
+            _state.value = RecorderState.Completed(filePath)
+            filePath
         } catch (e: Exception) {
             recorder?.release()
             recorder = null
             _state.value = RecorderState.Error("Failed to stop recording: ${e.message}")
             null
         }
+    }
+
+    fun cancelRecording() {
+        val currentState = _state.value
+        val filePath = when (currentState) {
+            is RecorderState.Recording -> currentState.filePath
+            is RecorderState.Paused -> currentState.filePath
+            else -> {
+                reset()
+                return
+            }
+        }
+
+        try {
+            recorder?.apply {
+                stop()
+                release()
+            }
+        } catch (_: Exception) {
+            recorder?.release()
+        }
+        recorder = null
+
+        // Delete the partial recording file
+        try {
+            File(filePath).delete()
+        } catch (_: Exception) { }
+
+        _state.value = RecorderState.Idle
     }
 
     fun reset() {

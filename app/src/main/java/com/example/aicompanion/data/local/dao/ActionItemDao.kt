@@ -3,15 +3,73 @@ package com.example.aicompanion.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.example.aicompanion.data.local.entity.ActionItem
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ActionItemDao {
     @Insert
+    suspend fun insert(item: ActionItem): Long
+
+    @Insert
     suspend fun insertAll(items: List<ActionItem>)
 
-    @Query("UPDATE action_items SET isCompleted = :completed WHERE id = :id")
-    suspend fun setCompleted(id: Long, completed: Boolean)
+    @Update
+    suspend fun update(item: ActionItem)
+
+    @Query("SELECT * FROM action_items WHERE id = :id")
+    fun getById(id: Long): Flow<ActionItem?>
+
+    @Query("SELECT * FROM action_items WHERE projectId IS NULL AND isCompleted = 0 ORDER BY createdAt DESC")
+    fun getInboxItems(): Flow<List<ActionItem>>
+
+    @Query("SELECT COUNT(*) FROM action_items WHERE projectId IS NULL AND isCompleted = 0")
+    fun getInboxCount(): Flow<Int>
+
+    @Query("SELECT * FROM action_items WHERE projectId = :projectId AND isCompleted = 0 ORDER BY priority DESC, dueDate ASC, createdAt DESC")
+    fun getActiveByProjectId(projectId: Long): Flow<List<ActionItem>>
+
+    @Query("SELECT * FROM action_items WHERE projectId = :projectId ORDER BY isCompleted ASC, priority DESC, dueDate ASC, createdAt DESC")
+    fun getAllByProjectId(projectId: Long): Flow<List<ActionItem>>
+
+    @Query("SELECT COUNT(*) FROM action_items WHERE projectId = :projectId AND isCompleted = 0")
+    fun getActiveCountByProjectId(projectId: Long): Flow<Int>
+
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND dueDate IS NOT NULL
+        AND dueDate < :now
+        ORDER BY dueDate ASC
+    """)
+    fun getOverdueItems(now: Long): Flow<List<ActionItem>>
+
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND dueDate IS NOT NULL
+        AND dueDate >= :dayStart
+        AND dueDate < :dayEnd
+        ORDER BY dueDate ASC
+    """)
+    fun getTodayItems(dayStart: Long, dayEnd: Long): Flow<List<ActionItem>>
+
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND dueDate IS NOT NULL
+        AND dueDate >= :start
+        AND dueDate < :end
+        ORDER BY dueDate ASC
+    """)
+    fun getUpcomingItems(start: Long, end: Long): Flow<List<ActionItem>>
+
+    @Query("UPDATE action_items SET isCompleted = :completed, completedAt = :completedAt, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setCompleted(id: Long, completed: Boolean, completedAt: Long?, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE action_items SET projectId = :projectId, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun assignToProject(id: Long, projectId: Long?, updatedAt: Long = System.currentTimeMillis())
 
     @Query("""
         SELECT * FROM action_items
@@ -28,4 +86,7 @@ interface ActionItemDao {
 
     @Query("DELETE FROM action_items WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("SELECT * FROM action_items WHERE isCompleted = 0 ORDER BY text")
+    suspend fun getAllActiveItemTexts(): List<ActionItem>
 }
