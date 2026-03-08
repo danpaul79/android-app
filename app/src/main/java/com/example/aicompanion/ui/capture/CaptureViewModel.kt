@@ -145,8 +145,6 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                         transcript = transcriptionResult.transcript,
                         transcriptFilePath = transcriptPath
                     )
-                    // Auto-extract after transcription
-                    extractActionItems()
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
@@ -158,7 +156,7 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun extractActionItems() {
+    fun extractActionItems() {
         val transcript = _uiState.value.transcript
         if (transcript.isBlank()) return
 

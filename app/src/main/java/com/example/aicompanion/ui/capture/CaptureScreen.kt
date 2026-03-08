@@ -294,6 +294,18 @@ fun CaptureScreen(
                 }
             }
 
+            // Extract button (shown after transcript, when not already extracting)
+            if (hasTranscript && !uiState.isExtracting) {
+                item {
+                    Button(
+                        onClick = { viewModel.extractActionItems() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (uiState.extractedItems.isEmpty()) "Extract Action Items" else "Re-extract Action Items")
+                    }
+                }
+            }
+
             // Extracting indicator
             if (uiState.isExtracting) {
                 item {

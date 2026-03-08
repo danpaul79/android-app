@@ -16,8 +16,11 @@ data class InboxUiState(
     val items: List<ActionItem> = emptyList(),
     val projects: List<Project> = emptyList(),
     val inboxCount: Int = 0,
-    val isLoading: Boolean = true
-)
+    val isLoading: Boolean = true,
+    val selectedIds: Set<Long> = emptySet()
+) {
+    val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
+}
 
 class InboxViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = (application as AICompanionApplication).container.taskRepository
@@ -52,5 +55,37 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteTask(id: Long) {
         viewModelScope.launch { repo.deleteTask(id) }
+    }
+
+    fun toggleSelection(id: Long) {
+        val current = _uiState.value.selectedIds.toMutableSet()
+        if (id in current) current.remove(id) else current.add(id)
+        _uiState.value = _uiState.value.copy(selectedIds = current)
+    }
+
+    fun selectAll() {
+        _uiState.value = _uiState.value.copy(
+            selectedIds = _uiState.value.items.map { it.id }.toSet()
+        )
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedIds = emptySet())
+    }
+
+    fun assignSelectedToProject(projectId: Long) {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.assignToProject(it, projectId) }
+            clearSelection()
+        }
+    }
+
+    fun deleteSelected() {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.deleteTask(it) }
+            clearSelection()
+        }
     }
 }

@@ -9,6 +9,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 data class GeminiActionItem(
@@ -110,6 +113,7 @@ class GeminiClient {
     }
 
     private fun buildExtractionPrompt(transcript: String): String {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         return """Extract action items from the following transcript. Return a JSON object with this exact structure:
 {
   "actionItems": [
@@ -117,10 +121,12 @@ class GeminiClient {
   ]
 }
 
+Today's date is $today. Use this to resolve relative dates like "today", "tomorrow", "next week", etc.
+
 Rules:
 - Each action item should be a clear, concise task
 - Only include genuine action items (things someone needs to do)
-- If a due date is mentioned or implied, include it in YYYY-MM-DD format
+- If a due date is mentioned or implied (including relative dates), include it in YYYY-MM-DD format
 - If no due date is mentioned, set dueDate to null
 - If no action items exist, return {"actionItems": []}
 - Return ONLY the JSON, no other text
