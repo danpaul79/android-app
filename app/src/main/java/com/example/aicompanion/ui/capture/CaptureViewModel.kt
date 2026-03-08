@@ -38,7 +38,8 @@ data class CaptureUiState(
     val projectNameToId: Map<String, Long> = emptyMap(),
     val isDone: Boolean = false,
     val amplitudes: List<Float> = emptyList(),
-    val transcriptOnly: Boolean = false
+    val transcriptOnly: Boolean = false,
+    val newProjectName: String? = null
 )
 
 class CaptureViewModel(application: Application) : AndroidViewModel(application) {
@@ -187,11 +188,12 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             )
 
             try {
-                val items = extractor.extract(transcript, _uiState.value.projectNames)
+                val result = extractor.extract(transcript, _uiState.value.projectNames)
 
                 _uiState.value = _uiState.value.copy(
                     isExtracting = false,
-                    extractedItems = items
+                    extractedItems = result.items,
+                    newProjectName = result.newProject
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -217,6 +219,13 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSaving = true)
 
+            // Create new project if AI detected project creation intent
+            var projectNameToId = state.projectNameToId.toMutableMap()
+            if (state.newProjectName != null && state.newProjectName !in projectNameToId) {
+                val newId = repo.createProject(state.newProjectName)
+                projectNameToId[state.newProjectName] = newId
+            }
+
             val source = Source(
                 type = SourceType.VOICE_NOTE,
                 rawContent = state.transcript,
@@ -227,7 +236,7 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                 // If recording from a specific project, always use that project.
                 // Otherwise, use the AI's suggested project (resolved to ID).
                 val resolvedProjectId = state.projectId
-                    ?: extracted.suggestedProject?.let { state.projectNameToId[it] }
+                    ?: extracted.suggestedProject?.let { projectNameToId[it] }
 
                 ActionItem(
                     text = extracted.text,
@@ -244,6 +253,10 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                 isDone = true
             )
         }
+    }
+
+    fun dismissNewProject() {
+        _uiState.value = _uiState.value.copy(newProjectName = null)
     }
 
     fun reset() {

@@ -23,7 +23,8 @@ data class GeminiActionItem(
 
 data class GeminiExtractionResult(
     val actionItems: List<GeminiActionItem>,
-    val topic: String?
+    val newProject: String? = null,
+    val topic: String? = null
 )
 
 class GeminiClient {
@@ -128,6 +129,7 @@ Known projects: ${projectNames.joinToString(", ")}
 
         return """Extract action items from the following transcript. Return a JSON object with this exact structure:
 {
+  "newProject": "project name or null",
   "actionItems": [
     {"text": "description of the action item", "dueDate": "YYYY-MM-DD or null", "priority": "none|low|medium|high|urgent", "suggestedProject": "project name or null"}
   ]
@@ -142,7 +144,9 @@ Rules:
 - If a due date is mentioned or implied (including relative dates), include it in YYYY-MM-DD format
 - If no due date is mentioned, set dueDate to null
 - Infer priority from language: "urgent"/"ASAP"/"critical" = urgent, "important"/"soon" = high, "when you get a chance"/"low priority" = low, otherwise = none
-- If no action items exist, return {"actionItems": []}
+- If the speaker asks to create/start a new project (e.g. "create a new project called X", "start a project for X", "new project: X"), set "newProject" to the project name. Tasks related to that project should have "suggestedProject" set to the same name.
+- If no new project is requested, set "newProject" to null
+- If no action items exist, return {"actionItems": [], "newProject": null}
 - Return ONLY the JSON, no other text
 
 Transcript:
@@ -205,7 +209,10 @@ $transcript"""
                 suggestedProject = if (item.isNull("suggestedProject")) null else item.optString("suggestedProject")
             )
         }
-        return GeminiExtractionResult(actionItems = items, topic = null)
+        val newProject = if (parsed.has("newProject") && !parsed.isNull("newProject"))
+            parsed.optString("newProject").takeIf { it.isNotBlank() }
+        else null
+        return GeminiExtractionResult(actionItems = items, newProject = newProject)
     }
 
     private fun parseTopicResponse(responseBody: String): String? {

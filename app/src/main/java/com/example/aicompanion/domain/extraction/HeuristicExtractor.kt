@@ -21,9 +21,9 @@ class HeuristicExtractor : ActionItemExtractor {
         Regex("(?i)\\b(pay|renew|cancel|sign up)\\b")
     )
 
-    override suspend fun extract(transcript: String, projectNames: List<String>): List<ExtractedItem> {
+    override suspend fun extract(transcript: String, projectNames: List<String>): ExtractionResult {
         val sentences = splitSentences(transcript)
-        return sentences.mapNotNull { sentence ->
+        val items = sentences.mapNotNull { sentence ->
             val isAction = actionPatterns.any { it.containsMatchIn(sentence) }
             if (isAction) {
                 val dueDate = extractDate(sentence)
@@ -33,6 +33,7 @@ class HeuristicExtractor : ActionItemExtractor {
                 )
             } else null
         }
+        return ExtractionResult(items = items)
     }
 
     private fun splitSentences(text: String): List<String> {

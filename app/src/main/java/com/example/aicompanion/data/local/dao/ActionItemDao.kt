@@ -106,6 +106,17 @@ interface ActionItemDao {
     @Query("DELETE FROM action_items WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 1
+        AND isTrashed = 0
+        AND completedAt IS NOT NULL
+        AND completedAt >= :since
+        ORDER BY completedAt DESC
+        LIMIT 20
+    """)
+    fun getRecentlyCompleted(since: Long): Flow<List<ActionItem>>
+
     @Query("SELECT * FROM action_items WHERE isCompleted = 0 AND isTrashed = 0 ORDER BY text")
     suspend fun getAllActiveItemTexts(): List<ActionItem>
 

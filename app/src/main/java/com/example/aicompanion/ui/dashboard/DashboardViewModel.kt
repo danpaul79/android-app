@@ -16,10 +16,12 @@ data class DashboardUiState(
     val overdueItems: List<ActionItem> = emptyList(),
     val todayItems: List<ActionItem> = emptyList(),
     val upcomingItems: List<ActionItem> = emptyList(),
+    val recentlyCompleted: List<ActionItem> = emptyList(),
     val inboxCount: Int = 0,
     val projects: List<Project> = emptyList(),
     val isLoading: Boolean = true,
-    val selectedIds: Set<Long> = emptySet()
+    val selectedIds: Set<Long> = emptySet(),
+    val showCompleted: Boolean = false
 ) {
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
     val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems
@@ -50,6 +52,15 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 )
             }.collect { _uiState.value = it }
         }
+        viewModelScope.launch {
+            repo.getRecentlyCompleted().collect { completed ->
+                _uiState.value = _uiState.value.copy(recentlyCompleted = completed)
+            }
+        }
+    }
+
+    fun toggleShowCompleted() {
+        _uiState.value = _uiState.value.copy(showCompleted = !_uiState.value.showCompleted)
     }
 
     fun toggleCompleted(itemId: Long, completed: Boolean) {

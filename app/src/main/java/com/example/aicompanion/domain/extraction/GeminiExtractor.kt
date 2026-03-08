@@ -14,10 +14,10 @@ class GeminiExtractor(
     override suspend fun extract(
         transcript: String,
         projectNames: List<String>
-    ): List<ExtractedItem> {
+    ): ExtractionResult {
         val result = geminiClient.extractActionItems(transcript, projectNames)
         val extractionResult = result.getOrThrow()
-        return extractionResult.actionItems.map { geminiItem ->
+        val items = extractionResult.actionItems.map { geminiItem ->
             ExtractedItem(
                 text = geminiItem.text,
                 dueDate = parseDateToEpoch(geminiItem.dueDate),
@@ -25,6 +25,7 @@ class GeminiExtractor(
                 suggestedProject = geminiItem.suggestedProject
             )
         }
+        return ExtractionResult(items = items, newProject = extractionResult.newProject)
     }
 
     private fun parseDateToEpoch(dateStr: String?): Long? {

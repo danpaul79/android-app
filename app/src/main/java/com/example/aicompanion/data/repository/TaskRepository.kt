@@ -154,6 +154,15 @@ class TaskRepository(
 
     suspend fun markReminderFired(id: Long) = actionItemDao.markReminderFired(id)
 
+    // --- Completed ---
+
+    fun getRecentlyCompleted(): Flow<List<ActionItem>> {
+        val sevenDaysAgo = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -7)
+        }.timeInMillis
+        return actionItemDao.getRecentlyCompleted(sevenDaysAgo)
+    }
+
     // --- Search ---
 
     fun searchItems(query: String): Flow<List<ActionItem>> = actionItemDao.searchItems(query)
