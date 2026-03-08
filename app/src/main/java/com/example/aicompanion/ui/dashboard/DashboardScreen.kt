@@ -238,7 +238,7 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                     }
-                    items(uiState.overdueItems, key = { it.id }) { item ->
+                    items(uiState.overdueItems, key = { "overdue_${it.id}" }) { item ->
                         val isSelected = item.id in uiState.selectedIds
                         TaskRow(
                             item = item,
@@ -257,7 +257,7 @@ fun DashboardScreen(
 
                 if (uiState.todayItems.isNotEmpty()) {
                     item { SectionHeader(title = "Today") }
-                    items(uiState.todayItems, key = { it.id }) { item ->
+                    items(uiState.todayItems, key = { "today_${it.id}" }) { item ->
                         val isSelected = item.id in uiState.selectedIds
                         TaskRow(
                             item = item,
@@ -275,7 +275,7 @@ fun DashboardScreen(
 
                 if (uiState.upcomingItems.isNotEmpty()) {
                     item { SectionHeader(title = "Upcoming (7 days)") }
-                    items(uiState.upcomingItems, key = { it.id }) { item ->
+                    items(uiState.upcomingItems, key = { "upcoming_${it.id}" }) { item ->
                         val isSelected = item.id in uiState.selectedIds
                         TaskRow(
                             item = item,

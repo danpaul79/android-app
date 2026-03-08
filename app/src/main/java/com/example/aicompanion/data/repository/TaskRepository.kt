@@ -55,8 +55,15 @@ class TaskRepository(
     fun getActiveCountByProject(projectId: Long): Flow<Int> =
         actionItemDao.getActiveCountByProjectId(projectId)
 
-    fun getOverdueItems(): Flow<List<ActionItem>> =
-        actionItemDao.getOverdueItems(System.currentTimeMillis())
+    fun getOverdueItems(): Flow<List<ActionItem>> {
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        return actionItemDao.getOverdueItems(dayStart)
+    }
 
     fun getTodayItems(): Flow<List<ActionItem>> {
         val cal = Calendar.getInstance().apply {
