@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.aicompanion.MainActivity
 import com.example.aicompanion.audio.RecorderState
 import java.io.File
 import java.text.SimpleDateFormat
@@ -69,6 +70,7 @@ fun RecordScreen(
     viewModel: RecordViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val activity = context as MainActivity
     val uiState by viewModel.uiState.collectAsState()
 
     var hasAudioPermission by remember {
@@ -228,7 +230,7 @@ fun RecordScreen(
                 if (!hasTranscript && !uiState.isTranscribing) {
                     item {
                         Button(
-                            onClick = { viewModel.transcribe(context) },
+                            onClick = { viewModel.transcribe(activity) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Filled.Transcribe, "Transcribe", Modifier.size(18.dp))
