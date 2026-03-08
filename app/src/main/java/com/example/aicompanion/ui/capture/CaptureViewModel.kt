@@ -34,9 +34,11 @@ data class CaptureUiState(
     val transcriptFilePath: String? = null,
     val projectId: Long? = null,
     val projectName: String? = null,
+    val projectNames: List<String> = emptyList(),
+    val projectNameToId: Map<String, Long> = emptyMap(),
     val isDone: Boolean = false,
-    // Amplitude samples for waveform (0.0 to 1.0)
-    val amplitudes: List<Float> = emptyList()
+    val amplitudes: List<Float> = emptyList(),
+    val transcriptOnly: Boolean = false
 )
 
 class CaptureViewModel(application: Application) : AndroidViewModel(application) {
@@ -51,6 +53,16 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
 
     init {
+        // Load all project names for AI context
+        viewModelScope.launch {
+            repo.getAllProjects().collect { projects ->
+                _uiState.value = _uiState.value.copy(
+                    projectNames = projects.map { it.name },
+                    projectNameToId = projects.associate { it.name to it.id }
+                )
+            }
+        }
+
         viewModelScope.launch {
             audioRecorder.state.collect { recorderState ->
                 _uiState.value = _uiState.value.copy(recorderState = recorderState)
@@ -77,6 +89,10 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun toggleTranscriptOnly() {
+        _uiState.value = _uiState.value.copy(transcriptOnly = !_uiState.value.transcriptOnly)
+    }
+
     fun startRecording() { audioRecorder.startRecording() }
     fun stopRecording() { audioRecorder.stopRecording() }
     fun pauseRecording() { audioRecorder.pauseRecording() }
@@ -88,7 +104,6 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         val normalized = (amp / 32767f).coerceIn(0f, 1f)
         val current = _uiState.value.amplitudes.toMutableList()
         current.add(normalized)
-        // Keep last 50 samples for display
         if (current.size > 50) current.removeAt(0)
         _uiState.value = _uiState.value.copy(amplitudes = current)
     }
@@ -145,6 +160,11 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                         transcript = transcriptionResult.transcript,
                         transcriptFilePath = transcriptPath
                     )
+
+                    // Auto-extract after successful transcription (unless transcript-only mode)
+                    if (!_uiState.value.transcriptOnly) {
+                        extractActionItems()
+                    }
                 },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
@@ -167,7 +187,7 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             )
 
             try {
-                val items = extractor.extract(transcript)
+                val items = extractor.extract(transcript, _uiState.value.projectNames)
 
                 _uiState.value = _uiState.value.copy(
                     isExtracting = false,
@@ -204,10 +224,16 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             )
 
             val actionItems = state.extractedItems.map { extracted ->
+                // If recording from a specific project, always use that project.
+                // Otherwise, use the AI's suggested project (resolved to ID).
+                val resolvedProjectId = state.projectId
+                    ?: extracted.suggestedProject?.let { state.projectNameToId[it] }
+
                 ActionItem(
                     text = extracted.text,
                     dueDate = extracted.dueDate,
-                    projectId = state.projectId
+                    priority = extracted.priority,
+                    projectId = resolvedProjectId
                 )
             }
 
@@ -224,7 +250,9 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         audioRecorder.reset()
         _uiState.value = CaptureUiState(
             projectId = _uiState.value.projectId,
-            projectName = _uiState.value.projectName
+            projectName = _uiState.value.projectName,
+            projectNames = _uiState.value.projectNames,
+            projectNameToId = _uiState.value.projectNameToId
         )
     }
 

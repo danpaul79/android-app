@@ -105,4 +105,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch { repo.updateTaskText(id, text) }
         clearSelection()
     }
+
+    fun quickAddTask(text: String) {
+        viewModelScope.launch {
+            repo.createTask(text = text, dueDate = System.currentTimeMillis())
+        }
+    }
 }

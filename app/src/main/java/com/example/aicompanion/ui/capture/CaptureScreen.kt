@@ -45,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,6 +71,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.audio.RecorderState
+import com.example.aicompanion.data.local.entity.Priority
 import kotlinx.coroutines.delay
 import java.io.File
 import java.text.SimpleDateFormat
@@ -179,6 +181,27 @@ fun CaptureScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Mode toggle: Transcript only vs Extract tasks
+            if (!hasAudio && !uiState.isTranscribing) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            if (uiState.transcriptOnly) "Transcript only" else "Extract tasks",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Switch(
+                            checked = !uiState.transcriptOnly,
+                            onCheckedChange = { viewModel.toggleTranscriptOnly() }
+                        )
+                    }
+                }
+            }
+
             // Recording controls
             item {
                 RecordingSection(
@@ -294,14 +317,25 @@ fun CaptureScreen(
                 }
             }
 
-            // Extract button (shown after transcript, when not already extracting)
+            // Extract / Re-extract button
             if (hasTranscript && !uiState.isExtracting) {
-                item {
-                    Button(
-                        onClick = { viewModel.extractActionItems() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (uiState.extractedItems.isEmpty()) "Extract Action Items" else "Re-extract Action Items")
+                if (uiState.transcriptOnly && uiState.extractedItems.isEmpty()) {
+                    item {
+                        Button(
+                            onClick = { viewModel.extractActionItems() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Extract Action Items")
+                        }
+                    }
+                } else if (uiState.extractedItems.isNotEmpty()) {
+                    item {
+                        OutlinedButton(
+                            onClick = { viewModel.extractActionItems() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Re-extract Action Items")
+                        }
                     }
                 }
             }
@@ -364,9 +398,30 @@ fun CaptureScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(item.text, style = MaterialTheme.typography.bodyMedium)
-                                if (item.dueDate != null) {
-                                    val dateStr = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(item.dueDate))
-                                    Text("Due: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (item.dueDate != null) {
+                                        val dateStr = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(item.dueDate))
+                                        Text("Due: $dateStr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                    if (item.priority != Priority.NONE) {
+                                        Text(
+                                            item.priority.name.lowercase().replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = when (item.priority) {
+                                                Priority.URGENT -> MaterialTheme.colorScheme.error
+                                                Priority.HIGH -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                                else -> MaterialTheme.colorScheme.tertiary
+                                            }
+                                        )
+                                    }
+                                }
+                                // Show suggested project if not recording from a specific project
+                                if (uiState.projectId == null && item.suggestedProject != null) {
+                                    Text(
+                                        "-> ${item.suggestedProject}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                             IconButton(onClick = { viewModel.removeExtractedItem(index) }) {
@@ -377,8 +432,8 @@ fun CaptureScreen(
                 }
             }
 
-            // No items message
-            if (hasTranscript && uiState.extractedItems.isEmpty() && !uiState.isExtracting && uiState.extractionError == null) {
+            // No items message (only if extraction was actually attempted)
+            if (hasTranscript && uiState.extractedItems.isEmpty() && !uiState.isExtracting && uiState.extractionError == null && !uiState.transcriptOnly) {
                 item {
                     Text(
                         "No action items detected in this recording.",

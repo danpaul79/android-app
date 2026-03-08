@@ -12,8 +12,10 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Projects**: create projects, view tasks per project, trash icon navigates to Trash screen
 - **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel
-- **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → save
-- **Task Detail**: view/edit task, change project, add notes, see source info
+- **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save
+- **Transcript-only mode**: toggle on Capture screen to skip extraction and just get a transcript
+- **Task Detail**: view/edit task name, change due date, change project, add notes, see source info
+- **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; restore or permanently delete; "Empty trash" button
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
@@ -21,7 +23,8 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - CI/CD: push to main → GitHub Actions → Firebase App Distribution
 
 ### Next phases:
-- **Phase 2**: Smarter AI — project-aware extraction prompts, priority inference, duplicate detection
+- **Phase 2 (in progress)**: Smarter AI — project-aware extraction (done), priority inference (done), auto-extraction (done), duplicate detection (TODO)
+- **Phase 2.5**: Voice commands — say "change due date of task X to Monday" or "create task Y in project Z" from any screen with a mic button
 - **Phase 3**: More input sources — Gmail, SMS, Google Chat
 
 ## Project Overview
@@ -93,8 +96,10 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - API key stored in `local.properties` as `GEMINI_API_KEY` (gitignored)
 - Exposed via `BuildConfig.GEMINI_API_KEY` at build time
 - `GeminiExtractor` is the primary implementation; `HeuristicExtractor` is a fallback
-- Extraction is automatic: record → transcribe → extract (full pipeline on stop)
-- **Phase 2**: prompt will include existing project names for smart assignment, priority extraction, duplicate detection
+- Extraction is automatic: record → transcribe → extract (full pipeline on stop, unless transcript-only mode)
+- **Phase 2 (done)**: prompt includes existing project names for smart project suggestion + priority inference from language cues
+- Extracted items include `suggestedProject` (mapped to project ID on save) and `priority` (NONE/LOW/MEDIUM/HIGH/URGENT)
+- When recording from a project, all items auto-assign to that project (overrides AI suggestion)
 
 ## Git Workflow
 - Remote uses **SSH** (`git@github.com:danpaul79/android-app.git`) — required for Claude Code to push without credential prompts

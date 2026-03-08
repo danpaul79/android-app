@@ -160,34 +160,28 @@ enum class SourceType { VOICE_NOTE, EMAIL, CHAT, SMS, MANUAL }
 
 ---
 
-## Phase 2: Smarter AI
+## Phase 2: Smarter AI (PARTIALLY COMPLETE)
 
-### Enhanced Extraction
+### Enhanced Extraction (DONE)
 - Prompt includes existing project names → AI suggests project assignment
 - Extract priority from context ("urgent", "ASAP", "when you get a chance")
 - Return richer JSON with `priority` and `suggestedProject` fields
+- Auto-extraction after transcription (no manual button tap needed)
+- Transcript-only mode toggle skips extraction
+- Quick-add manual task creation from Dashboard and Project Detail
 
-### Duplicate Detection
+### Duplicate Detection (TODO)
 - New GeminiClient method: compare new items against existing items
 - Show user: "This looks similar to existing task X — skip?"
 
-### Updated Interface
-```kotlin
-interface ActionItemExtractor {
-    suspend fun extract(transcript: String, existingProjects: List<String> = emptyList()): List<ExtractedItem>
-}
-```
-- Remove `extractTopic()` — project suggestion replaces it
-
-### ExtractedItem Changes
-```kotlin
-data class ExtractedItem(
-    val text: String,
-    val dueDate: Long? = null,
-    val priority: Priority = Priority.NONE,
-    val suggestedProject: String? = null
-)
-```
+### Phase 2.5: Voice Commands (TODO)
+- From any screen with a mic, say things like:
+  - "Change the due date of task X to Monday"
+  - "Create task Y in project Z"
+  - "Update all due dates to next Monday"
+  - "Mark the groceries task as complete"
+- Requires: existing task context sent to Gemini, command vs. task extraction mode detection
+- Could use a two-pass approach: first classify intent (command vs. new tasks), then process accordingly
 
 ---
 

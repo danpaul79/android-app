@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -82,6 +83,7 @@ fun ProjectDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showQuickAdd by remember { mutableStateOf(false) }
 
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
@@ -138,6 +140,35 @@ fun ProjectDetailScreen(
         )
     }
 
+    if (showQuickAdd) {
+        var taskText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showQuickAdd = false },
+            title = { Text("Add task") },
+            text = {
+                OutlinedTextField(
+                    value = taskText,
+                    onValueChange = { taskText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("What do you need to do?") },
+                    minLines = 2
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (taskText.isNotBlank()) viewModel.quickAddTask(taskText)
+                        showQuickAdd = false
+                    },
+                    enabled = taskText.isNotBlank()
+                ) { Text("Add") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showQuickAdd = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             if (uiState.isSelectionMode) {
@@ -167,6 +198,13 @@ fun ProjectDetailScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { showQuickAdd = true }) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "Quick add task",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                         IconButton(onClick = {
                             viewModel.trashProject()
                             onNavigateBack()

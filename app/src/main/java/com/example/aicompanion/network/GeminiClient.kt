@@ -16,7 +16,9 @@ import java.util.concurrent.TimeUnit
 
 data class GeminiActionItem(
     val text: String,
-    val dueDate: String? = null
+    val dueDate: String? = null,
+    val priority: String? = null,
+    val suggestedProject: String? = null
 )
 
 data class GeminiExtractionResult(
@@ -37,7 +39,10 @@ class GeminiClient {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    suspend fun extractActionItems(transcript: String): Result<GeminiExtractionResult> {
+    suspend fun extractActionItems(
+        transcript: String,
+        projectNames: List<String> = emptyList()
+    ): Result<GeminiExtractionResult> {
         val apiKey = BuildConfig.GEMINI_API_KEY
         if (apiKey.isBlank()) {
             return Result.failure(
@@ -47,7 +52,7 @@ class GeminiClient {
 
         return withContext(Dispatchers.IO) {
             try {
-                val prompt = buildExtractionPrompt(transcript)
+                val prompt = buildExtractionPrompt(transcript, projectNames)
                 val requestJson = buildRequestJson(prompt)
 
                 val request = Request.Builder()
@@ -112,22 +117,31 @@ class GeminiClient {
         }
     }
 
-    private fun buildExtractionPrompt(transcript: String): String {
+    private fun buildExtractionPrompt(transcript: String, projectNames: List<String> = emptyList()): String {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val projectSection = if (projectNames.isNotEmpty()) {
+            """
+Known projects: ${projectNames.joinToString(", ")}
+- If a task clearly relates to one of these projects, set "suggestedProject" to that exact project name
+- If unclear, set "suggestedProject" to null (task goes to Inbox)"""
+        } else ""
+
         return """Extract action items from the following transcript. Return a JSON object with this exact structure:
 {
   "actionItems": [
-    {"text": "description of the action item", "dueDate": "YYYY-MM-DD or null"}
+    {"text": "description of the action item", "dueDate": "YYYY-MM-DD or null", "priority": "none|low|medium|high|urgent", "suggestedProject": "project name or null"}
   ]
 }
 
 Today's date is $today. Use this to resolve relative dates like "today", "tomorrow", "next week", etc.
+$projectSection
 
 Rules:
 - Each action item should be a clear, concise task
 - Only include genuine action items (things someone needs to do)
 - If a due date is mentioned or implied (including relative dates), include it in YYYY-MM-DD format
 - If no due date is mentioned, set dueDate to null
+- Infer priority from language: "urgent"/"ASAP"/"critical" = urgent, "important"/"soon" = high, "when you get a chance"/"low priority" = low, otherwise = none
 - If no action items exist, return {"actionItems": []}
 - Return ONLY the JSON, no other text
 
@@ -186,7 +200,9 @@ $transcript"""
             val item = itemsArray.getJSONObject(i)
             GeminiActionItem(
                 text = item.getString("text"),
-                dueDate = if (item.isNull("dueDate")) null else item.optString("dueDate", null)
+                dueDate = if (item.isNull("dueDate")) null else item.optString("dueDate"),
+                priority = if (item.isNull("priority")) null else item.optString("priority"),
+                suggestedProject = if (item.isNull("suggestedProject")) null else item.optString("suggestedProject")
             )
         }
         return GeminiExtractionResult(actionItems = items, topic = null)

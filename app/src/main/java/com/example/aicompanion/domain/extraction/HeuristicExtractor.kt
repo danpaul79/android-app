@@ -21,15 +21,7 @@ class HeuristicExtractor : ActionItemExtractor {
         Regex("(?i)\\b(pay|renew|cancel|sign up)\\b")
     )
 
-    private val topicPatterns = listOf(
-        Regex("(?i)\\babout\\s+(?:the\\s+)?([A-Za-z][A-Za-z\\s]{1,30})"),
-        Regex("(?i)\\bregarding\\s+(?:the\\s+)?([A-Za-z][A-Za-z\\s]{1,30})"),
-        Regex("(?i)\\bmeeting\\s+with\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)"),
-        Regex("(?i)\\bcall\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)"),
-        Regex("(?i)\\bemail\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)")
-    )
-
-    override suspend fun extract(transcript: String): List<ExtractedItem> {
+    override suspend fun extract(transcript: String, projectNames: List<String>): List<ExtractedItem> {
         val sentences = splitSentences(transcript)
         return sentences.mapNotNull { sentence ->
             val isAction = actionPatterns.any { it.containsMatchIn(sentence) }
@@ -41,16 +33,6 @@ class HeuristicExtractor : ActionItemExtractor {
                 )
             } else null
         }
-    }
-
-    override suspend fun extractTopic(transcript: String): String? {
-        for (pattern in topicPatterns) {
-            val match = pattern.find(transcript)
-            if (match != null && match.groupValues.size > 1) {
-                return match.groupValues[1].trim()
-            }
-        }
-        return null
     }
 
     private fun splitSentences(text: String): List<String> {

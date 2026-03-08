@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Warning
@@ -34,6 +35,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -84,6 +86,7 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showQuickAdd by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
@@ -136,6 +139,35 @@ fun DashboardScreen(
         )
     }
 
+    if (showQuickAdd) {
+        var taskText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showQuickAdd = false },
+            title = { Text("Quick add task") },
+            text = {
+                OutlinedTextField(
+                    value = taskText,
+                    onValueChange = { taskText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("What do you need to do?") },
+                    minLines = 2
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (taskText.isNotBlank()) viewModel.quickAddTask(taskText)
+                        showQuickAdd = false
+                    },
+                    enabled = taskText.isNotBlank()
+                ) { Text("Add") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showQuickAdd = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             if (uiState.isSelectionMode) {
@@ -162,6 +194,13 @@ fun DashboardScreen(
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 )
+            }
+        },
+        floatingActionButton = {
+            if (!uiState.isSelectionMode) {
+                FloatingActionButton(onClick = { showQuickAdd = true }) {
+                    Icon(Icons.Filled.Add, "Quick add task")
+                }
             }
         },
         bottomBar = {

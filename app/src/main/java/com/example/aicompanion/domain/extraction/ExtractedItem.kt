@@ -1,7 +1,10 @@
 package com.example.aicompanion.domain.extraction
 
+import com.example.aicompanion.data.local.entity.Priority
+
 data class ExtractedItem(
     val text: String,
     val dueDate: Long? = null,
-    val topic: String? = null
+    val priority: Priority = Priority.NONE,
+    val suggestedProject: String? = null
 )

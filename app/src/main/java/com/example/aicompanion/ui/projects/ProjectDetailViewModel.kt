@@ -97,4 +97,11 @@ class ProjectDetailViewModel(application: Application) : AndroidViewModel(applic
         val selectedId = _uiState.value.selectedIds.singleOrNull() ?: return null
         return _uiState.value.items.find { it.id == selectedId }?.text
     }
+
+    fun quickAddTask(text: String) {
+        val projectId = _uiState.value.project?.id ?: return
+        viewModelScope.launch {
+            repo.createTask(text = text, projectId = projectId)
+        }
+    }
 }

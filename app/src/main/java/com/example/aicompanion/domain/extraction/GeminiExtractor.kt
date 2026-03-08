@@ -1,5 +1,6 @@
 package com.example.aicompanion.domain.extraction
 
+import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.network.GeminiClient
 import java.time.LocalDate
 import java.time.LocalTime
@@ -10,20 +11,20 @@ class GeminiExtractor(
     private val geminiClient: GeminiClient
 ) : ActionItemExtractor {
 
-    override suspend fun extract(transcript: String): List<ExtractedItem> {
-        val result = geminiClient.extractActionItems(transcript)
+    override suspend fun extract(
+        transcript: String,
+        projectNames: List<String>
+    ): List<ExtractedItem> {
+        val result = geminiClient.extractActionItems(transcript, projectNames)
         val extractionResult = result.getOrThrow()
         return extractionResult.actionItems.map { geminiItem ->
             ExtractedItem(
                 text = geminiItem.text,
-                dueDate = parseDateToEpoch(geminiItem.dueDate)
+                dueDate = parseDateToEpoch(geminiItem.dueDate),
+                priority = parsePriority(geminiItem.priority),
+                suggestedProject = geminiItem.suggestedProject
             )
         }
-    }
-
-    override suspend fun extractTopic(transcript: String): String? {
-        val result = geminiClient.extractTopic(transcript)
-        return result.getOrThrow()
     }
 
     private fun parseDateToEpoch(dateStr: String?): Long? {
@@ -36,6 +37,16 @@ class GeminiExtractor(
                 .toEpochMilli()
         } catch (e: DateTimeParseException) {
             null
+        }
+    }
+
+    private fun parsePriority(priorityStr: String?): Priority {
+        return when (priorityStr?.lowercase()) {
+            "low" -> Priority.LOW
+            "medium" -> Priority.MEDIUM
+            "high" -> Priority.HIGH
+            "urgent" -> Priority.URGENT
+            else -> Priority.NONE
         }
     }
 }
