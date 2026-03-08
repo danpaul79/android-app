@@ -4,15 +4,17 @@
 A "second brain" that ingests tasks from multiple sources (voice notes, email, texts, chat), extracts action items using AI, and organizes them into projects. The user interacts primarily with **tasks organized by project**, not with individual voice notes or messages. Sources are just how items arrive.
 
 ## Current Status
-**Phase 1 complete.** The app has been restructured from a voice-note-centric tool into a project-based task hub. See `RESTRUCTURE_PLAN.md` for the full plan.
+**Phase 1+ complete.** Core task hub is fully operational with multi-select, trash, and batch editing. See `RESTRUCTURE_PLAN.md` for the full plan.
 
-### What works now (Phase 1):
-- **Dashboard**: overdue, today, upcoming tasks at a glance
-- **Inbox**: unassigned tasks with project assignment dropdown
-- **Projects**: create projects, view tasks per project, voice capture within a project
+### What works now:
+- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash
+- **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash
+- **Projects**: create projects, view tasks per project, trash icon navigates to Trash screen
+- **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → save
 - **Task Detail**: view/edit task, change project, add notes, see source info
+- **Trash**: tasks and projects moved to trash instead of deleted; restore or permanently delete; "Empty trash" button
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
@@ -43,21 +45,24 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 
 ### Data Model
 ```
-Project (id, name, color, icon, sortOrder, isArchived, createdAt)
-ActionItem (id, projectId, sourceId, text, notes, dueDate, priority, isCompleted, completedAt, reminderFired, createdAt, updatedAt)
+Project (id, name, color, icon, sortOrder, isArchived, isTrashed, createdAt)
+ActionItem (id, projectId, sourceId, text, notes, dueDate, priority, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt)
 Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, processedAt, createdAt)
 ```
 - ActionItems with projectId=null live in the **Inbox**
+- ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
+- DB version: 3 (uses fallbackToDestructiveMigration — bumping version wipes data)
 
 ### Screen Flow
-- **Dashboard** — overdue, today, upcoming tasks at a glance
-- **Inbox** — unassigned tasks waiting for project assignment
-- **Projects** — list of projects with task counts
-- **Project Detail** — tasks within a project
+- **Dashboard** — overdue, today, upcoming tasks; long-press → multi-select mode
+- **Inbox** — unassigned tasks; long-press → multi-select mode
+- **Projects** — list of projects with task counts; trash icon → Trash screen
+- **Project Detail** — tasks within a project; long-press → multi-select mode
 - **Capture** — voice note recording/transcription/extraction (future: other sources)
 - **Task Detail** — view/edit a single task
+- **Trash** — trashed tasks and projects; restore or permanently delete
 - Bottom navigation: Dashboard | Inbox | Capture | Projects
 
 ## Key Packages
@@ -68,11 +73,12 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - `data/repository/` - TaskRepository (replaces CaptureRepository)
 - `domain/extraction/` - Action item extraction from text
 - `domain/model/` - DashboardState, ProjectSummary
-- `ui/dashboard/` - Dashboard screen
-- `ui/inbox/` - Inbox screen
-- `ui/projects/` - Projects list + detail
+- `ui/dashboard/` - Dashboard screen (multi-select)
+- `ui/inbox/` - Inbox screen (multi-select)
+- `ui/projects/` - Projects list + detail (multi-select in detail)
 - `ui/capture/` - Capture screen (voice notes + future sources)
 - `ui/task/` - Task detail/edit screen
+- `ui/trash/` - Trash screen (restore / permanent delete)
 
 ## Transcription
 - **Calls Deepgram API directly** from the Android app (no cloud function middleman)
@@ -89,6 +95,13 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - `GeminiExtractor` is the primary implementation; `HeuristicExtractor` is a fallback
 - Extraction is automatic: record → transcribe → extract (full pipeline on stop)
 - **Phase 2**: prompt will include existing project names for smart assignment, priority extraction, duplicate detection
+
+## Git Workflow
+- Remote uses **SSH** (`git@github.com:danpaul79/android-app.git`) — required for Claude Code to push without credential prompts
+- SSH key (`~/.ssh/id_rsa`) is registered on GitHub
+- `gh` CLI is authenticated; token may need refresh with `gh auth login` periodically
+- Always push to `main` — CI triggers automatically on push
+- `git push` must be run **synchronously** (with a timeout) — background push hangs waiting for input
 
 ## CI/CD
 - **GitHub Actions** workflow at `.github/workflows/build-and-distribute.yml`
