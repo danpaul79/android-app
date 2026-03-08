@@ -14,7 +14,7 @@ import com.example.aicompanion.data.local.entity.Source
 
 @Database(
     entities = [Project::class, ActionItem::class, Source::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

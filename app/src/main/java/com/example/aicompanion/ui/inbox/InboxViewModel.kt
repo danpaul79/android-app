@@ -39,7 +39,8 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
                     items = items,
                     projects = projects,
                     inboxCount = count,
-                    isLoading = false
+                    isLoading = false,
+                    selectedIds = _uiState.value.selectedIds
                 )
             }.collect { _uiState.value = it }
         }
@@ -53,8 +54,8 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repo.toggleCompleted(itemId, completed) }
     }
 
-    fun deleteTask(id: Long) {
-        viewModelScope.launch { repo.deleteTask(id) }
+    fun trashTask(id: Long) {
+        viewModelScope.launch { repo.trashTask(id) }
     }
 
     fun toggleSelection(id: Long) {
@@ -81,10 +82,10 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun deleteSelected() {
+    fun trashSelected() {
         val ids = _uiState.value.selectedIds.toList()
         viewModelScope.launch {
-            ids.forEach { repo.deleteTask(it) }
+            ids.forEach { repo.trashTask(it) }
             clearSelection()
         }
     }
@@ -95,5 +96,15 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
             ids.forEach { repo.setDueDate(it, dueDate) }
             clearSelection()
         }
+    }
+
+    fun renameTask(id: Long, text: String) {
+        viewModelScope.launch { repo.updateTaskText(id, text) }
+        clearSelection()
+    }
+
+    fun getSelectedItemText(): String? {
+        val selectedId = _uiState.value.selectedIds.singleOrNull() ?: return null
+        return _uiState.value.items.find { it.id == selectedId }?.text
     }
 }

@@ -32,6 +32,7 @@ import com.example.aicompanion.ui.inbox.InboxScreen
 import com.example.aicompanion.ui.projects.ProjectDetailScreen
 import com.example.aicompanion.ui.projects.ProjectsScreen
 import com.example.aicompanion.ui.task.TaskDetailScreen
+import com.example.aicompanion.ui.trash.TrashScreen
 
 data class BottomNavItem(
     val label: String,
@@ -51,7 +52,6 @@ fun AppNavHost(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Show bottom bar only on top-level destinations
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
 
     val inboxViewModel: com.example.aicompanion.ui.inbox.InboxViewModel = viewModel()
@@ -156,7 +156,16 @@ fun AppNavHost(navController: NavHostController) {
                 ProjectsScreen(
                     onNavigateToProject = { id ->
                         navController.navigate(NavRoutes.ProjectDetail.createRoute(id))
+                    },
+                    onNavigateToTrash = {
+                        navController.navigate("trash")
                     }
+                )
+            }
+
+            composable("trash") {
+                TrashScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

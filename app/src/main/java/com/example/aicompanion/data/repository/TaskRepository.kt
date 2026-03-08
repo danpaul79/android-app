@@ -28,9 +28,15 @@ class TaskRepository(
 
     suspend fun archiveProject(id: Long) = projectDao.archive(id)
 
+    suspend fun trashProject(id: Long) = projectDao.trashById(id)
+
+    suspend fun restoreProject(id: Long) = projectDao.restoreById(id)
+
     suspend fun deleteProject(id: Long) = projectDao.deleteById(id)
 
     suspend fun getAllProjectNames(): List<String> = projectDao.getAllProjectNames()
+
+    fun getTrashedProjects(): Flow<List<Project>> = projectDao.getTrashed()
 
     // --- Action Items ---
 
@@ -79,6 +85,8 @@ class TaskRepository(
         return actionItemDao.getUpcomingItems(start, end)
     }
 
+    fun getTrashedTasks(): Flow<List<ActionItem>> = actionItemDao.getTrashedItems()
+
     suspend fun toggleCompleted(id: Long, completed: Boolean) {
         val completedAt = if (completed) System.currentTimeMillis() else null
         actionItemDao.setCompleted(id, completed, completedAt)
@@ -110,7 +118,13 @@ class TaskRepository(
         actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis()))
     }
 
+    suspend fun updateTaskText(id: Long, text: String) = actionItemDao.updateText(id, text)
+
     suspend fun setDueDate(id: Long, dueDate: Long?) = actionItemDao.setDueDate(id, dueDate)
+
+    suspend fun trashTask(id: Long) = actionItemDao.trashItem(id)
+
+    suspend fun restoreTask(id: Long) = actionItemDao.restoreItem(id)
 
     suspend fun deleteTask(id: Long) = actionItemDao.deleteById(id)
 

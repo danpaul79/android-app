@@ -47,13 +47,13 @@ class ProjectDetailViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch { repo.toggleCompleted(itemId, completed) }
     }
 
-    fun deleteTask(id: Long) {
-        viewModelScope.launch { repo.deleteTask(id) }
+    fun trashTask(id: Long) {
+        viewModelScope.launch { repo.trashTask(id) }
     }
 
-    fun deleteProject() {
+    fun trashProject() {
         val projectId = _uiState.value.project?.id ?: return
-        viewModelScope.launch { repo.deleteProject(projectId) }
+        viewModelScope.launch { repo.trashProject(projectId) }
     }
 
     fun toggleSelection(id: Long) {
@@ -72,10 +72,10 @@ class ProjectDetailViewModel(application: Application) : AndroidViewModel(applic
         _uiState.value = _uiState.value.copy(selectedIds = emptySet())
     }
 
-    fun deleteSelected() {
+    fun trashSelected() {
         val ids = _uiState.value.selectedIds.toList()
         viewModelScope.launch {
-            ids.forEach { repo.deleteTask(it) }
+            ids.forEach { repo.trashTask(it) }
             clearSelection()
         }
     }
@@ -86,5 +86,15 @@ class ProjectDetailViewModel(application: Application) : AndroidViewModel(applic
             ids.forEach { repo.setDueDate(it, dueDate) }
             clearSelection()
         }
+    }
+
+    fun renameTask(id: Long, text: String) {
+        viewModelScope.launch { repo.updateTaskText(id, text) }
+        clearSelection()
+    }
+
+    fun getSelectedItemText(): String? {
+        val selectedId = _uiState.value.selectedIds.singleOrNull() ?: return null
+        return _uiState.value.items.find { it.id == selectedId }?.text
     }
 }

@@ -3,7 +3,6 @@ package com.example.aicompanion.ui.projects
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +19,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,8 +56,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
+
+private fun utcPickerToLocalNoon(utcMillis: Long): Long {
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    utcCal.timeInMillis = utcMillis
+    val localCal = Calendar.getInstance()
+    localCal.set(utcCal.get(Calendar.YEAR), utcCal.get(Calendar.MONTH), utcCal.get(Calendar.DAY_OF_MONTH), 12, 0, 0)
+    localCal.set(Calendar.MILLISECOND, 0)
+    return localCal.timeInMillis
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +81,7 @@ fun ProjectDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
@@ -79,7 +93,8 @@ fun ProjectDetailScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.setDueDateForSelected(datePickerState.selectedDateMillis)
+                    val utc = datePickerState.selectedDateMillis
+                    if (utc != null) viewModel.setDueDateForSelected(utcPickerToLocalNoon(utc))
                     showDatePicker = false
                 }) { Text("OK") }
             },
@@ -89,6 +104,38 @@ fun ProjectDetailScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showRenameDialog) {
+        val selectedId = uiState.selectedIds.singleOrNull()
+        val currentText = viewModel.getSelectedItemText() ?: ""
+        var draftText by remember(selectedId) { mutableStateOf(currentText) }
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename task") },
+            text = {
+                OutlinedTextField(
+                    value = draftText,
+                    onValueChange = { draftText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedId != null && draftText.isNotBlank()) {
+                            viewModel.renameTask(selectedId, draftText)
+                        }
+                        showRenameDialog = false
+                    },
+                    enabled = draftText.isNotBlank()
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 
     Scaffold(
@@ -121,12 +168,12 @@ fun ProjectDetailScreen(
                     },
                     actions = {
                         IconButton(onClick = {
-                            viewModel.deleteProject()
+                            viewModel.trashProject()
                             onNavigateBack()
                         }) {
                             Icon(
                                 Icons.Filled.Delete,
-                                contentDescription = "Delete Project",
+                                contentDescription = "Move Project to Trash",
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -151,8 +198,10 @@ fun ProjectDetailScreen(
             if (uiState.isSelectionMode) {
                 ProjectSelectionActionBar(
                     selectedCount = uiState.selectedIds.size,
+                    isSingleSelection = uiState.selectedIds.size == 1,
                     onSetDueDate = { showDatePicker = true },
-                    onDelete = { viewModel.deleteSelected() }
+                    onRename = { showRenameDialog = true },
+                    onTrash = { viewModel.trashSelected() }
                 )
             }
         }
@@ -204,7 +253,7 @@ fun ProjectDetailScreen(
                         }
                     },
                     onLongClick = { viewModel.toggleSelection(item.id) },
-                    onDelete = { viewModel.deleteTask(item.id) }
+                    onTrash = { viewModel.trashTask(item.id) }
                 )
             }
 
@@ -216,8 +265,10 @@ fun ProjectDetailScreen(
 @Composable
 private fun ProjectSelectionActionBar(
     selectedCount: Int,
+    isSingleSelection: Boolean,
     onSetDueDate: () -> Unit,
-    onDelete: () -> Unit
+    onRename: () -> Unit,
+    onTrash: () -> Unit
 ) {
     BottomAppBar(
         containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -239,10 +290,17 @@ private fun ProjectSelectionActionBar(
                     Spacer(Modifier.width(4.dp))
                     Text("Due")
                 }
-                OutlinedButton(onClick = onDelete) {
+                if (isSingleSelection) {
+                    OutlinedButton(onClick = onRename) {
+                        Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Rename")
+                    }
+                }
+                OutlinedButton(onClick = onTrash) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Delete")
+                    Text("Trash")
                 }
             }
         }
@@ -258,7 +316,7 @@ private fun ProjectTaskCard(
     onToggle: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onDelete: () -> Unit
+    onTrash: () -> Unit
 ) {
     val isOverdue = item.dueDate != null && item.dueDate < System.currentTimeMillis() && !item.isCompleted
 
@@ -329,10 +387,10 @@ private fun ProjectTaskCard(
                 }
             }
             if (!isSelectionMode) {
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = onTrash) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = "Move to trash",
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

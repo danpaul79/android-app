@@ -18,8 +18,12 @@ data class DashboardUiState(
     val upcomingItems: List<ActionItem> = emptyList(),
     val inboxCount: Int = 0,
     val projects: List<Project> = emptyList(),
-    val isLoading: Boolean = true
-)
+    val isLoading: Boolean = true,
+    val selectedIds: Set<Long> = emptySet()
+) {
+    val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
+    val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems
+}
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = (application as AICompanionApplication).container.taskRepository
@@ -36,7 +40,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 repo.getInboxCount(),
                 repo.getAllProjects()
             ) { overdue, today, upcoming, inboxCount, projects ->
-                DashboardUiState(
+                _uiState.value.copy(
                     overdueItems = overdue,
                     todayItems = today,
                     upcomingItems = upcoming,
@@ -50,5 +54,55 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun toggleCompleted(itemId: Long, completed: Boolean) {
         viewModelScope.launch { repo.toggleCompleted(itemId, completed) }
+    }
+
+    fun toggleSelection(id: Long) {
+        val current = _uiState.value.selectedIds.toMutableSet()
+        if (id in current) current.remove(id) else current.add(id)
+        _uiState.value = _uiState.value.copy(selectedIds = current)
+    }
+
+    fun selectAll() {
+        _uiState.value = _uiState.value.copy(
+            selectedIds = _uiState.value.allItems.map { it.id }.toSet()
+        )
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedIds = emptySet())
+    }
+
+    fun trashSelected() {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.trashTask(it) }
+            clearSelection()
+        }
+    }
+
+    fun setDueDateForSelected(dueDate: Long?) {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.setDueDate(it, dueDate) }
+            clearSelection()
+        }
+    }
+
+    fun completeSelected() {
+        val ids = _uiState.value.selectedIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.toggleCompleted(it, true) }
+            clearSelection()
+        }
+    }
+
+    fun getSelectedItemText(): String? {
+        val selectedId = _uiState.value.selectedIds.singleOrNull() ?: return null
+        return _uiState.value.allItems.find { it.id == selectedId }?.text
+    }
+
+    fun renameTask(id: Long, text: String) {
+        viewModelScope.launch { repo.updateTaskText(id, text) }
+        clearSelection()
     }
 }

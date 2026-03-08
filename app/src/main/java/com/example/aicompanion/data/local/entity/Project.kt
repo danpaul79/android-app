@@ -12,6 +12,7 @@ data class Project(
     val icon: String = "folder",
     val sortOrder: Int = 0,
     val isArchived: Boolean = false,
+    val isTrashed: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     companion object {

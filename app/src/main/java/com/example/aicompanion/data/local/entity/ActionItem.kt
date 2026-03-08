@@ -35,6 +35,7 @@ data class ActionItem(
     val isCompleted: Boolean = false,
     val completedAt: Long? = null,
     val reminderFired: Boolean = false,
+    val isTrashed: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

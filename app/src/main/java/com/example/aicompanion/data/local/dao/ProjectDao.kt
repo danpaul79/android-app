@@ -15,8 +15,11 @@ interface ProjectDao {
     @Update
     suspend fun update(project: Project)
 
-    @Query("SELECT * FROM projects WHERE isArchived = 0 ORDER BY sortOrder, name")
+    @Query("SELECT * FROM projects WHERE isArchived = 0 AND isTrashed = 0 ORDER BY sortOrder, name")
     fun getAll(): Flow<List<Project>>
+
+    @Query("SELECT * FROM projects WHERE isTrashed = 1 ORDER BY name")
+    fun getTrashed(): Flow<List<Project>>
 
     @Query("SELECT * FROM projects ORDER BY sortOrder, name")
     fun getAllIncludingArchived(): Flow<List<Project>>
@@ -24,11 +27,17 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE id = :id")
     fun getById(id: Long): Flow<Project?>
 
-    @Query("SELECT name FROM projects WHERE isArchived = 0 ORDER BY name")
+    @Query("SELECT name FROM projects WHERE isArchived = 0 AND isTrashed = 0 ORDER BY name")
     suspend fun getAllProjectNames(): List<String>
 
     @Query("UPDATE projects SET isArchived = 1 WHERE id = :id")
     suspend fun archive(id: Long)
+
+    @Query("UPDATE projects SET isTrashed = 1 WHERE id = :id")
+    suspend fun trashById(id: Long)
+
+    @Query("UPDATE projects SET isTrashed = 0 WHERE id = :id")
+    suspend fun restoreById(id: Long)
 
     @Query("DELETE FROM projects WHERE id = :id")
     suspend fun deleteById(id: Long)

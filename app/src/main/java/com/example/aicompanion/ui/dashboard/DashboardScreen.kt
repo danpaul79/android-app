@@ -1,6 +1,7 @@
 package com.example.aicompanion.ui.dashboard
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,24 +16,41 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
@@ -41,10 +59,21 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun utcPickerToLocalNoon(utcMillis: Long): Long {
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    utcCal.timeInMillis = utcMillis
+    val localCal = Calendar.getInstance()
+    localCal.set(utcCal.get(Calendar.YEAR), utcCal.get(Calendar.MONTH), utcCal.get(Calendar.DAY_OF_MONTH), 12, 0, 0)
+    localCal.set(Calendar.MILLISECOND, 0)
+    return localCal.timeInMillis
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
     onNavigateToTask: (Long) -> Unit,
@@ -53,18 +82,103 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("AI Companion") },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val utc = datePickerState.selectedDateMillis
+                    if (utc != null) viewModel.setDueDateForSelected(utcPickerToLocalNoon(utc))
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showRenameDialog) {
+        val selectedId = uiState.selectedIds.singleOrNull()
+        val currentText = viewModel.getSelectedItemText() ?: ""
+        var draftText by remember(selectedId) { mutableStateOf(currentText) }
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename task") },
+            text = {
+                OutlinedTextField(
+                    value = draftText,
+                    onValueChange = { draftText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedId != null && draftText.isNotBlank()) {
+                            viewModel.renameTask(selectedId, draftText)
+                        }
+                        showRenameDialog = false
+                    },
+                    enabled = draftText.isNotBlank()
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+            }
         )
+    }
 
+    Scaffold(
+        topBar = {
+            if (uiState.isSelectionMode) {
+                TopAppBar(
+                    title = { Text("${uiState.selectedIds.size} selected") },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = { viewModel.selectAll() }) { Text("All") }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("AI Companion") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+        },
+        bottomBar = {
+            if (uiState.isSelectionMode) {
+                DashboardSelectionActionBar(
+                    selectedCount = uiState.selectedIds.size,
+                    isSingleSelection = uiState.selectedIds.size == 1,
+                    onSetDueDate = { showDatePicker = true },
+                    onComplete = { viewModel.completeSelected() },
+                    onRename = { showRenameDialog = true },
+                    onTrash = { viewModel.trashSelected() }
+                )
+            }
+        }
+    ) { innerPadding ->
         if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Text("Loading...", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else if (uiState.overdueItems.isEmpty() && uiState.todayItems.isEmpty() &&
@@ -72,23 +186,24 @@ fun DashboardScreen(
         ) {
             EmptyDashboard(
                 onNavigateToCapture = onNavigateToCapture,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(innerPadding)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Inbox banner
-                if (uiState.inboxCount > 0) {
+                if (uiState.inboxCount > 0 && !uiState.isSelectionMode) {
                     item {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 12.dp)
-                                .clickable { onNavigateToInbox() },
+                                .combinedClickable(onClick = onNavigateToInbox),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer
                             )
@@ -115,7 +230,6 @@ fun DashboardScreen(
                     }
                 }
 
-                // Overdue section
                 if (uiState.overdueItems.isNotEmpty()) {
                     item {
                         SectionHeader(
@@ -125,44 +239,106 @@ fun DashboardScreen(
                         )
                     }
                     items(uiState.overdueItems, key = { it.id }) { item ->
+                        val isSelected = item.id in uiState.selectedIds
                         TaskRow(
                             item = item,
+                            isSelectionMode = uiState.isSelectionMode,
+                            isSelected = isSelected,
                             onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
-                            onClick = { onNavigateToTask(item.id) },
+                            onClick = {
+                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                else onNavigateToTask(item.id)
+                            },
+                            onLongClick = { viewModel.toggleSelection(item.id) },
                             isOverdue = true
                         )
                     }
                 }
 
-                // Today section
                 if (uiState.todayItems.isNotEmpty()) {
-                    item {
-                        SectionHeader(title = "Today")
-                    }
+                    item { SectionHeader(title = "Today") }
                     items(uiState.todayItems, key = { it.id }) { item ->
+                        val isSelected = item.id in uiState.selectedIds
                         TaskRow(
                             item = item,
+                            isSelectionMode = uiState.isSelectionMode,
+                            isSelected = isSelected,
                             onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
-                            onClick = { onNavigateToTask(item.id) }
+                            onClick = {
+                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                else onNavigateToTask(item.id)
+                            },
+                            onLongClick = { viewModel.toggleSelection(item.id) }
                         )
                     }
                 }
 
-                // Upcoming section
                 if (uiState.upcomingItems.isNotEmpty()) {
-                    item {
-                        SectionHeader(title = "Upcoming (7 days)")
-                    }
+                    item { SectionHeader(title = "Upcoming (7 days)") }
                     items(uiState.upcomingItems, key = { it.id }) { item ->
+                        val isSelected = item.id in uiState.selectedIds
                         TaskRow(
                             item = item,
+                            isSelectionMode = uiState.isSelectionMode,
+                            isSelected = isSelected,
                             onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
-                            onClick = { onNavigateToTask(item.id) }
+                            onClick = {
+                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                else onNavigateToTask(item.id)
+                            },
+                            onLongClick = { viewModel.toggleSelection(item.id) }
                         )
                     }
                 }
 
                 item { Spacer(Modifier.height(80.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardSelectionActionBar(
+    selectedCount: Int,
+    isSingleSelection: Boolean,
+    onSetDueDate: () -> Unit,
+    onComplete: () -> Unit,
+    onRename: () -> Unit,
+    onTrash: () -> Unit
+) {
+    BottomAppBar(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "$selectedCount task${if (selectedCount != 1) "s" else ""} selected",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedButton(onClick = onSetDueDate) {
+                    Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Due")
+                }
+                OutlinedButton(onClick = onComplete) {
+                    Icon(Icons.Filled.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Done")
+                }
+                if (isSingleSelection) {
+                    OutlinedButton(onClick = onRename) {
+                        Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Rename")
+                    }
+                }
+                OutlinedButton(onClick = onTrash) {
+                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Trash")
+                }
             }
         }
     }
@@ -182,42 +358,43 @@ private fun SectionHeader(
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = color
-        )
+        Text(text = title, style = MaterialTheme.typography.titleSmall, color = color)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TaskRow(
     item: ActionItem,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
     onToggle: () -> Unit,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     isOverdue: Boolean = false
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (isOverdue)
-                MaterialTheme.colorScheme.errorContainer
-            else MaterialTheme.colorScheme.surface
+            containerColor = when {
+                isSelected -> MaterialTheme.colorScheme.primaryContainer
+                isOverdue -> MaterialTheme.colorScheme.errorContainer
+                else -> MaterialTheme.colorScheme.surface
+            }
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = item.isCompleted,
-                onCheckedChange = { onToggle() }
-            )
+            if (isSelectionMode) {
+                Checkbox(checked = isSelected, onCheckedChange = { onClick() })
+            } else {
+                Checkbox(checked = item.isCompleted, onCheckedChange = { onToggle() })
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.text,
@@ -227,8 +404,7 @@ private fun TaskRow(
                     textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                 )
                 if (item.dueDate != null) {
-                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault())
-                        .format(Date(item.dueDate))
+                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(item.dueDate))
                     Text(
                         text = dateStr,
                         style = MaterialTheme.typography.bodySmall,
@@ -255,10 +431,7 @@ private fun EmptyDashboard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
-            Text(
-                text = "All clear!",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text(text = "All clear!", style = MaterialTheme.typography.titleMedium)
             Text(
                 text = "No tasks due. Record a voice note to get started.",
                 style = MaterialTheme.typography.bodyMedium,

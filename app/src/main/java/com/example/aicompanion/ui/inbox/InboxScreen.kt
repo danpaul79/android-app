@@ -19,8 +19,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -35,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -53,8 +56,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
+
+private fun utcPickerToLocalNoon(utcMillis: Long): Long {
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    utcCal.timeInMillis = utcMillis
+    val localCal = Calendar.getInstance()
+    localCal.set(utcCal.get(Calendar.YEAR), utcCal.get(Calendar.MONTH), utcCal.get(Calendar.DAY_OF_MONTH), 12, 0, 0)
+    localCal.set(Calendar.MILLISECOND, 0)
+    return localCal.timeInMillis
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +77,59 @@ fun InboxScreen(
     viewModel: InboxViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val utc = datePickerState.selectedDateMillis
+                    if (utc != null) viewModel.setDueDateForSelected(utcPickerToLocalNoon(utc))
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showRenameDialog) {
+        val selectedId = uiState.selectedIds.singleOrNull()
+        val currentText = viewModel.getSelectedItemText() ?: ""
+        var draftText by remember(selectedId) { mutableStateOf(currentText) }
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename task") },
+            text = {
+                OutlinedTextField(
+                    value = draftText,
+                    onValueChange = { draftText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (selectedId != null && draftText.isNotBlank()) {
+                            viewModel.renameTask(selectedId, draftText)
+                        }
+                        showRenameDialog = false
+                    },
+                    enabled = draftText.isNotBlank()
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -84,8 +151,14 @@ fun InboxScreen(
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                containerColor = if (uiState.isSelectionMode)
+                    MaterialTheme.colorScheme.secondaryContainer
+                else
+                    MaterialTheme.colorScheme.primaryContainer,
+                titleContentColor = if (uiState.isSelectionMode)
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                else
+                    MaterialTheme.colorScheme.onPrimaryContainer
             )
         )
 
@@ -133,20 +206,21 @@ fun InboxScreen(
                             }
                         },
                         onLongClick = { viewModel.toggleSelection(item.id) },
-                        onDelete = { viewModel.deleteTask(item.id) }
+                        onTrash = { viewModel.trashTask(item.id) }
                     )
                 }
                 item { Spacer(Modifier.height(if (uiState.isSelectionMode) 96.dp else 80.dp)) }
             }
 
-            // Batch action bar
             if (uiState.isSelectionMode) {
                 SelectionActionBar(
                     selectedCount = uiState.selectedIds.size,
+                    isSingleSelection = uiState.selectedIds.size == 1,
                     projects = uiState.projects,
                     onAssignToProject = { projectId -> viewModel.assignSelectedToProject(projectId) },
-                    onSetDueDate = { dueDate -> viewModel.setDueDateForSelected(dueDate) },
-                    onDelete = { viewModel.deleteSelected() }
+                    onSetDueDate = { showDatePicker = true },
+                    onRename = { showRenameDialog = true },
+                    onTrash = { viewModel.trashSelected() }
                 )
             }
         }
@@ -157,31 +231,14 @@ fun InboxScreen(
 @Composable
 private fun SelectionActionBar(
     selectedCount: Int,
+    isSingleSelection: Boolean,
     projects: List<com.example.aicompanion.data.local.entity.Project>,
     onAssignToProject: (Long) -> Unit,
-    onSetDueDate: (Long?) -> Unit,
-    onDelete: () -> Unit
+    onSetDueDate: () -> Unit,
+    onRename: () -> Unit,
+    onTrash: () -> Unit
 ) {
     var showProjectMenu by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    if (showDatePicker) {
-        val datePickerState = rememberDatePickerState()
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onSetDueDate(datePickerState.selectedDateMillis)
-                    showDatePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
 
     BottomAppBar(
         containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -227,15 +284,22 @@ private fun SelectionActionBar(
                         }
                     }
                 }
-                OutlinedButton(onClick = { showDatePicker = true }) {
+                OutlinedButton(onClick = onSetDueDate) {
                     Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Due")
                 }
-                OutlinedButton(onClick = onDelete) {
+                if (isSingleSelection) {
+                    OutlinedButton(onClick = onRename) {
+                        Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Rename")
+                    }
+                }
+                OutlinedButton(onClick = onTrash) {
                     Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Delete")
+                    Text("Trash")
                 }
             }
         }
@@ -253,7 +317,7 @@ private fun InboxItemCard(
     onToggle: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onDelete: () -> Unit
+    onTrash: () -> Unit
 ) {
     var showProjectMenu by remember { mutableStateOf(false) }
 
@@ -340,10 +404,10 @@ private fun InboxItemCard(
                     }
                 }
 
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = onTrash) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = "Move to trash",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
