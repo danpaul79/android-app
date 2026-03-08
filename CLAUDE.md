@@ -19,13 +19,13 @@
 - Screens: Home → Record → Detail
 - Manual DI via `AppContainer` in `di/` (no Hilt)
 - Room DB: `VoiceNote` + `ActionItem` entities with FK relationship
-- `ActionItemExtractor` interface with `HeuristicExtractor` impl (swappable for LLM later)
+- `ActionItemExtractor` interface with `GeminiExtractor` impl (uses Gemini 2.0 Flash via REST API)
 - WorkManager for hourly reminder checks
 
 ## Key Packages
 - `auth/` - Google Sign-In via Credential Manager (GoogleAuthManager)
 - `audio/` - MediaRecorder wrapper (AudioRecorder), transcript file helpers
-- `network/` - TranscriptionClient (calls Cloud Function)
+- `network/` - TranscriptionClient (Deepgram), GeminiClient (action item extraction)
 - `data/local/` - Room DB, DAOs, entities
 - `data/repository/` - CaptureRepository
 - `domain/extraction/` - Action item extraction from transcripts
@@ -40,6 +40,21 @@
 - Exposed via `BuildConfig.DEEPGRAM_API_KEY` at build time
 - No file size limit (Deepgram supports up to 2GB)
 - Audio is streamed to Deepgram without buffering entirely in memory
+
+## Action Item Extraction
+- Uses **Gemini 2.0 Flash** via REST API (`generativelanguage.googleapis.com`)
+- API key stored in `local.properties` as `GEMINI_API_KEY` (gitignored)
+- Exposed via `BuildConfig.GEMINI_API_KEY` at build time
+- Extracts action items + topic from transcripts via `GeminiClient`
+- `HeuristicExtractor` still available as fallback (regex-based, no API needed)
+- Extraction is user-triggered (button), not automatic after transcription
+
+## CI/CD
+- **GitHub Actions** workflow at `.github/workflows/build-and-distribute.yml`
+- Triggers on push to `main`, builds release APK, uploads to **Firebase App Distribution**
+- Signing config in `app/build.gradle.kts` reads from env vars (CI) or `local.properties` (local)
+- See plan file for full Firebase setup instructions
+- Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`
 
 ## Cloud Functions (legacy, no longer used by mobile app)
 - **`stream-audio-to-deepgram`** - Was used before direct Deepgram integration

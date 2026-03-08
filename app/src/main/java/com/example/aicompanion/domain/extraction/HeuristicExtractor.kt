@@ -29,7 +29,7 @@ class HeuristicExtractor : ActionItemExtractor {
         Regex("(?i)\\bemail\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)")
     )
 
-    override fun extract(transcript: String): List<ExtractedItem> {
+    override suspend fun extract(transcript: String): List<ExtractedItem> {
         val sentences = splitSentences(transcript)
         return sentences.mapNotNull { sentence ->
             val isAction = actionPatterns.any { it.containsMatchIn(sentence) }
@@ -43,7 +43,7 @@ class HeuristicExtractor : ActionItemExtractor {
         }
     }
 
-    override fun extractTopic(transcript: String): String? {
+    override suspend fun extractTopic(transcript: String): String? {
         for (pattern in topicPatterns) {
             val match = pattern.find(transcript)
             if (match != null && match.groupValues.size > 1) {

@@ -26,7 +26,10 @@ data class RecordUiState(
     val topic: String? = null,
     val isSaving: Boolean = false,
     val isTranscribing: Boolean = false,
+    val isExtracting: Boolean = false,
     val transcriptionError: String? = null,
+    val extractionError: String? = null,
+    val extractionAttempted: Boolean = false,
     val savedNoteId: Long? = null,
     val audioFilePath: String? = null,
     val transcriptFilePath: String? = null,
@@ -115,15 +118,9 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                         audioPath, transcriptionResult.rawJson, originalName
                     )
 
-                    // Extract action items from the transcript
-                    val items = extractor.extract(transcriptionResult.transcript)
-                    val topic = extractor.extractTopic(transcriptionResult.transcript)
-
                     _uiState.value = _uiState.value.copy(
                         isTranscribing = false,
                         transcript = transcriptionResult.transcript,
-                        extractedItems = items,
-                        topic = topic,
                         transcriptFilePath = transcriptPath
                     )
                 },
@@ -145,6 +142,36 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         val text = _uiState.value.manualInput.trim()
         if (text.isNotBlank()) {
             processTranscript(text)
+        }
+    }
+
+    fun extractActionItems() {
+        val transcript = _uiState.value.transcript
+        if (transcript.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isExtracting = true,
+                extractionError = null
+            )
+
+            try {
+                val items = extractor.extract(transcript)
+                val topic = extractor.extractTopic(transcript)
+
+                _uiState.value = _uiState.value.copy(
+                    isExtracting = false,
+                    extractedItems = items,
+                    topic = topic ?: _uiState.value.topic,
+                    extractionAttempted = true
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isExtracting = false,
+                    extractionError = "Failed to extract action items: ${e.message}",
+                    extractionAttempted = true
+                )
+            }
         }
     }
 
@@ -192,12 +219,8 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun processTranscript(text: String) {
-        val items = extractor.extract(text)
-        val topic = extractor.extractTopic(text)
         _uiState.value = _uiState.value.copy(
-            transcript = text,
-            extractedItems = items,
-            topic = topic
+            transcript = text
         )
     }
 

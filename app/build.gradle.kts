@@ -11,6 +11,30 @@ android {
     namespace = "com.example.aicompanion"
     compileSdk = 35
 
+    // Load local.properties for API keys and signing config
+    val localProps = Properties()
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        localProps.load(localPropsFile.inputStream())
+    }
+
+    signingConfigs {
+        create("release") {
+            val isCI = System.getenv("CI") != null
+            if (isCI) {
+                storeFile = file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            } else {
+                storeFile = file(localProps.getProperty("KEYSTORE_PATH", "debug.keystore"))
+                storePassword = localProps.getProperty("KEYSTORE_PASSWORD", "android")
+                keyAlias = localProps.getProperty("KEY_ALIAS", "androiddebugkey")
+                keyPassword = localProps.getProperty("KEY_PASSWORD", "android")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.aicompanion"
         minSdk = 26
@@ -20,22 +44,22 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Read Deepgram API key from local.properties (gitignored)
-        val localProps = Properties()
-        val localPropsFile = rootProject.file("local.properties")
-        if (localPropsFile.exists()) {
-            localProps.load(localPropsFile.inputStream())
-        }
         buildConfigField(
             "String",
             "DEEPGRAM_API_KEY",
             "\"${localProps.getProperty("DEEPGRAM_API_KEY", "")}\""
+        )
+        buildConfigField(
+            "String",
+            "GEMINI_API_KEY",
+            "\"${localProps.getProperty("GEMINI_API_KEY", "")}\""
         )
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

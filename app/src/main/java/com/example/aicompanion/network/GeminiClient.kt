@@ -1,0 +1,203 @@
+package com.example.aicompanion.network
+
+import com.example.aicompanion.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
+
+data class GeminiActionItem(
+    val text: String,
+    val dueDate: String? = null
+)
+
+data class GeminiExtractionResult(
+    val actionItems: List<GeminiActionItem>,
+    val topic: String?
+)
+
+class GeminiClient {
+
+    companion object {
+        private const val BASE_URL =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    }
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    suspend fun extractActionItems(transcript: String): Result<GeminiExtractionResult> {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isBlank()) {
+            return Result.failure(
+                Exception("Gemini API key not configured. Add GEMINI_API_KEY to local.properties.")
+            )
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val prompt = buildExtractionPrompt(transcript)
+                val requestJson = buildRequestJson(prompt)
+
+                val request = Request.Builder()
+                    .url("$BASE_URL?key=$apiKey")
+                    .post(requestJson.toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = client.newCall(request).execute()
+
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Unknown error"
+                    return@withContext Result.failure(
+                        Exception("Gemini API failed (${response.code}): $errorBody")
+                    )
+                }
+
+                val responseBody = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response from Gemini"))
+
+                val result = parseExtractionResponse(responseBody)
+                Result.success(result)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun extractTopic(transcript: String): Result<String?> {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isBlank()) {
+            return Result.failure(
+                Exception("Gemini API key not configured. Add GEMINI_API_KEY to local.properties.")
+            )
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val prompt = buildTopicPrompt(transcript)
+                val requestJson = buildRequestJson(prompt)
+
+                val request = Request.Builder()
+                    .url("$BASE_URL?key=$apiKey")
+                    .post(requestJson.toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = client.newCall(request).execute()
+
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(
+                        Exception("Gemini API failed (${response.code})")
+                    )
+                }
+
+                val responseBody = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response"))
+
+                val topic = parseTopicResponse(responseBody)
+                Result.success(topic)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun buildExtractionPrompt(transcript: String): String {
+        return """Extract action items from the following transcript. Return a JSON object with this exact structure:
+{
+  "actionItems": [
+    {"text": "description of the action item", "dueDate": "YYYY-MM-DD or null"}
+  ]
+}
+
+Rules:
+- Each action item should be a clear, concise task
+- Only include genuine action items (things someone needs to do)
+- If a due date is mentioned or implied, include it in YYYY-MM-DD format
+- If no due date is mentioned, set dueDate to null
+- If no action items exist, return {"actionItems": []}
+- Return ONLY the JSON, no other text
+
+Transcript:
+$transcript"""
+    }
+
+    private fun buildTopicPrompt(transcript: String): String {
+        return """What is the main topic of the following transcript? Respond with ONLY a short topic label (1-5 words). No explanation, no punctuation, just the topic.
+
+Transcript:
+$transcript"""
+    }
+
+    private fun buildRequestJson(prompt: String): String {
+        val json = JSONObject().apply {
+            put("contents", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("parts", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("text", prompt)
+                        })
+                    })
+                })
+            })
+            put("generationConfig", JSONObject().apply {
+                put("temperature", 0.1)
+                put("maxOutputTokens", 2048)
+            })
+        }
+        return json.toString()
+    }
+
+    private fun parseExtractionResponse(responseBody: String): GeminiExtractionResult {
+        val json = JSONObject(responseBody)
+        val candidates = json.getJSONArray("candidates")
+        if (candidates.length() == 0) {
+            return GeminiExtractionResult(emptyList(), null)
+        }
+
+        val content = candidates.getJSONObject(0)
+            .getJSONObject("content")
+            .getJSONArray("parts")
+            .getJSONObject(0)
+            .getString("text")
+
+        // Strip markdown code fences if present
+        val cleanJson = content
+            .replace(Regex("```json\\s*"), "")
+            .replace(Regex("```\\s*"), "")
+            .trim()
+
+        val parsed = JSONObject(cleanJson)
+        val itemsArray = parsed.getJSONArray("actionItems")
+        val items = (0 until itemsArray.length()).map { i ->
+            val item = itemsArray.getJSONObject(i)
+            GeminiActionItem(
+                text = item.getString("text"),
+                dueDate = if (item.isNull("dueDate")) null else item.optString("dueDate", null)
+            )
+        }
+        return GeminiExtractionResult(actionItems = items, topic = null)
+    }
+
+    private fun parseTopicResponse(responseBody: String): String? {
+        val json = JSONObject(responseBody)
+        val candidates = json.getJSONArray("candidates")
+        if (candidates.length() == 0) return null
+
+        val text = candidates.getJSONObject(0)
+            .getJSONObject("content")
+            .getJSONArray("parts")
+            .getJSONObject(0)
+            .getString("text")
+            .trim()
+
+        return text.ifBlank { null }
+    }
+}
