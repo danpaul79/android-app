@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +22,7 @@ class GoogleAuthManager(private val context: Context) {
         // This is the Web client ID from Google Cloud Console
         // You need to create an OAuth 2.0 Client ID (Web application type)
         // in the same GCP project as your Cloud Functions
-        const val WEB_CLIENT_ID = "809575369316-PLACEHOLDER.apps.googleusercontent.com"
+        const val WEB_CLIENT_ID = "809575369316-gntgmi8hd2m4rcd8danc15r0oa47ij17.apps.googleusercontent.com"
     }
 
     private val credentialManager = CredentialManager.create(context)
@@ -32,14 +32,11 @@ class GoogleAuthManager(private val context: Context) {
 
     suspend fun signIn(activityContext: Context): Result<GoogleUser> {
         return try {
-            val googleIdOption = GetGoogleIdOption.Builder()
-                .setServerClientId(WEB_CLIENT_ID)
-                .setFilterByAuthorizedAccounts(false)
-                .setAutoSelectEnabled(true)
+            val googleSignInOption = GetSignInWithGoogleOption.Builder(WEB_CLIENT_ID)
                 .build()
 
             val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
+                .addCredentialOption(googleSignInOption)
                 .build()
 
             val result = credentialManager.getCredential(activityContext, request)
@@ -54,7 +51,7 @@ class GoogleAuthManager(private val context: Context) {
             _currentUser.value = user
             Result.success(user)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(IllegalStateException(formatAuthError(e), e))
         }
     }
 
@@ -69,4 +66,25 @@ class GoogleAuthManager(private val context: Context) {
     fun isSignedIn(): Boolean = _currentUser.value != null
 
     fun getIdToken(): String? = _currentUser.value?.idToken
+
+    private fun formatAuthError(error: Throwable): String {
+        if (error.javaClass.simpleName == "GetCredentialCancellationException") {
+            val causeMessage = error.cause?.message?.takeIf { it.isNotBlank() }
+            return if (causeMessage != null) {
+                "Google sign-in was canceled or interrupted: $causeMessage"
+            } else {
+                "Google sign-in was canceled or interrupted."
+            }
+        }
+
+        val details = buildList {
+            add(error.javaClass.simpleName)
+            error.message?.takeIf { it.isNotBlank() }?.let(::add)
+            error.cause?.let { cause ->
+                add("cause=${cause.javaClass.simpleName}")
+                cause.message?.takeIf { it.isNotBlank() }?.let(::add)
+            }
+        }
+        return details.joinToString(": ")
+    }
 }

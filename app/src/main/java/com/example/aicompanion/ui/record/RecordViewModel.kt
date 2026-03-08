@@ -38,7 +38,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val container = (application as AICompanionApplication).container
     private val repository = container.repository
     private val extractor = container.extractor
-    private val authManager = container.authManager
     private val transcriptionClient = container.transcriptionClient
 
     val audioRecorder = AudioRecorder(application)
@@ -100,22 +99,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 transcriptionError = null
             )
 
-            // Ensure we're signed in
-            val idToken = authManager.getIdToken()
-            if (idToken == null) {
-                val signInResult = authManager.signIn(activityContext)
-                if (signInResult.isFailure) {
-                    _uiState.value = _uiState.value.copy(
-                        isTranscribing = false,
-                        transcriptionError = "Sign-in required: ${signInResult.exceptionOrNull()?.message}"
-                    )
-                    return@launch
-                }
-            }
-
-            val token = authManager.getIdToken()!!
-
-            val result = transcriptionClient.transcribe(audioFile, token)
+            val result = transcriptionClient.transcribe(audioFile)
 
             result.fold(
                 onSuccess = { transcriptionResult ->

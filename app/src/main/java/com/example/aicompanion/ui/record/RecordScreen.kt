@@ -1,6 +1,9 @@
 package com.example.aicompanion.ui.record
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,11 +54,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.aicompanion.MainActivity
 import com.example.aicompanion.audio.RecorderState
 import java.io.File
 import java.text.SimpleDateFormat
@@ -70,7 +71,7 @@ fun RecordScreen(
     viewModel: RecordViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val activity = context as MainActivity
+    val activity = context.findActivity()
     val uiState by viewModel.uiState.collectAsState()
 
     var hasAudioPermission by remember {
@@ -230,7 +231,10 @@ fun RecordScreen(
                 if (!hasTranscript && !uiState.isTranscribing) {
                     item {
                         Button(
-                            onClick = { viewModel.transcribe(activity) },
+                            onClick = {
+                                activity?.let { viewModel.transcribe(it) }
+                            },
+                            enabled = activity != null,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Filled.Transcribe, "Transcribe", Modifier.size(18.dp))
@@ -412,4 +416,10 @@ fun RecordScreen(
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

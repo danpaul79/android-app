@@ -28,7 +28,7 @@ class TranscriptionClient {
         .writeTimeout(600, TimeUnit.SECONDS)
         .build()
 
-    suspend fun transcribe(audioFile: File, idToken: String): Result<TranscriptionResult> {
+    suspend fun transcribe(audioFile: File): Result<TranscriptionResult> {
         return withContext(Dispatchers.IO) {
             try {
                 val mimeType = guessMimeType(audioFile.name)
@@ -36,7 +36,6 @@ class TranscriptionClient {
 
                 val request = Request.Builder()
                     .url(CLOUD_FUNCTION_URL)
-                    .addHeader("Authorization", "Bearer $idToken")
                     .post(requestBody)
                     .build()
 
