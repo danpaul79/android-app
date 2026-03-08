@@ -14,21 +14,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Transcribe
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,7 +42,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,8 +55,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.aicompanion.speech.SpeechRecognizerManager
-import com.example.aicompanion.speech.SpeechState
+import com.example.aicompanion.audio.RecorderState
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,7 +69,6 @@ fun RecordScreen(
     viewModel: RecordViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val speechManager = remember { SpeechRecognizerManager(context) }
     val uiState by viewModel.uiState.collectAsState()
 
     var hasAudioPermission by remember {
@@ -84,12 +88,10 @@ fun RecordScreen(
         }
     }
 
-    LaunchedEffect(speechManager) {
-        viewModel.initSpeechManager(speechManager)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { speechManager.destroy() }
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.onAudioFilePicked(it, context) }
     }
 
     LaunchedEffect(uiState.savedNoteId) {
@@ -98,8 +100,9 @@ fun RecordScreen(
         }
     }
 
-    val isListening = uiState.speechState is SpeechState.Listening
-    val hasResult = uiState.speechState is SpeechState.Result || uiState.transcript.isNotBlank()
+    val isRecording = uiState.recorderState is RecorderState.Recording
+    val hasAudio = uiState.recorderState is RecorderState.Completed
+    val hasTranscript = uiState.transcript.isNotBlank()
 
     Scaffold(
         topBar = {
@@ -117,7 +120,7 @@ fun RecordScreen(
             )
         },
         floatingActionButton = {
-            if (hasResult && uiState.savedNoteId == null) {
+            if (hasTranscript && uiState.savedNoteId == null && !uiState.isSaving) {
                 FloatingActionButton(
                     onClick = { viewModel.save() },
                     containerColor = MaterialTheme.colorScheme.primary
@@ -134,90 +137,205 @@ fun RecordScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Mic button
+            // Record button + File picker
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (speechManager.isAvailable()) {
-                        val buttonColor by animateColorAsState(
-                            if (isListening) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.primary,
-                            label = "mic_color"
+                    val buttonColor by animateColorAsState(
+                        if (isRecording) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary,
+                        label = "mic_color"
+                    )
+                    FloatingActionButton(
+                        onClick = {
+                            if (isRecording) {
+                                viewModel.stopRecording()
+                            } else if (hasAudioPermission) {
+                                viewModel.startRecording()
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        modifier = Modifier.size(72.dp),
+                        containerColor = buttonColor,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(
+                            imageVector = if (isRecording) Icons.Filled.Stop else Icons.Filled.Mic,
+                            contentDescription = if (isRecording) "Stop" else "Record",
+                            modifier = Modifier.size(36.dp)
                         )
-                        FloatingActionButton(
-                            onClick = {
-                                if (isListening) {
-                                    viewModel.stopRecording()
-                                } else if (hasAudioPermission) {
-                                    viewModel.startRecording()
-                                } else {
-                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                }
-                            },
-                            modifier = Modifier.size(72.dp),
-                            containerColor = buttonColor
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = when {
+                            isRecording -> "Recording..."
+                            hasAudio -> "Recording saved"
+                            else -> "Tap to start recording"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (!isRecording && !hasAudio) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { filePickerLauncher.launch("audio/*") }
+                        ) {
+                            Icon(Icons.Filled.AudioFile, "Pick file", Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Pick audio file")
+                        }
+                    }
+                }
+            }
+
+            // Show audio file info
+            if (hasAudio) {
+                item {
+                    val filePath = uiState.audioFilePath ?: ""
+                    val fileName = uiState.selectedFileName ?: File(filePath).name
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = if (isListening) Icons.Filled.Stop else Icons.Filled.Mic,
-                                contentDescription = if (isListening) "Stop" else "Record",
-                                modifier = Modifier.size(36.dp)
+                                Icons.Filled.AudioFile,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = fileName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
                             )
                         }
+                    }
+                }
+
+                // Transcribe button
+                if (!hasTranscript && !uiState.isTranscribing) {
+                    item {
+                        Button(
+                            onClick = { viewModel.transcribe(context) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.Transcribe, "Transcribe", Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Transcribe with Deepgram")
+                        }
+                    }
+                }
+            }
+
+            // Transcribing progress
+            if (uiState.isTranscribing) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = when {
-                                isListening -> "Listening..."
-                                hasResult -> "Tap to record again"
-                                else -> "Tap to start recording"
-                            },
+                            text = "Transcribing...",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Text(
-                            text = "Speech recognition not available on this device",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
                         )
                     }
                 }
             }
 
-            // Manual text input fallback
-            item {
-                OutlinedTextField(
-                    value = if (hasResult) uiState.transcript else uiState.manualInput,
-                    onValueChange = { viewModel.updateManualInput(it) },
-                    label = { Text("Or type your note") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    enabled = !hasResult,
-                    trailingIcon = {
-                        if (!hasResult && uiState.manualInput.isNotBlank()) {
-                            TextButton(onClick = { viewModel.submitManualInput() }) {
-                                Text("Extract")
-                            }
-                        }
-                    }
-                )
-            }
-
-            // Error state
-            if (uiState.speechState is SpeechState.Error) {
+            // Transcription error
+            if (uiState.transcriptionError != null) {
                 item {
                     Text(
-                        text = (uiState.speechState as SpeechState.Error).message,
+                        text = uiState.transcriptionError!!,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
 
+            // Recorder error
+            if (uiState.recorderState is RecorderState.Error) {
+                item {
+                    Text(
+                        text = (uiState.recorderState as RecorderState.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
+            // Manual text input fallback
+            if (!hasAudio && !isRecording) {
+                item {
+                    OutlinedTextField(
+                        value = if (hasTranscript) uiState.transcript else uiState.manualInput,
+                        onValueChange = { viewModel.updateManualInput(it) },
+                        label = { Text("Or type your note") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        enabled = !hasTranscript,
+                        trailingIcon = {
+                            if (!hasTranscript && uiState.manualInput.isNotBlank()) {
+                                TextButton(onClick = { viewModel.submitManualInput() }) {
+                                    Text("Extract")
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Transcript display
+            if (hasTranscript) {
+                item {
+                    Text(
+                        text = "Transcript",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Text(
+                            text = uiState.transcript,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
+                if (uiState.transcriptFilePath != null) {
+                    item {
+                        Text(
+                            text = "Transcript saved to: ${File(uiState.transcriptFilePath!!).name}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
             // Topic
-            if (hasResult) {
+            if (hasTranscript) {
                 item {
                     OutlinedTextField(
                         value = uiState.topic ?: "",
@@ -281,7 +399,7 @@ fun RecordScreen(
             }
 
             // No items extracted message
-            if (hasResult && uiState.extractedItems.isEmpty()) {
+            if (hasTranscript && uiState.extractedItems.isEmpty()) {
                 item {
                     Text(
                         text = "No action items detected. The note will still be saved.",

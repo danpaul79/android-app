@@ -1,49 +1,58 @@
 package com.example.aicompanion.ui.record
 
 import android.app.Application
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
+import com.example.aicompanion.audio.AudioRecorder
+import com.example.aicompanion.audio.RecorderState
+import com.example.aicompanion.audio.TranscriptFileHelper
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.VoiceNote
 import com.example.aicompanion.domain.extraction.ExtractedItem
-import com.example.aicompanion.speech.SpeechRecognizerManager
-import com.example.aicompanion.speech.SpeechState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class RecordUiState(
-    val speechState: SpeechState = SpeechState.Idle,
+    val recorderState: RecorderState = RecorderState.Idle,
     val transcript: String = "",
     val extractedItems: List<ExtractedItem> = emptyList(),
     val topic: String? = null,
     val isSaving: Boolean = false,
+    val isTranscribing: Boolean = false,
+    val transcriptionError: String? = null,
     val savedNoteId: Long? = null,
-    val manualInput: String = ""
+    val audioFilePath: String? = null,
+    val transcriptFilePath: String? = null,
+    val manualInput: String = "",
+    val selectedFileName: String? = null
 )
 
 class RecordViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as AICompanionApplication).container
     private val repository = container.repository
     private val extractor = container.extractor
+    private val authManager = container.authManager
+    private val transcriptionClient = container.transcriptionClient
 
-    private var speechManager: SpeechRecognizerManager? = null
+    val audioRecorder = AudioRecorder(application)
 
     private val _uiState = MutableStateFlow(RecordUiState())
     val uiState: StateFlow<RecordUiState> = _uiState.asStateFlow()
 
-    fun initSpeechManager(manager: SpeechRecognizerManager) {
-        speechManager = manager
+    init {
         viewModelScope.launch {
-            manager.state.collect { speechState ->
-                _uiState.value = _uiState.value.copy(speechState = speechState)
-                if (speechState is SpeechState.Result) {
-                    processTranscript(speechState.text)
-                } else if (speechState is SpeechState.Listening) {
+            audioRecorder.state.collect { recorderState ->
+                _uiState.value = _uiState.value.copy(recorderState = recorderState)
+                if (recorderState is RecorderState.Completed) {
                     _uiState.value = _uiState.value.copy(
-                        transcript = speechState.partialText
+                        audioFilePath = recorderState.filePath
                     )
                 }
             }
@@ -51,11 +60,93 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun startRecording() {
-        speechManager?.startListening()
+        audioRecorder.startRecording()
     }
 
     fun stopRecording() {
-        speechManager?.stopListening()
+        audioRecorder.stopRecording()
+    }
+
+    fun onAudioFilePicked(uri: Uri, context: Context) {
+        viewModelScope.launch {
+            // Copy the file to our app directory so we can access it reliably
+            val fileName = getFileName(uri, context) ?: "picked_audio.m4a"
+            val destDir = File(context.getExternalFilesDir(null), "recordings")
+            if (!destDir.exists()) destDir.mkdirs()
+            val destFile = File(destDir, fileName)
+
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                destFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                audioFilePath = destFile.absolutePath,
+                selectedFileName = fileName,
+                recorderState = RecorderState.Completed(destFile.absolutePath)
+            )
+        }
+    }
+
+    fun transcribe(activityContext: Context) {
+        val audioPath = _uiState.value.audioFilePath ?: return
+        val audioFile = File(audioPath)
+        if (!audioFile.exists()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isTranscribing = true,
+                transcriptionError = null
+            )
+
+            // Ensure we're signed in
+            val idToken = authManager.getIdToken()
+            if (idToken == null) {
+                val signInResult = authManager.signIn(activityContext)
+                if (signInResult.isFailure) {
+                    _uiState.value = _uiState.value.copy(
+                        isTranscribing = false,
+                        transcriptionError = "Sign-in required: ${signInResult.exceptionOrNull()?.message}"
+                    )
+                    return@launch
+                }
+            }
+
+            val token = authManager.getIdToken()!!
+
+            val result = transcriptionClient.transcribe(audioFile, token)
+
+            result.fold(
+                onSuccess = { transcriptionResult ->
+                    // Save transcript file alongside the audio
+                    val transcriptPath = TranscriptFileHelper.saveTranscript(
+                        audioPath, transcriptionResult.transcript
+                    )
+                    TranscriptFileHelper.saveRawJson(
+                        audioPath, transcriptionResult.rawJson
+                    )
+
+                    // Extract action items from the transcript
+                    val items = extractor.extract(transcriptionResult.transcript)
+                    val topic = extractor.extractTopic(transcriptionResult.transcript)
+
+                    _uiState.value = _uiState.value.copy(
+                        isTranscribing = false,
+                        transcript = transcriptionResult.transcript,
+                        extractedItems = items,
+                        topic = topic,
+                        transcriptFilePath = transcriptPath
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isTranscribing = false,
+                        transcriptionError = error.message
+                    )
+                }
+            )
+        }
     }
 
     fun updateManualInput(text: String) {
@@ -94,7 +185,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             )
             val actionItems = state.extractedItems.map { extracted ->
                 ActionItem(
-                    voiceNoteId = 0, // will be set by repository
+                    voiceNoteId = 0,
                     text = extracted.text,
                     dueDate = extracted.dueDate
                 )
@@ -108,6 +199,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun reset() {
+        audioRecorder.reset()
         _uiState.value = RecordUiState()
     }
 
@@ -121,8 +213,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    override fun onCleared() {
-        speechManager?.destroy()
-        super.onCleared()
+    private fun getFileName(uri: Uri, context: Context): String? {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) {
+                return cursor.getString(nameIndex)
+            }
+        }
+        return uri.lastPathSegment
     }
 }
