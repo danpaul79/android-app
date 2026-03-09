@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -158,11 +159,11 @@ fun SettingsScreen(
                 }
             }
 
-            // Voice Notes section
+            // Voice History section
             item {
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "Voice Notes",
+                    "Voice History",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -188,7 +189,7 @@ fun SettingsScreen(
                             )
                             Spacer(Modifier.width(16.dp))
                             Text(
-                                "No voice notes yet",
+                                "No voice history yet",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -230,9 +231,9 @@ private fun VoiceNoteCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Filled.AudioFile,
+                if (note.isVoiceCommand) Icons.Filled.RecordVoiceOver else Icons.Filled.AudioFile,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (note.isVoiceCommand) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)
             )
             Spacer(Modifier.width(12.dp))
@@ -242,7 +243,7 @@ private fun VoiceNoteCard(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = "${sizeKb}KB",
+                    text = if (note.isVoiceCommand) "Voice command" else "${sizeKb}KB",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -251,7 +252,7 @@ private fun VoiceNoteCard(
                 IconButton(onClick = onViewTranscript) {
                     Icon(
                         Icons.Filled.Description,
-                        contentDescription = "View transcript",
+                        contentDescription = if (note.isVoiceCommand) "View command log" else "View transcript",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }

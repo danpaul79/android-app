@@ -22,7 +22,8 @@ data class VoiceNoteFile(
     val audioFile: File,
     val transcriptFile: File?,
     val date: Date,
-    val displayName: String
+    val displayName: String,
+    val isVoiceCommand: Boolean = false
 )
 
 data class SettingsUiState(
@@ -66,7 +67,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             )
         }
 
-        _uiState.value = _uiState.value.copy(voiceNotes = notes)
+        // Also load voice command logs
+        val commandLogs = recordingsDir.listFiles { file ->
+            file.name.startsWith("command_") && file.extension == "txt"
+        }?.sortedByDescending { it.lastModified() }?.map { logFile ->
+            VoiceNoteFile(
+                audioFile = logFile,
+                transcriptFile = logFile,
+                date = Date(logFile.lastModified()),
+                displayName = logFile.nameWithoutExtension.removePrefix("command_").replace("_", " "),
+                isVoiceCommand = true
+            )
+        } ?: emptyList()
+
+        val allNotes = (notes + commandLogs).sortedByDescending { it.date }
+        _uiState.value = _uiState.value.copy(voiceNotes = allNotes)
     }
 
     fun exportData() {

@@ -13,7 +13,8 @@ import java.util.Locale
 data class CommandResult(
     val success: Boolean,
     val message: String,
-    val command: VoiceCommand? = null
+    val command: VoiceCommand? = null,
+    val transcript: String? = null
 )
 
 class VoiceCommandProcessor(
@@ -33,7 +34,7 @@ class VoiceCommandProcessor(
             return CommandResult(false, "Could not understand audio")
         }
 
-        return processTranscript(transcript)
+        return processTranscript(transcript).copy(transcript = transcript)
     }
 
     suspend fun processTranscript(transcript: String): CommandResult {
@@ -45,7 +46,7 @@ class VoiceCommandProcessor(
         // Step 3: Parse command(s) via Gemini
         val parseResult = geminiClient.parseCommand(transcript, taskNames, projectNames)
         val jsonList = parseResult.getOrElse {
-            return CommandResult(false, "Command parsing failed: ${it.message}")
+            return CommandResult(false, "Command parsing failed: ${it.message}", transcript = transcript)
         }
 
         // Step 4: Deduplicate and execute each command
@@ -64,21 +65,24 @@ class VoiceCommandProcessor(
         val successes = results.filter { it.success }
         val failures = results.filter { !it.success }
         return when {
-            results.size == 1 -> results.first()
+            results.size == 1 -> results.first().copy(transcript = transcript)
             failures.isEmpty() -> CommandResult(
                 true,
                 successes.joinToString("\n") { it.message },
-                successes.lastOrNull()?.command
+                successes.lastOrNull()?.command,
+                transcript = transcript
             )
             successes.isEmpty() -> CommandResult(
                 false,
                 failures.joinToString("\n") { it.message },
-                failures.lastOrNull()?.command
+                failures.lastOrNull()?.command,
+                transcript = transcript
             )
             else -> CommandResult(
                 true,
                 (successes.map { it.message } + failures.map { "Failed: ${it.message}" }).joinToString("\n"),
-                successes.lastOrNull()?.command
+                successes.lastOrNull()?.command,
+                transcript = transcript
             )
         }
     }

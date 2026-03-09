@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 enum class CommandState {
     Idle,
@@ -86,6 +89,7 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                 message = result.message
             )
 
+            saveCommandLog(result.transcript, result.message, result.success)
             audioFile.delete()
 
             delay(3000)
@@ -126,6 +130,8 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                 message = result.message
             )
 
+            saveCommandLog(result.transcript, result.message, result.success)
+
             delay(3000)
             if (_uiState.value.commandState == CommandState.Success ||
                 _uiState.value.commandState == CommandState.Error
@@ -133,6 +139,30 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                 _uiState.value = VoiceCommandUiState()
             }
         }
+    }
+
+    private fun saveCommandLog(transcript: String?, actionsMessage: String?, success: Boolean) {
+        if (transcript.isNullOrBlank()) return
+        val context = getApplication<Application>()
+        val recordingsDir = File(context.getExternalFilesDir(null), "recordings")
+        if (!recordingsDir.exists()) recordingsDir.mkdirs()
+
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val logFile = File(recordingsDir, "command_$timestamp.txt")
+
+        val content = buildString {
+            appendLine("Voice Command")
+            appendLine("=============")
+            appendLine()
+            appendLine("Transcript:")
+            appendLine(transcript)
+            appendLine()
+            appendLine("Actions:")
+            val status = if (success) "Success" else "Failed"
+            appendLine("[$status] ${actionsMessage ?: "No actions"}")
+        }
+
+        logFile.writeText(content)
     }
 
     fun cancel() {

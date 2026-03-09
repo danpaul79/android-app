@@ -20,7 +20,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Task Detail**: view/edit task name, change due date, change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
-- **Settings**: gear icon in Dashboard; export/import data (JSON backup); voice notes history with transcript viewer
+- **Settings**: gear icon in Dashboard; export/import data (JSON backup); voice history with transcript viewer (voice notes + voice command logs with transcript and actions taken)
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
@@ -70,7 +70,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - **Project Detail** — tasks within a project; long-press → multi-select mode; confirmation on project/task trash
 - **Capture** — voice note recording/transcription/extraction; text input option
 - **Task Detail** — view/edit a single task; confirmation on trash
-- **Settings** — export/import data; voice notes history with transcript viewer
+- **Settings** — export/import data; voice history (voice notes + command logs) with transcript viewer
 - **Trash** — trashed tasks and projects; restore or permanently delete
 - Bottom navigation: Dashboard | Inbox | Capture | Projects
 
@@ -90,7 +90,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - `ui/voicecommand/` - Persistent voice command bar + ViewModel (record → transcribe → parse → execute); text input mode
 - `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution, multi-command support)
 - `ui/search/` - Search screen (task name + notes search)
-- `ui/settings/` - Settings screen (export/import, voice notes history, transcript viewer)
+- `ui/settings/` - Settings screen (export/import, voice history incl. command logs, transcript viewer)
 - `ui/trash/` - Trash screen (restore / permanent delete)
 
 ## Transcription
