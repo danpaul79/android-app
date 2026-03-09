@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
@@ -254,7 +253,7 @@ fun CaptureScreen(
                             enabled = textInput.isNotBlank(),
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp))
+                            Icon(Icons.Filled.PlayArrow, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Submit")
                         }
