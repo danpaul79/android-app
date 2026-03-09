@@ -56,7 +56,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
-import com.example.aicompanion.ui.voicecommand.VoiceCommandButton
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -226,16 +225,10 @@ fun ProjectDetailScreen(
         },
         floatingActionButton = {
             if (!uiState.isSelectionMode) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                FloatingActionButton(
+                    onClick = { onNavigateToCapture(projectId) }
                 ) {
-                    VoiceCommandButton()
-                    FloatingActionButton(
-                        onClick = { onNavigateToCapture(projectId) }
-                    ) {
-                        Icon(Icons.Filled.Mic, "Record voice note")
-                    }
+                    Icon(Icons.Filled.Mic, "Record voice note")
                 }
             }
         },

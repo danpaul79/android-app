@@ -4,15 +4,16 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,38 +22,41 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 
+/**
+ * Persistent voice command bar that sits above the bottom navigation.
+ * When idle, shows a compact mic + keyboard row.
+ * When recording, shows waveform + controls (user can navigate freely).
+ * When processing/done, shows status.
+ */
 @Composable
-fun VoiceCommandButton(
-    modifier: Modifier = Modifier,
-    viewModel: VoiceCommandViewModel = viewModel()
+fun VoiceCommandBar(
+    viewModel: VoiceCommandViewModel,
+    modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -63,11 +67,22 @@ fun VoiceCommandButton(
         if (granted) viewModel.startRecording()
     }
 
-    Box(modifier = modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = when (uiState.commandState) {
+            CommandState.Recording -> MaterialTheme.colorScheme.errorContainer
+            CommandState.Processing -> MaterialTheme.colorScheme.surfaceVariant
+            CommandState.Success -> MaterialTheme.colorScheme.primaryContainer
+            CommandState.Error -> MaterialTheme.colorScheme.errorContainer
+            CommandState.TextInput -> MaterialTheme.colorScheme.surfaceVariant
+            CommandState.Idle -> MaterialTheme.colorScheme.surfaceVariant
+        },
+        tonalElevation = 3.dp
+    ) {
         when (uiState.commandState) {
             CommandState.Idle -> {
-                SmallFloatingActionButton(
-                    onClick = {
+                IdleBar(
+                    onRecord = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                             == PackageManager.PERMISSION_GRANTED
                         ) {
@@ -76,32 +91,43 @@ fun VoiceCommandButton(
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Voice command")
-                }
+                    onTextInput = { viewModel.showTextInput() }
+                )
             }
 
             CommandState.Recording -> {
-                RecordingOverlay(
+                RecordingBar(
                     amplitudes = uiState.amplitudes,
                     onStop = { viewModel.stopAndProcess() },
-                    onCancel = { viewModel.cancel() }
+                    onCancel = { viewModel.cancel() },
+                    onSwitchToText = { viewModel.showTextInput() }
+                )
+            }
+
+            CommandState.TextInput -> {
+                TextInputBar(
+                    text = uiState.textDraft,
+                    onTextChange = { viewModel.updateTextDraft(it) },
+                    onSubmit = { viewModel.submitText() },
+                    onCancel = { viewModel.cancel() },
+                    onSwitchToVoice = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                            == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            viewModel.startRecording()
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
                 )
             }
 
             CommandState.Processing -> {
-                StatusCard(
-                    message = uiState.message ?: "Processing...",
-                    isLoading = true,
-                    onDismiss = { viewModel.cancel() }
-                )
+                StatusBar(message = uiState.message ?: "Processing...", isLoading = true)
             }
 
             CommandState.Success -> {
-                StatusCard(
+                StatusBar(
                     message = uiState.message ?: "Done",
                     isSuccess = true,
                     onDismiss = { viewModel.dismiss() }
@@ -109,7 +135,7 @@ fun VoiceCommandButton(
             }
 
             CommandState.Error -> {
-                StatusCard(
+                StatusBar(
                     message = uiState.message ?: "Error",
                     isError = true,
                     onDismiss = { viewModel.dismiss() }
@@ -120,119 +146,167 @@ fun VoiceCommandButton(
 }
 
 @Composable
-private fun RecordingOverlay(
+private fun IdleBar(onRecord: () -> Unit, onTextInput: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextButton(onClick = onTextInput) {
+            Icon(Icons.Filled.Edit, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("Type")
+        }
+        Spacer(Modifier.width(16.dp))
+        TextButton(onClick = onRecord) {
+            Icon(Icons.Filled.Mic, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("Voice command")
+        }
+    }
+}
+
+@Composable
+private fun RecordingBar(
     amplitudes: List<Float>,
     onStop: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onSwitchToText: () -> Unit
 ) {
     val pulseTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by pulseTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
+        initialValue = 0.4f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
         label = "pulseAlpha"
     )
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Listening...",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = pulseAlpha)
+                "Recording...",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error.copy(alpha = pulseAlpha),
+                modifier = Modifier.weight(1f)
             )
-
-            Spacer(Modifier.height(8.dp))
-
-            // Mini waveform
-            val waveColor = MaterialTheme.colorScheme.error
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(30.dp)
-            ) {
-                val barWidth = size.width / 20f
-                amplitudes.takeLast(20).forEachIndexed { i, amp ->
-                    val barHeight = (amp * size.height).coerceAtLeast(2f)
-                    val x = i * barWidth + barWidth / 2
-                    drawLine(
-                        color = waveColor,
-                        start = Offset(x, size.height / 2 - barHeight / 2),
-                        end = Offset(x, size.height / 2 + barHeight / 2),
-                        strokeWidth = barWidth * 0.6f
-                    )
-                }
+            IconButton(onClick = onSwitchToText, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Filled.Edit, "Switch to text", Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onErrorContainer)
             }
+            IconButton(onClick = onCancel, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Filled.Close, "Cancel", Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onErrorContainer)
+            }
+            IconButton(onClick = onStop, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Filled.Stop, "Stop & process", Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.error)
+            }
+        }
 
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onCancel) {
-                    Icon(
-                        Icons.Filled.Close,
-                        "Cancel",
-                        tint = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-                FloatingActionButton(
-                    onClick = onStop,
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                    elevation = FloatingActionButtonDefaults.elevation(0.dp)
-                ) {
-                    Icon(Icons.Filled.Stop, "Stop and process")
-                }
+        // Waveform
+        val waveColor = MaterialTheme.colorScheme.error
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp)
+        ) {
+            val barWidth = size.width / 30f
+            amplitudes.takeLast(30).forEachIndexed { i, amp ->
+                val barHeight = (amp * size.height).coerceAtLeast(2f)
+                val x = i * barWidth + barWidth / 2
+                drawLine(
+                    color = waveColor,
+                    start = Offset(x, size.height / 2 - barHeight / 2),
+                    end = Offset(x, size.height / 2 + barHeight / 2),
+                    strokeWidth = barWidth * 0.5f
+                )
             }
         }
     }
 }
 
 @Composable
-private fun StatusCard(
+private fun TextInputBar(
+    text: String,
+    onTextChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onCancel: () -> Unit,
+    onSwitchToVoice: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = onTextChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("e.g. \"create task buy groceries due tomorrow\"") },
+            minLines = 1,
+            maxLines = 3,
+            textStyle = MaterialTheme.typography.bodyMedium
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row {
+                TextButton(onClick = onCancel) { Text("Cancel") }
+                TextButton(onClick = onSwitchToVoice) {
+                    Icon(Icons.Filled.Mic, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Voice")
+                }
+            }
+            TextButton(
+                onClick = onSubmit,
+                enabled = text.isNotBlank()
+            ) {
+                Icon(Icons.Filled.PlayArrow, null, Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Submit")
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusBar(
     message: String,
     isLoading: Boolean = false,
     isSuccess: Boolean = false,
     isError: Boolean = false,
-    onDismiss: () -> Unit
+    onDismiss: (() -> Unit)? = null
 ) {
-    val containerColor by animateColorAsState(
-        targetValue = when {
-            isSuccess -> MaterialTheme.colorScheme.primaryContainer
-            isError -> MaterialTheme.colorScheme.errorContainer
-            else -> MaterialTheme.colorScheme.surfaceVariant
-        },
-        label = "statusColor"
-    )
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            when {
-                isLoading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                isSuccess -> Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                isError -> Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-            }
-            Text(
-                message,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.width(200.dp)
-            )
+        when {
+            isLoading -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            isSuccess -> Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            isError -> Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+        }
+        Text(
+            message,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f)
+        )
+        if (onDismiss != null) {
             IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
                 Icon(Icons.Filled.Close, "Dismiss", modifier = Modifier.size(16.dp))
             }

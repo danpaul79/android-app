@@ -1,5 +1,6 @@
 package com.example.aicompanion.ui.navigation
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
@@ -34,6 +35,8 @@ import com.example.aicompanion.ui.projects.ProjectsScreen
 import com.example.aicompanion.ui.search.SearchScreen
 import com.example.aicompanion.ui.task.TaskDetailScreen
 import com.example.aicompanion.ui.trash.TrashScreen
+import com.example.aicompanion.ui.voicecommand.VoiceCommandBar
+import com.example.aicompanion.ui.voicecommand.VoiceCommandViewModel
 
 data class BottomNavItem(
     val label: String,
@@ -58,38 +61,45 @@ fun AppNavHost(navController: NavHostController) {
     val inboxViewModel: com.example.aicompanion.ui.inbox.InboxViewModel = viewModel()
     val inboxState by inboxViewModel.uiState.collectAsState()
 
+    val voiceCommandViewModel: VoiceCommandViewModel = viewModel()
+
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
-                    bottomNavItems.forEach { item ->
-                        val selected = currentRoute == item.route
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                if (!selected) {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                Column {
+                    // Voice command bar — persistent across all main screens
+                    VoiceCommandBar(viewModel = voiceCommandViewModel)
+
+                    NavigationBar {
+                        bottomNavItems.forEach { item ->
+                            val selected = currentRoute == item.route
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    if (!selected) {
+                                        navController.navigate(item.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
-                                }
-                            },
-                            icon = {
-                                if (item.route == "inbox" && inboxState.inboxCount > 0) {
-                                    BadgedBox(badge = {
-                                        Badge { Text("${inboxState.inboxCount}") }
-                                    }) {
+                                },
+                                icon = {
+                                    if (item.route == "inbox" && inboxState.inboxCount > 0) {
+                                        BadgedBox(badge = {
+                                            Badge { Text("${inboxState.inboxCount}") }
+                                        }) {
+                                            Icon(item.icon, contentDescription = item.label)
+                                        }
+                                    } else {
                                         Icon(item.icon, contentDescription = item.label)
                                     }
-                                } else {
-                                    Icon(item.icon, contentDescription = item.label)
-                                }
-                            },
-                            label = { Text(item.label) }
-                        )
+                                },
+                                label = { Text(item.label) }
+                            )
+                        }
                     }
                 }
             }
