@@ -10,7 +10,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash
 - **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
 - **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash
-- **Projects**: create projects, view tasks per project, trash icon navigates to Trash screen
+- **Projects**: create projects, view tasks per project, export/import data (JSON backup to Downloads), trash icon navigates to Trash screen
 - **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save

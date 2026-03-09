@@ -7,6 +7,7 @@ import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.Project
 import com.example.aicompanion.data.local.entity.Source
+import com.example.aicompanion.data.export.ExportData
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 
@@ -170,4 +171,66 @@ class TaskRepository(
     // --- AI helpers ---
 
     suspend fun getAllActiveItemTexts(): List<ActionItem> = actionItemDao.getAllActiveItemTexts()
+
+    // --- Export / Import ---
+
+    suspend fun exportData(): ExportData {
+        val projects = projectDao.getAllNonTrashed()
+        val tasks = actionItemDao.getAllNonTrashed()
+        return ExportData(projects = projects, tasks = tasks)
+    }
+
+    suspend fun importData(data: ExportData): ImportResult {
+        // Map old project IDs to new ones
+        val projectIdMap = mutableMapOf<Long, Long>()
+        var projectsImported = 0
+        var tasksImported = 0
+        var projectsSkipped = 0
+
+        // Get existing project names to avoid duplicates
+        val existingNames = projectDao.getAllProjectNames().map { it.lowercase() }.toSet()
+
+        for (project in data.projects) {
+            if (project.name.lowercase() in existingNames) {
+                // Find existing project ID by name to map tasks correctly
+                // We'll skip inserting but still need the mapping
+                projectsSkipped++
+                continue
+            }
+            val newId = projectDao.insert(project.copy(id = 0))
+            projectIdMap[project.id] = newId
+            projectsImported++
+        }
+
+        // For skipped projects, resolve name -> existing ID
+        val existingProjects = projectDao.getAllNonTrashed()
+        val nameToExistingId = existingProjects.associate { it.name.lowercase() to it.id }
+        for (project in data.projects) {
+            if (project.id !in projectIdMap) {
+                nameToExistingId[project.name.lowercase()]?.let { existingId ->
+                    projectIdMap[project.id] = existingId
+                }
+            }
+        }
+
+        for (task in data.tasks) {
+            val remappedProjectId = task.projectId?.let { projectIdMap[it] }
+            actionItemDao.insert(
+                task.copy(
+                    id = 0,
+                    sourceId = null,
+                    projectId = remappedProjectId
+                )
+            )
+            tasksImported++
+        }
+
+        return ImportResult(projectsImported, projectsSkipped, tasksImported)
+    }
 }
+
+data class ImportResult(
+    val projectsImported: Int,
+    val projectsSkipped: Int,
+    val tasksImported: Int
+)

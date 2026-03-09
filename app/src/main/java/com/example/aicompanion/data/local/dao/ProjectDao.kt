@@ -41,4 +41,7 @@ interface ProjectDao {
 
     @Query("DELETE FROM projects WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("SELECT * FROM projects WHERE isTrashed = 0 ORDER BY sortOrder, name")
+    suspend fun getAllNonTrashed(): List<Project>
 }

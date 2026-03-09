@@ -120,6 +120,9 @@ interface ActionItemDao {
     @Query("SELECT * FROM action_items WHERE isCompleted = 0 AND isTrashed = 0 ORDER BY text")
     suspend fun getAllActiveItemTexts(): List<ActionItem>
 
+    @Query("SELECT * FROM action_items WHERE isTrashed = 0 ORDER BY createdAt")
+    suspend fun getAllNonTrashed(): List<ActionItem>
+
     @Query("""
         SELECT * FROM action_items
         WHERE isTrashed = 0

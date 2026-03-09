@@ -1,5 +1,7 @@
 package com.example.aicompanion.ui.projects
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -26,11 +30,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,12 +57,40 @@ fun ProjectsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importData(it) }
+    }
+
+    LaunchedEffect(uiState.exportMessage) {
+        uiState.exportMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.dismissExportMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.importMessage) {
+        uiState.importMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.dismissImportMessage()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Projects") },
                 actions = {
+                    IconButton(onClick = { viewModel.exportData() }) {
+                        Icon(Icons.Filled.FileUpload, contentDescription = "Export", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                    IconButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
+                        Icon(Icons.Filled.FileDownload, contentDescription = "Import", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
                     IconButton(onClick = onNavigateToTrash) {
                         Icon(Icons.Filled.Delete, contentDescription = "Trash", tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
