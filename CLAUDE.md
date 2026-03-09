@@ -7,19 +7,20 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 **Phase 1+ complete.** Core task hub is fully operational with multi-select, trash, and batch editing. See `RESTRUCTURE_PLAN.md` for the full plan.
 
 ### What works now:
-- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash
+- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash; search, trash, and settings icons in top bar
 - **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
-- **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash
-- **Projects**: create projects, view tasks per project, export/import data (JSON backup to Downloads), trash icon navigates to Trash screen
-- **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash
-- **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel
+- **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash; confirmation dialogs on all trash actions
+- **Projects**: create projects, view tasks per project; trash icon navigates to Trash screen
+- **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash; confirmation dialog on project delete (warns about cascading task deletion)
+- **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel; text input option
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save
 - **Project creation from voice**: say "create a new project called X" during recording; AI detects intent, creates project, assigns extracted tasks
-- **Voice commands**: mic button on Dashboard, Inbox, Project Detail; say "create task X", "complete Y", "change due date of Z to Friday", "move task to project W", "delete task", "rename task"
+- **Voice commands**: persistent bar above bottom nav on all main screens; record or type commands; supports multiple commands in one prompt; say "create task X", "complete Y", "change due date of Z to Friday", "move task to project W", "delete task", "rename task"
 - **Transcript-only mode**: toggle on Capture screen to skip extraction and just get a transcript
-- **Task Detail**: view/edit task name, change due date, change project, add notes, see source info
+- **Task Detail**: view/edit task name, change due date, change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
-- **Trash**: tasks and projects moved to trash instead of deleted; restore or permanently delete; "Empty trash" button
+- **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
+- **Settings**: gear icon in Dashboard; export/import data (JSON backup); voice notes history with transcript viewer
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
@@ -63,12 +64,13 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
 
 ### Screen Flow
-- **Dashboard** — overdue, today, upcoming tasks; recently completed section; long-press → multi-select mode
+- **Dashboard** — overdue, today, upcoming tasks; recently completed section; long-press → multi-select mode; top bar: search, trash, settings
 - **Inbox** — unassigned tasks; long-press → multi-select mode
 - **Projects** — list of projects with task counts; trash icon → Trash screen
-- **Project Detail** — tasks within a project; long-press → multi-select mode
-- **Capture** — voice note recording/transcription/extraction (future: other sources)
-- **Task Detail** — view/edit a single task
+- **Project Detail** — tasks within a project; long-press → multi-select mode; confirmation on project/task trash
+- **Capture** — voice note recording/transcription/extraction; text input option
+- **Task Detail** — view/edit a single task; confirmation on trash
+- **Settings** — export/import data; voice notes history with transcript viewer
 - **Trash** — trashed tasks and projects; restore or permanently delete
 - Bottom navigation: Dashboard | Inbox | Capture | Projects
 
@@ -85,9 +87,10 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - `ui/projects/` - Projects list + detail (multi-select in detail)
 - `ui/capture/` - Capture screen (voice notes + future sources)
 - `ui/task/` - Task detail/edit screen
-- `ui/voicecommand/` - Voice command button + ViewModel (record → transcribe → parse → execute)
-- `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution)
+- `ui/voicecommand/` - Persistent voice command bar + ViewModel (record → transcribe → parse → execute); text input mode
+- `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution, multi-command support)
 - `ui/search/` - Search screen (task name + notes search)
+- `ui/settings/` - Settings screen (export/import, voice notes history, transcript viewer)
 - `ui/trash/` - Trash screen (restore / permanent delete)
 
 ## Transcription
@@ -99,7 +102,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - Audio is streamed to Deepgram without buffering entirely in memory
 
 ## Action Item Extraction
-- Uses **Gemini 2.0 Flash** via REST API (`generativelanguage.googleapis.com`)
+- Uses **Gemini 2.0 Flash** via REST API (`generativelanguage.googleapis.com`), temperature 0.1
 - API key stored in `local.properties` as `GEMINI_API_KEY` (gitignored)
 - Exposed via `BuildConfig.GEMINI_API_KEY` at build time
 - `GeminiExtractor` is the primary implementation; `HeuristicExtractor` is a fallback
@@ -108,6 +111,13 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - Extracted items include `suggestedProject` (mapped to project ID on save) and `priority` (NONE/LOW/MEDIUM/HIGH/URGENT)
 - **Project creation from voice**: Gemini detects "create a new project called X" intent, returns `newProject` name; CaptureViewModel creates the project on save and assigns tasks
 - When recording from a project, all items auto-assign to that project (overrides AI suggestion)
+
+## Voice Command Parsing
+- Uses **Gemini 3 Flash Preview** (`gemini-3-flash-preview`) — separate from extraction model
+- Temperature 1.0 (Google's recommendation for Gemini 3), `thinkingLevel: "low"`, native JSON mode (`responseMimeType: "application/json"`)
+- Supports multiple commands in one prompt (returns JSON array, deduplicated before execution)
+- With thinking enabled, response `parts` array has thought part(s) before the text part — parser iterates to find the last text part
+- Persistent VoiceCommandBar at nav level survives screen navigation; supports both voice recording and text input
 
 ## Git Workflow
 - Remote uses **SSH** (`git@github.com:danpaul79/android-app.git`) — required for Claude Code to push without credential prompts
