@@ -80,6 +80,8 @@ fun InboxScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showTrashSelectedConfirm by remember { mutableStateOf(false) }
+    var trashSingleTaskId by remember { mutableStateOf<Long?>(null) }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
@@ -128,6 +130,40 @@ fun InboxScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showTrashSelectedConfirm) {
+        val count = uiState.selectedIds.size
+        AlertDialog(
+            onDismissRequest = { showTrashSelectedConfirm = false },
+            title = { Text("Move to trash?") },
+            text = { Text("$count task${if (count != 1) "s" else ""} will be moved to trash.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTrashSelectedConfirm = false
+                    viewModel.trashSelected()
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTrashSelectedConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (trashSingleTaskId != null) {
+        AlertDialog(
+            onDismissRequest = { trashSingleTaskId = null },
+            title = { Text("Move task to trash?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.trashTask(trashSingleTaskId!!)
+                    trashSingleTaskId = null
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { trashSingleTaskId = null }) { Text("Cancel") }
             }
         )
     }
@@ -207,7 +243,7 @@ fun InboxScreen(
                             }
                         },
                         onLongClick = { viewModel.toggleSelection(item.id) },
-                        onTrash = { viewModel.trashTask(item.id) }
+                        onTrash = { trashSingleTaskId = item.id }
                     )
                 }
                 item { Spacer(Modifier.height(if (uiState.isSelectionMode) 96.dp else 80.dp)) }
@@ -222,7 +258,7 @@ fun InboxScreen(
                     onSetDueDate = { showDatePicker = true },
                     onComplete = { viewModel.completeSelected() },
                     onRename = { showRenameDialog = true },
-                    onTrash = { viewModel.trashSelected() }
+                    onTrash = { showTrashSelectedConfirm = true }
                 )
             }
         }

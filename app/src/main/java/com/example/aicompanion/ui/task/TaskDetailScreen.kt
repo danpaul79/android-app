@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -74,6 +75,7 @@ fun TaskDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTrashConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(taskId) { viewModel.loadTask(taskId) }
     LaunchedEffect(uiState.isDeleted) { if (uiState.isDeleted) onNavigateBack() }
@@ -99,6 +101,22 @@ fun TaskDetailScreen(
         }
     }
 
+    if (showTrashConfirm) {
+        AlertDialog(
+            onDismissRequest = { showTrashConfirm = false },
+            title = { Text("Move task to trash?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTrashConfirm = false
+                    viewModel.trashTask()
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTrashConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -109,7 +127,7 @@ fun TaskDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.trashTask() }) {
+                    IconButton(onClick = { showTrashConfirm = true }) {
                         Icon(Icons.Filled.Delete, "Move to trash", tint = MaterialTheme.colorScheme.error)
                     }
                 },

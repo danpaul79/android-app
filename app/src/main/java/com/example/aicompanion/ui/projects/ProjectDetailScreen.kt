@@ -84,6 +84,9 @@ fun ProjectDetailScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showQuickAdd by remember { mutableStateOf(false) }
+    var showTrashProjectConfirm by remember { mutableStateOf(false) }
+    var showTrashSelectedConfirm by remember { mutableStateOf(false) }
+    var trashSingleTaskId by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
@@ -136,6 +139,58 @@ fun ProjectDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showTrashProjectConfirm) {
+        AlertDialog(
+            onDismissRequest = { showTrashProjectConfirm = false },
+            title = { Text("Move project to trash?") },
+            text = { Text("This will also trash all tasks in this project.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTrashProjectConfirm = false
+                    viewModel.trashProject()
+                    onNavigateBack()
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTrashProjectConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showTrashSelectedConfirm) {
+        val count = uiState.selectedIds.size
+        AlertDialog(
+            onDismissRequest = { showTrashSelectedConfirm = false },
+            title = { Text("Move to trash?") },
+            text = { Text("$count task${if (count != 1) "s" else ""} will be moved to trash.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTrashSelectedConfirm = false
+                    viewModel.trashSelected()
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTrashSelectedConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (trashSingleTaskId != null) {
+        AlertDialog(
+            onDismissRequest = { trashSingleTaskId = null },
+            title = { Text("Move task to trash?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.trashTask(trashSingleTaskId!!)
+                    trashSingleTaskId = null
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { trashSingleTaskId = null }) { Text("Cancel") }
             }
         )
     }
@@ -205,10 +260,7 @@ fun ProjectDetailScreen(
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
-                        IconButton(onClick = {
-                            viewModel.trashProject()
-                            onNavigateBack()
-                        }) {
+                        IconButton(onClick = { showTrashProjectConfirm = true }) {
                             Icon(
                                 Icons.Filled.Delete,
                                 contentDescription = "Move Project to Trash",
@@ -239,7 +291,7 @@ fun ProjectDetailScreen(
                     isSingleSelection = uiState.selectedIds.size == 1,
                     onSetDueDate = { showDatePicker = true },
                     onRename = { showRenameDialog = true },
-                    onTrash = { viewModel.trashSelected() }
+                    onTrash = { showTrashSelectedConfirm = true }
                 )
             }
         }
@@ -291,7 +343,7 @@ fun ProjectDetailScreen(
                         }
                     },
                     onLongClick = { viewModel.toggleSelection(item.id) },
-                    onTrash = { viewModel.trashTask(item.id) }
+                    onTrash = { trashSingleTaskId = item.id }
                 )
             }
 

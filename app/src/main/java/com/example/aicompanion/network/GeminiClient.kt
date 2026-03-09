@@ -32,6 +32,8 @@ class GeminiClient {
     companion object {
         private const val BASE_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        private const val COMMAND_URL =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
     }
 
     private val client = OkHttpClient.Builder()
@@ -166,10 +168,10 @@ $transcript"""
         return withContext(Dispatchers.IO) {
             try {
                 val prompt = buildCommandPrompt(transcript, taskNames, projectNames)
-                val requestJson = buildRequestJson(prompt)
+                val requestJson = buildCommandRequestJson(prompt)
 
                 val request = Request.Builder()
-                    .url("$BASE_URL?key=$apiKey")
+                    .url("$COMMAND_URL?key=$apiKey")
                     .post(requestJson.toRequestBody("application/json".toMediaType()))
                     .build()
 
@@ -244,12 +246,11 @@ Return ONLY this JSON structure:
 }
 
 Rules:
-- For existing tasks, match the user's words to the closest task name from the list above. Use the EXACT name from the list, not the user's paraphrase.
+- For existing tasks, match to the closest task name from the list. Use the EXACT name from the list.
 - For create_task, use the user's wording as the task name (clean and concise).
-- CRITICAL for rename_task: "newName" must be the FINAL desired task name as it should appear, NOT a description of what to change. If the user says "add Eliza and Lauren to the end of the summer camp task", and the current task is "Ask parents about summer camp options", then newName should be "Ask parents about summer camp options (Eliza, Lauren)". Interpret the user's intent and produce the actual resulting text. Never include meta-instructions like "include", "add at the end", "change to say" in the newName.
-- If a project is mentioned, match it to the closest project name from the list above.
+- For rename_task: "newName" must be the FINAL desired task name text, not a description of what to change. Apply the user's requested modification to the current task name and return the result.
+- If a project is mentioned, match it to the closest project name from the list.
 - Infer priority from language cues (urgent/ASAP = urgent, important = high, etc.), default to "none".
-- Return ONLY the JSON, no other text.
 
 Voice command transcript:
 $transcript"""
@@ -276,6 +277,29 @@ $transcript"""
             put("generationConfig", JSONObject().apply {
                 put("temperature", 0.1)
                 put("maxOutputTokens", 2048)
+            })
+        }
+        return json.toString()
+    }
+
+    private fun buildCommandRequestJson(prompt: String): String {
+        val json = JSONObject().apply {
+            put("contents", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("parts", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("text", prompt)
+                        })
+                    })
+                })
+            })
+            put("generationConfig", JSONObject().apply {
+                put("temperature", 1.0)
+                put("maxOutputTokens", 1024)
+                put("responseMimeType", "application/json")
+                put("thinkingConfig", JSONObject().apply {
+                    put("thinkingLevel", "low")
+                })
             })
         }
         return json.toString()

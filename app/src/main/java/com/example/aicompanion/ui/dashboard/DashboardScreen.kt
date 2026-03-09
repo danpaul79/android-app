@@ -87,12 +87,32 @@ fun DashboardScreen(
     onNavigateToSearch: () -> Unit,
     onNavigateToInbox: () -> Unit,
     onNavigateToCapture: () -> Unit,
+    onNavigateToTrash: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showQuickAdd by remember { mutableStateOf(false) }
+    var showTrashSelectedConfirm by remember { mutableStateOf(false) }
+
+    if (showTrashSelectedConfirm) {
+        val count = uiState.selectedIds.size
+        AlertDialog(
+            onDismissRequest = { showTrashSelectedConfirm = false },
+            title = { Text("Move to trash?") },
+            text = { Text("$count task${if (count != 1) "s" else ""} will be moved to trash.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showTrashSelectedConfirm = false
+                    viewModel.trashSelected()
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTrashSelectedConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
@@ -199,6 +219,9 @@ fun DashboardScreen(
                         IconButton(onClick = onNavigateToSearch) {
                             Icon(Icons.Filled.Search, contentDescription = "Search tasks")
                         }
+                        IconButton(onClick = onNavigateToTrash) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Trash")
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -222,7 +245,7 @@ fun DashboardScreen(
                     onSetDueDate = { showDatePicker = true },
                     onComplete = { viewModel.completeSelected() },
                     onRename = { showRenameDialog = true },
-                    onTrash = { viewModel.trashSelected() }
+                    onTrash = { showTrashSelectedConfirm = true }
                 )
             }
         }

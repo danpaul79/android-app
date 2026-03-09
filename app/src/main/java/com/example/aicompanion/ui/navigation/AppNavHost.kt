@@ -135,6 +135,9 @@ fun AppNavHost(navController: NavHostController) {
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onNavigateToTrash = {
+                        navController.navigate("trash")
                     }
                 )
             }
