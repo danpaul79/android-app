@@ -230,7 +230,7 @@ Supported commands:
 3. "change_due_date" — change a task's due date (e.g. "change due date of buy groceries to Friday", "move dentist to next week")
 4. "move_task" — move a task to a different project (e.g. "move buy groceries to Home project")
 5. "delete_task" — trash a task (e.g. "delete buy groceries", "remove the dentist task")
-6. "rename_task" — rename a task (e.g. "rename buy groceries to buy organic groceries")
+6. "rename_task" — rename or update a task's name (e.g. "rename buy groceries to buy organic groceries", "update the summer camp task to add Eliza and Lauren at the end")
 7. "unrecognized" — if the command doesn't match any of the above
 
 Return ONLY this JSON structure:
@@ -240,12 +240,13 @@ Return ONLY this JSON structure:
   "projectName": "project name if mentioned, or null",
   "dueDate": "YYYY-MM-DD or null",
   "priority": "none|low|medium|high|urgent",
-  "newName": "new name for rename_task, or null"
+  "newName": "the final complete task name for rename_task, or null"
 }
 
 Rules:
 - For existing tasks, match the user's words to the closest task name from the list above. Use the EXACT name from the list, not the user's paraphrase.
 - For create_task, use the user's wording as the task name (clean and concise).
+- CRITICAL for rename_task: "newName" must be the FINAL desired task name as it should appear, NOT a description of what to change. If the user says "add Eliza and Lauren to the end of the summer camp task", and the current task is "Ask parents about summer camp options", then newName should be "Ask parents about summer camp options (Eliza, Lauren)". Interpret the user's intent and produce the actual resulting text. Never include meta-instructions like "include", "add at the end", "change to say" in the newName.
 - If a project is mentioned, match it to the closest project name from the list above.
 - Infer priority from language cues (urgent/ASAP = urgent, important = high, etc.), default to "none".
 - Return ONLY the JSON, no other text.
