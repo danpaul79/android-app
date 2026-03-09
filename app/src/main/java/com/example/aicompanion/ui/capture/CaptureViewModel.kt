@@ -190,9 +190,23 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val result = extractor.extract(transcript, _uiState.value.projectNames)
 
+                // Duplicate detection: check extracted items against existing active tasks
+                val existingTasks = repo.getAllActiveItemTexts()
+                val existingTextsNormalized = existingTasks.map { it.text.normalize() to it.text }
+                val markedItems = result.items.map { item ->
+                    val match = existingTextsNormalized.find { (normalizedExisting, _) ->
+                        isSimilarText(item.text.normalize(), normalizedExisting)
+                    }
+                    if (match != null) {
+                        item.copy(isDuplicate = true, duplicateOf = match.second)
+                    } else {
+                        item
+                    }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isExtracting = false,
-                    extractedItems = result.items,
+                    extractedItems = markedItems,
                     newProjectName = result.newProject
                 )
             } catch (e: Exception) {
@@ -277,5 +291,30 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         return uri.lastPathSegment
+    }
+
+    companion object {
+        /** Normalize text for comparison: lowercase, collapse whitespace, strip punctuation */
+        private fun String.normalize(): String =
+            lowercase().trim()
+                .replace(Regex("[^a-z0-9\\s]"), "")
+                .replace(Regex("\\s+"), " ")
+
+        /** Check if two normalized texts are similar enough to be duplicates */
+        private fun isSimilarText(a: String, b: String): Boolean {
+            // Exact match after normalization
+            if (a == b) return true
+            // One contains the other (handles minor wording differences)
+            if (a.length >= 10 && b.length >= 10) {
+                if (a.contains(b) || b.contains(a)) return true
+            }
+            // Word overlap ratio — if 80%+ of words match, consider duplicate
+            val wordsA = a.split(" ").toSet()
+            val wordsB = b.split(" ").toSet()
+            if (wordsA.isEmpty() || wordsB.isEmpty()) return false
+            val overlap = wordsA.intersect(wordsB).size
+            val smaller = minOf(wordsA.size, wordsB.size)
+            return smaller >= 3 && overlap.toFloat() / smaller >= 0.8f
+        }
     }
 }

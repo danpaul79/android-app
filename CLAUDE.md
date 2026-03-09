@@ -25,7 +25,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - CI/CD: push to main → GitHub Actions → Firebase App Distribution
 
 ### Next phases:
-- **Phase 2 (in progress)**: Smarter AI — project-aware extraction (done), priority inference (done), auto-extraction (done), duplicate detection (TODO)
+- **Phase 2 (complete)**: Smarter AI — project-aware extraction, priority inference, auto-extraction, duplicate detection (highlights similar existing tasks in review UI)
 - **Phase 2.5**: Voice commands — say "change due date of task X to Monday" or "create task Y in project Z" from any screen with a mic button
 - **Phase 3**: More input sources — Gmail, SMS, Google Chat
 
@@ -100,7 +100,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - Exposed via `BuildConfig.GEMINI_API_KEY` at build time
 - `GeminiExtractor` is the primary implementation; `HeuristicExtractor` is a fallback
 - Extraction is automatic: record → transcribe → extract (full pipeline on stop, unless transcript-only mode)
-- **Phase 2 (done)**: prompt includes existing project names for smart project suggestion + priority inference from language cues
+- **Phase 2 (done)**: prompt includes existing project names for smart project suggestion + priority inference from language cues + duplicate detection at review time
 - Extracted items include `suggestedProject` (mapped to project ID on save) and `priority` (NONE/LOW/MEDIUM/HIGH/URGENT)
 - **Project creation from voice**: Gemini detects "create a new project called X" intent, returns `newProject` name; CaptureViewModel creates the project on save and assigns tasks
 - When recording from a project, all items auto-assign to that project (overrides AI suggestion)

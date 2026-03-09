@@ -434,7 +434,12 @@ fun CaptureScreen(
                 itemsIndexed(uiState.extractedItems) { index, item ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (item.isDuplicate)
+                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                            else
+                                MaterialTheme.colorScheme.secondaryContainer
+                        )
                     ) {
                         Row(
                             modifier = Modifier
@@ -443,7 +448,21 @@ fun CaptureScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(item.text, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    item.text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (item.isDuplicate)
+                                        MaterialTheme.colorScheme.onErrorContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                if (item.isDuplicate) {
+                                    Text(
+                                        "Possible duplicate" + if (item.duplicateOf != null) " of: ${item.duplicateOf}" else "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (item.dueDate != null) {
                                         val dateStr = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(item.dueDate))
@@ -471,7 +490,10 @@ fun CaptureScreen(
                                 }
                             }
                             IconButton(onClick = { viewModel.removeExtractedItem(index) }) {
-                                Icon(Icons.Filled.Close, "Remove", tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Icon(Icons.Filled.Close, "Remove", tint = if (item.isDuplicate)
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer)
                             }
                         }
                     }
