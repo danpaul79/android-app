@@ -18,3 +18,6 @@ local.properties
 # Service account keys
 *-sa.json
 service-account*.json
+
+# Firebase config (provided via secrets in CI, downloaded locally from Firebase console)
+app/google-services.json

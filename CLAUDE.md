@@ -58,7 +58,8 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- DB version: 3 (uses fallbackToDestructiveMigration — bumping version wipes data)
+- DB version: 3 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
+- Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
 
 ### Screen Flow
 - **Dashboard** — overdue, today, upcoming tasks; recently completed section; long-press → multi-select mode
@@ -116,7 +117,7 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - **GitHub Actions** workflow at `.github/workflows/build-and-distribute.yml`
 - Triggers on push to `main`, builds release APK, uploads to **Firebase App Distribution**
 - Signing config in `app/build.gradle.kts` reads from env vars (CI) or `local.properties` (local)
-- Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`
+- Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`, `GOOGLE_SERVICES_JSON` (optional, enables Crashlytics)
 
 ## Cloud Functions (legacy, no longer used by mobile app)
 - **`stream-drive-file-to-deepgram`** - Used by Apps Script pipeline only. Do NOT modify.
