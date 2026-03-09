@@ -34,6 +34,8 @@ import com.example.aicompanion.ui.projects.ProjectDetailScreen
 import com.example.aicompanion.ui.projects.ProjectsScreen
 import com.example.aicompanion.ui.search.SearchScreen
 import com.example.aicompanion.ui.task.TaskDetailScreen
+import com.example.aicompanion.ui.settings.SettingsScreen
+import com.example.aicompanion.ui.settings.TranscriptViewScreen
 import com.example.aicompanion.ui.trash.TrashScreen
 import com.example.aicompanion.ui.voicecommand.VoiceCommandBar
 import com.example.aicompanion.ui.voicecommand.VoiceCommandViewModel
@@ -138,6 +140,9 @@ fun AppNavHost(navController: NavHostController) {
                     },
                     onNavigateToTrash = {
                         navController.navigate("trash")
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate("settings")
                     }
                 )
             }
@@ -192,6 +197,30 @@ fun AppNavHost(navController: NavHostController) {
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))
                     }
+                )
+            }
+
+            composable("settings") {
+                SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onViewTranscript = { filePath ->
+                        navController.navigate(NavRoutes.TranscriptView.createRoute(filePath))
+                    }
+                )
+            }
+
+            composable(
+                route = NavRoutes.TranscriptView.route,
+                arguments = listOf(
+                    navArgument("filePath") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val filePath = backStackEntry.arguments?.getString("filePath")
+                    ?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+                    ?: return@composable
+                TranscriptViewScreen(
+                    filePath = filePath,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
