@@ -86,8 +86,14 @@ interface ActionItemDao {
     @Query("UPDATE action_items SET isTrashed = 1, updatedAt = :updatedAt WHERE id = :id")
     suspend fun trashItem(id: Long, updatedAt: Long = System.currentTimeMillis())
 
+    @Query("UPDATE action_items SET isTrashed = 1, updatedAt = :updatedAt WHERE projectId = :projectId")
+    suspend fun trashByProjectId(projectId: Long, updatedAt: Long = System.currentTimeMillis())
+
     @Query("UPDATE action_items SET isTrashed = 0, updatedAt = :updatedAt WHERE id = :id")
     suspend fun restoreItem(id: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE action_items SET isTrashed = 0, updatedAt = :updatedAt WHERE projectId = :projectId")
+    suspend fun restoreByProjectId(projectId: Long, updatedAt: Long = System.currentTimeMillis())
 
     @Query("""
         SELECT * FROM action_items

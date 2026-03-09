@@ -48,9 +48,13 @@ class VoiceCommandProcessor(
             return CommandResult(false, "Command parsing failed: ${it.message}")
         }
 
-        // Step 4: Execute each command
+        // Step 4: Deduplicate and execute each command
+        val seen = mutableSetOf<String>()
         val results = mutableListOf<CommandResult>()
         for (json in jsonList) {
+            val key = json.toString()
+            if (key in seen) continue
+            seen.add(key)
             val command = parseJson(json, transcript)
             val result = executeCommand(command, tasks, projectNames)
             results.add(result)

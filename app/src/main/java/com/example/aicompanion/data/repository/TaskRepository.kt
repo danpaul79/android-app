@@ -29,9 +29,15 @@ class TaskRepository(
 
     suspend fun archiveProject(id: Long) = projectDao.archive(id)
 
-    suspend fun trashProject(id: Long) = projectDao.trashById(id)
+    suspend fun trashProject(id: Long) {
+        projectDao.trashById(id)
+        actionItemDao.trashByProjectId(id)
+    }
 
-    suspend fun restoreProject(id: Long) = projectDao.restoreById(id)
+    suspend fun restoreProject(id: Long) {
+        projectDao.restoreById(id)
+        actionItemDao.restoreByProjectId(id)
+    }
 
     suspend fun deleteProject(id: Long) = projectDao.deleteById(id)
 
