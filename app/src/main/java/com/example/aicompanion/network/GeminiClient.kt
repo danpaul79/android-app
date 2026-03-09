@@ -194,30 +194,36 @@ $transcript"""
                     .getJSONArray("parts")
 
                 // With thinking enabled, the model returns a "thought" part first
-                // and the actual text response in a later part. Find the text part.
-                var text: String? = null
+                // and the actual text response in a later part. Find the last text part.
+                // With responseMimeType=json, the value may be a JSONArray or JSONObject
+                // directly rather than a String.
+                var commands: List<JSONObject>? = null
                 for (i in 0 until parts.length()) {
                     val part = parts.getJSONObject(i)
                     if (part.has("text")) {
-                        text = part.getString("text")
+                        val raw = part.get("text")
+                        commands = when (raw) {
+                            is JSONArray -> (0 until raw.length()).map { raw.getJSONObject(it) }
+                            is JSONObject -> listOf(raw)
+                            is String -> {
+                                val clean = raw
+                                    .replace(Regex("```json\\s*"), "")
+                                    .replace(Regex("```\\s*"), "")
+                                    .trim()
+                                if (clean.startsWith("[")) {
+                                    val arr = JSONArray(clean)
+                                    (0 until arr.length()).map { arr.getJSONObject(it) }
+                                } else {
+                                    listOf(JSONObject(clean))
+                                }
+                            }
+                            else -> null
+                        }
                     }
                 }
 
-                if (text == null) {
+                if (commands == null) {
                     return@withContext Result.failure(Exception("No text in response"))
-                }
-
-                val cleanJson = text
-                    .replace(Regex("```json\\s*"), "")
-                    .replace(Regex("```\\s*"), "")
-                    .trim()
-
-                // Support both single object and array of commands
-                val commands = if (cleanJson.startsWith("[")) {
-                    val arr = JSONArray(cleanJson)
-                    (0 until arr.length()).map { arr.getJSONObject(it) }
-                } else {
-                    listOf(JSONObject(cleanJson))
                 }
 
                 Result.success(commands)
