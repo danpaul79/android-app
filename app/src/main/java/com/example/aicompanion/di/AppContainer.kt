@@ -3,6 +3,7 @@ package com.example.aicompanion.di
 import android.content.Context
 import com.example.aicompanion.data.local.AppDatabase
 import com.example.aicompanion.data.repository.TaskRepository
+import com.example.aicompanion.domain.command.VoiceCommandProcessor
 import com.example.aicompanion.domain.extraction.ActionItemExtractor
 import com.example.aicompanion.domain.extraction.GeminiExtractor
 import com.example.aicompanion.network.GeminiClient
@@ -18,4 +19,5 @@ class AppContainer(context: Context) {
     val geminiClient = GeminiClient()
     val extractor: ActionItemExtractor = GeminiExtractor(geminiClient)
     val transcriptionClient = TranscriptionClient()
+    val voiceCommandProcessor = VoiceCommandProcessor(geminiClient, transcriptionClient, taskRepository)
 }

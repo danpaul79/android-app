@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.ui.voicecommand.VoiceCommandButton
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -132,6 +133,7 @@ fun InboxScreen(
         )
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = {
@@ -226,6 +228,15 @@ fun InboxScreen(
                 )
             }
         }
+    }
+    // Voice command button overlay
+    if (!uiState.isSelectionMode) {
+        VoiceCommandButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        )
+    }
     }
 }
 

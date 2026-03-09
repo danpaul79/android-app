@@ -44,4 +44,9 @@ interface ProjectDao {
 
     @Query("SELECT * FROM projects WHERE isTrashed = 0 ORDER BY sortOrder, name")
     suspend fun getAllNonTrashed(): List<Project>
+
+    @Query("SELECT id, name FROM projects WHERE isArchived = 0 AND isTrashed = 0 ORDER BY name")
+    suspend fun getAllProjectNamesWithIds(): List<ProjectNameId>
 }
+
+data class ProjectNameId(val id: Long, val name: String)

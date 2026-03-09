@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.ui.voicecommand.VoiceCommandButton
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -209,8 +210,14 @@ fun DashboardScreen(
         },
         floatingActionButton = {
             if (!uiState.isSelectionMode) {
-                FloatingActionButton(onClick = { showQuickAdd = true }) {
-                    Icon(Icons.Filled.Add, "Quick add task")
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    VoiceCommandButton()
+                    FloatingActionButton(onClick = { showQuickAdd = true }) {
+                        Icon(Icons.Filled.Add, "Quick add task")
+                    }
                 }
             }
         },

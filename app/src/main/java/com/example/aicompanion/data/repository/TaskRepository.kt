@@ -172,6 +172,9 @@ class TaskRepository(
 
     suspend fun getAllActiveItemTexts(): List<ActionItem> = actionItemDao.getAllActiveItemTexts()
 
+    suspend fun getAllProjectNamesWithIds(): List<Pair<String, Long>> =
+        projectDao.getAllProjectNamesWithIds().map { it.name to it.id }
+
     // --- Export / Import ---
 
     suspend fun exportData(): ExportData {

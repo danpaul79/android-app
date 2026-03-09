@@ -15,6 +15,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save
 - **Project creation from voice**: say "create a new project called X" during recording; AI detects intent, creates project, assigns extracted tasks
+- **Voice commands**: mic button on Dashboard, Inbox, Project Detail; say "create task X", "complete Y", "change due date of Z to Friday", "move task to project W", "delete task", "rename task"
 - **Transcript-only mode**: toggle on Capture screen to skip extraction and just get a transcript
 - **Task Detail**: view/edit task name, change due date, change project, add notes, see source info
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
@@ -26,7 +27,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 
 ### Next phases:
 - **Phase 2 (complete)**: Smarter AI — project-aware extraction, priority inference, auto-extraction, duplicate detection (highlights similar existing tasks in review UI)
-- **Phase 2.5**: Voice commands — say "change due date of task X to Monday" or "create task Y in project Z" from any screen with a mic button
+- **Phase 2.5 (complete)**: Voice commands — mic button on Dashboard, Inbox, Project Detail; record → transcribe → AI parses command → executes
 - **Phase 3**: More input sources — Gmail, SMS, Google Chat
 
 ## Project Overview
@@ -84,6 +85,8 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - `ui/projects/` - Projects list + detail (multi-select in detail)
 - `ui/capture/` - Capture screen (voice notes + future sources)
 - `ui/task/` - Task detail/edit screen
+- `ui/voicecommand/` - Voice command button + ViewModel (record → transcribe → parse → execute)
+- `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution)
 - `ui/search/` - Search screen (task name + notes search)
 - `ui/trash/` - Trash screen (restore / permanent delete)
 
