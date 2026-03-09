@@ -59,6 +59,7 @@ fun AppNavHost(navController: NavHostController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+    val showVoiceBar = currentRoute?.startsWith("capture") != true
 
     val inboxViewModel: com.example.aicompanion.ui.inbox.InboxViewModel = viewModel()
     val inboxState by inboxViewModel.uiState.collectAsState()
@@ -67,11 +68,13 @@ fun AppNavHost(navController: NavHostController) {
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
-                Column {
-                    // Voice command bar — persistent across all main screens
+            Column {
+                // Voice command bar — persistent across ALL screens except Capture (which has its own recorder)
+                if (showVoiceBar) {
                     VoiceCommandBar(viewModel = voiceCommandViewModel)
+                }
 
+                if (showBottomBar) {
                     NavigationBar {
                         bottomNavItems.forEach { item ->
                             val selected = currentRoute == item.route
