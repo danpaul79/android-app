@@ -159,7 +159,7 @@ $transcript"""
         transcript: String,
         taskNames: List<String> = emptyList(),
         projectNames: List<String> = emptyList()
-    ): Result<JSONObject> {
+    ): Result<List<JSONObject>> {
         val apiKey = BuildConfig.GEMINI_API_KEY
         if (apiKey.isBlank()) {
             return Result.failure(Exception("Gemini API key not configured."))
@@ -188,19 +188,39 @@ $transcript"""
                     ?: return@withContext Result.failure(Exception("Empty response"))
 
                 val json = JSONObject(responseBody)
-                val text = json.getJSONArray("candidates")
+                val parts = json.getJSONArray("candidates")
                     .getJSONObject(0)
                     .getJSONObject("content")
                     .getJSONArray("parts")
-                    .getJSONObject(0)
-                    .getString("text")
+
+                // With thinking enabled, the model returns a "thought" part first
+                // and the actual text response in a later part. Find the text part.
+                var text: String? = null
+                for (i in 0 until parts.length()) {
+                    val part = parts.getJSONObject(i)
+                    if (part.has("text")) {
+                        text = part.getString("text")
+                    }
+                }
+
+                if (text == null) {
+                    return@withContext Result.failure(Exception("No text in response"))
+                }
 
                 val cleanJson = text
                     .replace(Regex("```json\\s*"), "")
                     .replace(Regex("```\\s*"), "")
                     .trim()
 
-                Result.success(JSONObject(cleanJson))
+                // Support both single object and array of commands
+                val commands = if (cleanJson.startsWith("[")) {
+                    val arr = JSONArray(cleanJson)
+                    (0 until arr.length()).map { arr.getJSONObject(it) }
+                } else {
+                    listOf(JSONObject(cleanJson))
+                }
+
+                Result.success(commands)
             } catch (e: Exception) {
                 Result.failure(e)
             }
@@ -235,7 +255,7 @@ Supported commands:
 6. "rename_task" — rename or update a task's name (e.g. "rename buy groceries to buy organic groceries", "update the summer camp task to add Eliza and Lauren at the end")
 7. "unrecognized" — if the command doesn't match any of the above
 
-Return ONLY this JSON structure:
+Return this JSON structure. If the transcript contains multiple commands, return an array. For a single command, return just the object:
 {
   "command": "create_task|complete_task|change_due_date|move_task|delete_task|rename_task|unrecognized",
   "taskName": "exact or closest matching task name from the list, or the new task name for create_task",

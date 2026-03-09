@@ -42,16 +42,41 @@ class VoiceCommandProcessor(
         val taskNames = tasks.map { it.text }
         val projectNames = repo.getAllProjectNames()
 
-        // Step 3: Parse command via Gemini
+        // Step 3: Parse command(s) via Gemini
         val parseResult = geminiClient.parseCommand(transcript, taskNames, projectNames)
-        val json = parseResult.getOrElse {
+        val jsonList = parseResult.getOrElse {
             return CommandResult(false, "Command parsing failed: ${it.message}")
         }
 
-        val command = parseJson(json, transcript)
+        // Step 4: Execute each command
+        val results = mutableListOf<CommandResult>()
+        for (json in jsonList) {
+            val command = parseJson(json, transcript)
+            val result = executeCommand(command, tasks, projectNames)
+            results.add(result)
+        }
 
-        // Step 4: Execute
-        return executeCommand(command, tasks, projectNames)
+        // Summarize results
+        val successes = results.filter { it.success }
+        val failures = results.filter { !it.success }
+        return when {
+            results.size == 1 -> results.first()
+            failures.isEmpty() -> CommandResult(
+                true,
+                successes.joinToString("\n") { it.message },
+                successes.lastOrNull()?.command
+            )
+            successes.isEmpty() -> CommandResult(
+                false,
+                failures.joinToString("\n") { it.message },
+                failures.lastOrNull()?.command
+            )
+            else -> CommandResult(
+                true,
+                (successes.map { it.message } + failures.map { "Failed: ${it.message}" }).joinToString("\n"),
+                successes.lastOrNull()?.command
+            )
+        }
     }
 
     private fun parseJson(json: JSONObject, transcript: String): VoiceCommand {
