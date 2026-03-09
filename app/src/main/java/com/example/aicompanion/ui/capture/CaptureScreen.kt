@@ -33,9 +33,11 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -222,6 +224,42 @@ fun CaptureScreen(
                     onCancel = { viewModel.cancelRecording() },
                     onPickFile = { filePickerLauncher.launch("audio/*") }
                 )
+            }
+
+            // Text input option (when not recording and no audio yet)
+            if (!isRecording && !isPaused && !hasAudio && !hasTranscript && !uiState.isTranscribing) {
+                item {
+                    var textInput by remember { mutableStateOf("") }
+                    Column {
+                        Text(
+                            "Or type your notes:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = textInput,
+                            onValueChange = { textInput = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Type tasks, notes, or ideas...") },
+                            minLines = 3,
+                            maxLines = 8
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.submitTextInput(textInput)
+                                textInput = ""
+                            },
+                            enabled = textInput.isNotBlank(),
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Submit")
+                        }
+                    }
+                }
             }
 
             // Audio file info

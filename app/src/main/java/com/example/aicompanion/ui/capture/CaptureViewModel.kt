@@ -94,6 +94,17 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         _uiState.value = _uiState.value.copy(transcriptOnly = !_uiState.value.transcriptOnly)
     }
 
+    fun submitTextInput(text: String) {
+        if (text.isBlank()) return
+        _uiState.value = _uiState.value.copy(
+            transcript = text,
+            audioFilePath = null
+        )
+        if (!_uiState.value.transcriptOnly) {
+            extractActionItems()
+        }
+    }
+
     fun startRecording() { audioRecorder.startRecording() }
     fun stopRecording() { audioRecorder.stopRecording() }
     fun pauseRecording() { audioRecorder.pauseRecording() }
