@@ -55,9 +55,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
 import com.example.aicompanion.data.sync.SyncStatus
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -308,9 +310,12 @@ private fun GoogleTasksSyncCard(
     val signInLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val account = GoogleSignIn.getSignedInAccountFromIntent(result.data).result
+        try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            val account = task.getResult(ApiException::class.java)
             account?.email?.let { onSignIn(it) }
+        } catch (e: ApiException) {
+            Log.e("GoogleTasksSync", "Sign-in failed: statusCode=${e.statusCode}, message=${e.message}", e)
         }
     }
 
