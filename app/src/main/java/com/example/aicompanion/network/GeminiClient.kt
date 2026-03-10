@@ -259,13 +259,16 @@ Supported commands:
 4. "move_task" — move a task to a different project (e.g. "move buy groceries to Home project")
 5. "delete_task" — trash a task (e.g. "delete buy groceries", "remove the dentist task")
 6. "rename_task" — rename or update a task's name (e.g. "rename buy groceries to buy organic groceries", "update the summer camp task to add Eliza and Lauren at the end")
-7. "unrecognized" — if the command doesn't match any of the above
+7. "create_project" — create a new project/folder/list (e.g. "create a project called Home", "create a folder named Vacation", "make a new list called Shopping", "create project Evans driver's license")
+8. "unrecognized" — if the command doesn't match any of the above
+
+The words "project", "folder", and "list" are synonyms. Any of them means create a project.
 
 Return this JSON structure. If the transcript contains multiple commands, return an array. For a single command, return just the object:
 {
-  "command": "create_task|complete_task|change_due_date|move_task|delete_task|rename_task|unrecognized",
+  "command": "create_task|complete_task|change_due_date|move_task|delete_task|rename_task|create_project|unrecognized",
   "taskName": "exact or closest matching task name from the list, or the new task name for create_task",
-  "projectName": "project name if mentioned, or null",
+  "projectName": "project name if mentioned, or the new project name for create_project, or null",
   "dueDate": "YYYY-MM-DD or null",
   "priority": "none|low|medium|high|urgent",
   "newName": "the final complete task name for rename_task, or null"

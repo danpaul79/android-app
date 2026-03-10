@@ -20,5 +20,7 @@ sealed class VoiceCommand {
 
     data class RenameTask(val taskName: String, val newName: String) : VoiceCommand()
 
+    data class CreateProject(val name: String) : VoiceCommand()
+
     data class Unrecognized(val transcript: String) : VoiceCommand()
 }

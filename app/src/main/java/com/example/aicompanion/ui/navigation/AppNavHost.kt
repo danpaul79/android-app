@@ -184,6 +184,9 @@ fun AppNavHost(navController: NavHostController) {
                     },
                     onNavigateToTrash = {
                         navController.navigate("trash")
+                    },
+                    onNavigateToTask = { id ->
+                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
                     }
                 )
             }

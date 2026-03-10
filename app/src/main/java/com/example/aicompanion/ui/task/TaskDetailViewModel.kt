@@ -7,6 +7,7 @@ import com.example.aicompanion.AICompanionApplication
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Project
 import com.example.aicompanion.data.local.entity.Source
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,8 +28,11 @@ class TaskDetailViewModel(application: Application) : AndroidViewModel(applicati
     private val _uiState = MutableStateFlow(TaskDetailUiState())
     val uiState: StateFlow<TaskDetailUiState> = _uiState.asStateFlow()
 
+    private var collectJob: Job? = null
+
     fun loadTask(taskId: Long) {
-        viewModelScope.launch {
+        collectJob?.cancel()
+        collectJob = viewModelScope.launch {
             combine(
                 repo.getItemById(taskId),
                 repo.getSourceForItem(taskId),
@@ -74,6 +78,7 @@ class TaskDetailViewModel(application: Application) : AndroidViewModel(applicati
 
     fun trashTask() {
         val item = _uiState.value.item ?: return
+        collectJob?.cancel()
         viewModelScope.launch {
             repo.trashTask(item.id)
             _uiState.value = _uiState.value.copy(isDeleted = true)

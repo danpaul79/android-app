@@ -38,13 +38,19 @@ class VoiceCommandProcessor(
     }
 
     suspend fun processTranscript(transcript: String): CommandResult {
+        // Strip speaker labels (e.g. "Speaker 0: ") from diarized transcripts
+        val cleanTranscript = transcript.replace(Regex("Speaker \\d+:\\s*"), "").trim()
+        if (cleanTranscript.isBlank()) {
+            return CommandResult(false, "Could not understand audio")
+        }
+
         // Step 2: Get context (existing tasks + projects)
         val tasks = repo.getAllActiveItemTexts()
         val taskNames = tasks.map { it.text }
         val projectNames = repo.getAllProjectNames()
 
         // Step 3: Parse command(s) via Gemini
-        val parseResult = geminiClient.parseCommand(transcript, taskNames, projectNames)
+        val parseResult = geminiClient.parseCommand(cleanTranscript, taskNames, projectNames)
         val jsonList = parseResult.getOrElse {
             return CommandResult(false, "Command parsing failed: ${it.message}", transcript = transcript)
         }
@@ -123,6 +129,9 @@ class VoiceCommandProcessor(
                 taskName = taskName ?: return VoiceCommand.Unrecognized(transcript),
                 newName = newName ?: return VoiceCommand.Unrecognized(transcript)
             )
+            "create_project" -> VoiceCommand.CreateProject(
+                name = projectName ?: taskName ?: return VoiceCommand.Unrecognized(transcript)
+            )
             else -> VoiceCommand.Unrecognized(transcript)
         }
     }
@@ -185,6 +194,11 @@ class VoiceCommandProcessor(
                     ?: return CommandResult(false, "Task not found: \"${command.taskName}\"", command)
                 repo.updateTaskText(task.id, command.newName)
                 CommandResult(true, "Renamed: ${task.text} → ${command.newName}", command)
+            }
+
+            is VoiceCommand.CreateProject -> {
+                repo.createProject(command.name)
+                CommandResult(true, "Created project: ${command.name}", command)
             }
 
             is VoiceCommand.Unrecognized -> {
