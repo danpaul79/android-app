@@ -27,6 +27,9 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE id = :id")
     fun getById(id: Long): Flow<Project?>
 
+    @Query("SELECT * FROM projects WHERE id = :id")
+    suspend fun getByIdSync(id: Long): Project?
+
     @Query("SELECT name FROM projects WHERE isArchived = 0 AND isTrashed = 0 ORDER BY name")
     suspend fun getAllProjectNames(): List<String>
 
@@ -47,6 +50,23 @@ interface ProjectDao {
 
     @Query("SELECT id, name FROM projects WHERE isArchived = 0 AND isTrashed = 0 ORDER BY name")
     suspend fun getAllProjectNamesWithIds(): List<ProjectNameId>
+
+    // --- Sync queries ---
+
+    @Query("SELECT * FROM projects WHERE syncVersion > :sinceVersion")
+    suspend fun getDirtyProjects(sinceVersion: Long): List<Project>
+
+    @Query("SELECT * FROM projects WHERE googleTaskListId = :googleTaskListId LIMIT 1")
+    suspend fun getByGoogleTaskListId(googleTaskListId: String): Project?
+
+    @Query("UPDATE projects SET googleTaskListId = :googleTaskListId WHERE id = :id")
+    suspend fun updateGoogleTaskListId(id: Long, googleTaskListId: String)
+
+    @Query("UPDATE projects SET syncVersion = :syncVersion WHERE id = :id")
+    suspend fun updateSyncVersion(id: Long, syncVersion: Long)
+
+    @Query("SELECT * FROM projects WHERE googleTaskListId IS NOT NULL AND isTrashed = 0")
+    suspend fun getSyncedProjects(): List<Project>
 }
 
 data class ProjectNameId(val id: Long, val name: String)

@@ -2,9 +2,12 @@ package com.example.aicompanion
 
 import android.app.Application
 import android.util.Log
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.aicompanion.data.sync.SyncWorker
 import com.example.aicompanion.di.AppContainer
 import com.example.aicompanion.reminder.ReminderWorker
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -19,6 +22,7 @@ class AICompanionApplication : Application() {
         container = AppContainer(this)
         initCrashlytics()
         scheduleReminderWorker()
+        scheduleSyncWorker()
     }
 
     private fun initCrashlytics() {
@@ -39,6 +43,22 @@ class AICompanionApplication : Application() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "reminder_check",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
+    }
+
+    private fun scheduleSyncWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val workRequest = PeriodicWorkRequestBuilder<SyncWorker>(
+            30, TimeUnit.MINUTES
+        ).setConstraints(constraints).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "google_tasks_sync",
             ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )

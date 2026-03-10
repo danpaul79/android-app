@@ -137,4 +137,21 @@ interface ActionItemDao {
         LIMIT 50
     """)
     fun searchItems(query: String): Flow<List<ActionItem>>
+
+    // --- Sync queries ---
+
+    @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")
+    suspend fun getDirtyItems(sinceVersion: Long): List<ActionItem>
+
+    @Query("SELECT * FROM action_items WHERE googleTaskId = :googleTaskId LIMIT 1")
+    suspend fun getByGoogleTaskId(googleTaskId: String): ActionItem?
+
+    @Query("UPDATE action_items SET googleTaskId = :googleTaskId, googleTaskListId = :googleTaskListId WHERE id = :id")
+    suspend fun updateGoogleIds(id: Long, googleTaskId: String, googleTaskListId: String)
+
+    @Query("UPDATE action_items SET syncVersion = :syncVersion WHERE id = :id")
+    suspend fun updateSyncVersion(id: Long, syncVersion: Long)
+
+    @Query("UPDATE action_items SET syncVersion = :syncVersion WHERE projectId = :projectId")
+    suspend fun updateSyncVersionByProjectId(projectId: Long, syncVersion: Long)
 }

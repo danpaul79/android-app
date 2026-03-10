@@ -5,10 +5,13 @@ import android.content.ContentValues
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
 import com.example.aicompanion.data.export.DataExportImport
+import com.example.aicompanion.data.local.entity.SyncState
+import com.example.aicompanion.data.sync.SyncStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,19 +29,109 @@ data class VoiceNoteFile(
     val isVoiceCommand: Boolean = false
 )
 
+data class SyncUiState(
+    val syncEnabled: Boolean = false,
+    val accountEmail: String? = null,
+    val lastSyncTime: Long? = null,
+    val syncStatus: SyncStatus = SyncStatus.Idle
+)
+
 data class SettingsUiState(
     val voiceNotes: List<VoiceNoteFile> = emptyList(),
-    val message: String? = null
+    val message: String? = null,
+    val sync: SyncUiState = SyncUiState()
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repo = (application as AICompanionApplication).container.taskRepository
+    private val appContainer = (application as AICompanionApplication).container
+    private val repo = appContainer.taskRepository
+    private val syncEngine = appContainer.syncEngine
+    private val tokenManager = appContainer.tokenManager
+    private val syncStateDao = appContainer.syncStateDao
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
         loadVoiceNotes()
+        loadSyncState()
+        observeSyncStatus()
+    }
+
+    private fun loadSyncState() {
+        viewModelScope.launch {
+            val state = syncStateDao.get()
+            _uiState.value = _uiState.value.copy(
+                sync = SyncUiState(
+                    syncEnabled = state?.syncEnabled == true,
+                    accountEmail = state?.googleAccountEmail,
+                    lastSyncTime = state?.lastSyncTimestamp
+                )
+            )
+            // Restore token manager account from persisted state
+            state?.googleAccountEmail?.let { tokenManager.setAccount(it) }
+        }
+    }
+
+    private fun observeSyncStatus() {
+        viewModelScope.launch {
+            syncEngine.status.collect { status ->
+                _uiState.value = _uiState.value.copy(
+                    sync = _uiState.value.sync.copy(syncStatus = status)
+                )
+                if (status is SyncStatus.Success) {
+                    _uiState.value = _uiState.value.copy(
+                        sync = _uiState.value.sync.copy(lastSyncTime = status.timestamp)
+                    )
+                }
+            }
+        }
+    }
+
+    fun onGoogleSignIn(email: String) {
+        viewModelScope.launch {
+            tokenManager.setAccount(email)
+            val state = syncStateDao.get() ?: SyncState()
+            syncStateDao.upsert(state.copy(
+                syncEnabled = true,
+                googleAccountEmail = email
+            ))
+            _uiState.value = _uiState.value.copy(
+                sync = _uiState.value.sync.copy(
+                    syncEnabled = true,
+                    accountEmail = email
+                )
+            )
+            // Run initial sync
+            try {
+                syncEngine.initialSync()
+                _uiState.value = _uiState.value.copy(message = "Google Tasks sync enabled")
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Initial sync failed: ${e.message}", e)
+                _uiState.value = _uiState.value.copy(message = "Sync setup failed: ${e.message}")
+            }
+        }
+    }
+
+    fun onGoogleSignOut() {
+        viewModelScope.launch {
+            tokenManager.clearAccount()
+            val state = syncStateDao.get() ?: SyncState()
+            syncStateDao.upsert(state.copy(
+                syncEnabled = false,
+                googleAccountEmail = null
+            ))
+            _uiState.value = _uiState.value.copy(
+                sync = SyncUiState()
+            )
+            _uiState.value = _uiState.value.copy(message = "Google Tasks sync disabled")
+        }
+    }
+
+    fun syncNow() {
+        viewModelScope.launch {
+            syncEngine.sync()
+        }
     }
 
     fun loadVoiceNotes() {

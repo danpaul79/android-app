@@ -110,6 +110,7 @@ dependencies {
     implementation(libs.androidx.credentials.play)
     implementation(libs.google.id)
     implementation(libs.okhttp)
+    implementation(libs.play.services.auth)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)

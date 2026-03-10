@@ -37,5 +37,8 @@ data class ActionItem(
     val reminderFired: Boolean = false,
     val isTrashed: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val googleTaskId: String? = null,
+    val googleTaskListId: String? = null,
+    val syncVersion: Long = 0
 )

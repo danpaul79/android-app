@@ -3,6 +3,7 @@ package com.example.aicompanion.data.repository
 import com.example.aicompanion.data.local.dao.ActionItemDao
 import com.example.aicompanion.data.local.dao.ProjectDao
 import com.example.aicompanion.data.local.dao.SourceDao
+import com.example.aicompanion.data.local.dao.SyncStateDao
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.Project
@@ -10,32 +11,56 @@ import com.example.aicompanion.data.local.entity.Source
 import com.example.aicompanion.data.export.ExportData
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
+import java.util.concurrent.atomic.AtomicLong
 
 class TaskRepository(
     private val actionItemDao: ActionItemDao,
     private val projectDao: ProjectDao,
-    private val sourceDao: SourceDao
+    private val sourceDao: SourceDao,
+    private val syncStateDao: SyncStateDao
 ) {
+    private val syncVersionCounter = AtomicLong(System.currentTimeMillis())
+
+    private fun nextSyncVersion(): Long = syncVersionCounter.incrementAndGet()
+
+    private suspend fun markTaskDirty(id: Long) {
+        actionItemDao.updateSyncVersion(id, nextSyncVersion())
+    }
+
+    private suspend fun markProjectDirty(id: Long) {
+        projectDao.updateSyncVersion(id, nextSyncVersion())
+    }
     // --- Projects ---
 
     fun getAllProjects(): Flow<List<Project>> = projectDao.getAll()
 
     fun getProjectById(id: Long): Flow<Project?> = projectDao.getById(id)
 
-    suspend fun createProject(name: String, color: Int = Project.DEFAULT_COLOR, icon: String = "folder"): Long =
-        projectDao.insert(Project(name = name, color = color, icon = icon))
+    suspend fun createProject(name: String, color: Int = Project.DEFAULT_COLOR, icon: String = "folder"): Long {
+        val id = projectDao.insert(Project(name = name, color = color, icon = icon, syncVersion = nextSyncVersion()))
+        return id
+    }
 
-    suspend fun updateProject(project: Project) = projectDao.update(project)
+    suspend fun updateProject(project: Project) {
+        projectDao.update(project)
+        markProjectDirty(project.id)
+    }
 
-    suspend fun archiveProject(id: Long) = projectDao.archive(id)
+    suspend fun archiveProject(id: Long) {
+        projectDao.archive(id)
+        markProjectDirty(id)
+    }
 
     suspend fun trashProject(id: Long) {
         projectDao.trashById(id)
+        markProjectDirty(id)
         actionItemDao.trashByProjectId(id)
+        actionItemDao.updateSyncVersionByProjectId(id, nextSyncVersion())
     }
 
     suspend fun restoreProject(id: Long) {
         projectDao.restoreById(id)
+        markProjectDirty(id)
         actionItemDao.restoreByProjectId(id)
     }
 
@@ -104,10 +129,12 @@ class TaskRepository(
     suspend fun toggleCompleted(id: Long, completed: Boolean) {
         val completedAt = if (completed) System.currentTimeMillis() else null
         actionItemDao.setCompleted(id, completed, completedAt)
+        markTaskDirty(id)
     }
 
     suspend fun assignToProject(itemId: Long, projectId: Long?) {
         actionItemDao.assignToProject(itemId, projectId)
+        markTaskDirty(itemId)
     }
 
     suspend fun createTask(
@@ -123,22 +150,35 @@ class TaskRepository(
                 projectId = projectId,
                 dueDate = dueDate,
                 priority = priority,
-                notes = notes
+                notes = notes,
+                syncVersion = nextSyncVersion()
             )
         )
     }
 
     suspend fun updateTask(item: ActionItem) {
-        actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis()))
+        actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis(), syncVersion = nextSyncVersion()))
     }
 
-    suspend fun updateTaskText(id: Long, text: String) = actionItemDao.updateText(id, text)
+    suspend fun updateTaskText(id: Long, text: String) {
+        actionItemDao.updateText(id, text)
+        markTaskDirty(id)
+    }
 
-    suspend fun setDueDate(id: Long, dueDate: Long?) = actionItemDao.setDueDate(id, dueDate)
+    suspend fun setDueDate(id: Long, dueDate: Long?) {
+        actionItemDao.setDueDate(id, dueDate)
+        markTaskDirty(id)
+    }
 
-    suspend fun trashTask(id: Long) = actionItemDao.trashItem(id)
+    suspend fun trashTask(id: Long) {
+        actionItemDao.trashItem(id)
+        markTaskDirty(id)
+    }
 
-    suspend fun restoreTask(id: Long) = actionItemDao.restoreItem(id)
+    suspend fun restoreTask(id: Long) {
+        actionItemDao.restoreItem(id)
+        markTaskDirty(id)
+    }
 
     suspend fun deleteTask(id: Long) = actionItemDao.deleteById(id)
 

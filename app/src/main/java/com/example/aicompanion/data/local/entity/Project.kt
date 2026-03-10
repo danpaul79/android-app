@@ -13,7 +13,9 @@ data class Project(
     val sortOrder: Int = 0,
     val isArchived: Boolean = false,
     val isTrashed: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val googleTaskListId: String? = null,
+    val syncVersion: Long = 0
 ) {
     companion object {
         const val DEFAULT_COLOR = 0xFF6200EE.toInt()

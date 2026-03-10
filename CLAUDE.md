@@ -20,7 +20,8 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Task Detail**: view/edit task name, change due date, change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
-- **Settings**: gear icon in Dashboard; export/import data (JSON backup); voice history with transcript viewer (voice notes + voice command logs with transcript and actions taken)
+- **Settings**: gear icon in Dashboard; export/import data (JSON backup); voice history with transcript viewer (voice notes + voice command logs with transcript and actions taken); Google Tasks sync toggle
+- **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
@@ -29,6 +30,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 ### Next phases:
 - **Phase 2 (complete)**: Smarter AI — project-aware extraction, priority inference, auto-extraction, duplicate detection (highlights similar existing tasks in review UI)
 - **Phase 2.5 (complete)**: Voice commands — mic button on Dashboard, Inbox, Project Detail; record → transcribe → AI parses command → executes
+- **Phase 2.75 (complete)**: Google Tasks bi-directional sync
 - **Phase 3**: More input sources — Gmail, SMS, Google Chat
 
 ## Project Overview
@@ -48,19 +50,21 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 ## Architecture
 - Single-activity app (MainActivity) with Compose Navigation
 - Manual DI via `AppContainer` in `di/` (no Hilt)
-- WorkManager for hourly reminder checks
+- WorkManager for hourly reminder checks and 30-min Google Tasks sync
 
 ### Data Model
 ```
-Project (id, name, color, icon, sortOrder, isArchived, isTrashed, createdAt)
-ActionItem (id, projectId, sourceId, text, notes, dueDate, priority, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt)
+Project (id, name, color, icon, sortOrder, isArchived, isTrashed, createdAt, googleTaskListId, syncVersion)
+ActionItem (id, projectId, sourceId, text, notes, dueDate, priority, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt, googleTaskId, googleTaskListId, syncVersion)
 Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, processedAt, createdAt)
+SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnabled, googleAccountEmail)
 ```
 - ActionItems with projectId=null live in the **Inbox**
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- DB version: 3 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
+- DB version: 4 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
+- Sync fields: `googleTaskId`/`googleTaskListId` link to Google Tasks API; `syncVersion` tracks dirty items for incremental sync
 - Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
 
 ### Screen Flow
@@ -70,12 +74,13 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - **Project Detail** — tasks within a project; long-press → multi-select mode; confirmation on project/task trash
 - **Capture** — voice note recording/transcription/extraction; text input option
 - **Task Detail** — view/edit a single task; confirmation on trash
-- **Settings** — export/import data; voice history (voice notes + command logs) with transcript viewer
+- **Settings** — export/import data; Google Tasks sync (sign in/out, sync now, status); voice history with transcript viewer
 - **Trash** — trashed tasks and projects; restore or permanently delete
 - Bottom navigation: Dashboard | Inbox | Capture | Projects
 
 ## Key Packages
-- `auth/` - Google Sign-In via Credential Manager (dormant, needed for Gmail in Phase 3)
+- `auth/` - Google Sign-In via Credential Manager (dormant, for future Gmail Phase 3)
+- `data/sync/` - Google Tasks bi-directional sync: TokenManager, GoogleTasksApiClient, SyncEngine, SyncWorker, SyncMappers
 - `audio/` - MediaRecorder wrapper (AudioRecorder), transcript file helpers
 - `network/` - TranscriptionClient (Deepgram), GeminiClient (extraction)
 - `data/local/` - Room DB, DAOs, entities, type converters
@@ -118,6 +123,19 @@ Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, proce
 - Supports multiple commands in one prompt (returns JSON array, deduplicated before execution)
 - With thinking enabled, response `parts` array has thought part(s) before the text part — parser iterates to find the last text part
 - Persistent VoiceCommandBar at nav level survives screen navigation; supports both voice recording and text input
+
+## Google Tasks Sync
+- Bi-directional sync: Projects ↔ Task Lists, ActionItems ↔ Tasks
+- Inbox tasks (projectId=null) sync to a dedicated "AI Companion Inbox" Google Tasks list
+- Auth via `GoogleSignIn` + `GoogleAuthUtil.getToken()` for OAuth2 access tokens (scope: `tasks`)
+- REST API calls via OkHttp (consistent with Deepgram/Gemini pattern)
+- Sync triggers: on app resume (debounced 60s) + WorkManager every 30 min (requires network)
+- Dirty tracking: `syncVersion` on ActionItem/Project incremented on every local mutation
+- Conflict resolution: last-writer-wins by timestamp; ties → remote wins
+- Initial sync merges by name (projects) and title (tasks); no data deleted
+- Fields NOT synced: priority, color, icon (app-only); Google Tasks position, parent (ignored)
+- Moving a task between projects = delete from old Google Tasks list + create in new (API limitation)
+- `SyncState` table tracks: last sync time, version watermark, inbox list ID, enabled flag, account email
 
 ## Git Workflow
 - Remote uses **SSH** (`git@github.com:danpaul79/android-app.git`) — required for Claude Code to push without credential prompts
