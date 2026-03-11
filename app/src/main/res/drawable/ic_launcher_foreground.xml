@@ -5,57 +5,63 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Brain silhouette (white filled, two lobes) -->
+    <!-- Right brain lobe -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,27
-            C57,22 65,20 72,24
-            C80,27 86,37 85,47
-            C84,57 78,65 70,70
-            C65,73 60,72 57,68
-            C55,65 54,64 54,64
-            C54,64 53,65 51,68
-            C48,72 43,73 38,70
-            C30,65 24,57 23,47
-            C22,37 28,27 36,24
-            C43,20 51,22 54,27Z" />
+        android:pathData="M54,30
+            C57,24 66,20 74,25
+            C83,30 87,41 85,52
+            C83,62 76,69 68,72
+            C63,74 58,72 55,68
+            L54,66 L54,30Z" />
 
-    <!-- Interhemispheric fissure (center line) -->
+    <!-- Left brain lobe -->
+    <path
+        android:fillColor="#E8D5FF"
+        android:pathData="M54,30
+            C51,24 42,20 34,25
+            C25,30 21,41 23,52
+            C25,62 32,69 40,72
+            C45,74 50,72 53,68
+            L54,66 L54,30Z" />
+
+    <!-- Center fissure line -->
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#5E35B1"
+        android:strokeColor="#7B1FA2"
         android:strokeWidth="2.5"
-        android:pathData="M54,27 L54,64" />
+        android:pathData="M54,30 L54,66" />
 
-    <!-- Left hemisphere fold (outer) -->
+    <!-- Right lobe folds -->
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#5E35B1"
+        android:strokeColor="#7B1FA2"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M36,35 C33,42 33,53 37,61" />
-
-    <!-- Left hemisphere fold (inner) -->
+        android:pathData="M68,34 C73,41 74,54 70,63" />
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#5E35B1"
+        android:strokeColor="#9C4DCC"
         android:strokeWidth="1.5"
         android:strokeLineCap="round"
-        android:pathData="M28,46 C27,52 29,58 33,62" />
+        android:pathData="M60,32 C64,39 65,50 62,59" />
 
-    <!-- Right hemisphere fold (outer, mirror) -->
+    <!-- Left lobe folds -->
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#5E35B1"
+        android:strokeColor="#7B1FA2"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M72,35 C75,42 75,53 71,61" />
-
-    <!-- Right hemisphere fold (inner, mirror) -->
+        android:pathData="M40,34 C35,41 34,54 38,63" />
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#5E35B1"
+        android:strokeColor="#9C4DCC"
         android:strokeWidth="1.5"
         android:strokeLineCap="round"
-        android:pathData="M80,46 C81,52 79,58 75,62" />
+        android:pathData="M48,32 C44,39 43,50 46,59" />
+
+    <!-- Small stem/brainstem at bottom -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,66 Q54,70 58,66 L57,76 Q54,78 51,76 Z" />
 </vector>

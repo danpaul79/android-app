@@ -12,6 +12,8 @@ import com.example.aicompanion.AICompanionApplication
 import com.example.aicompanion.data.export.DataExportImport
 import com.example.aicompanion.data.local.entity.SyncState
 import com.example.aicompanion.data.sync.SyncStatus
+import com.example.aicompanion.reminder.MorningCheckInWorker
+import com.example.aicompanion.reminder.MorningPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,11 +47,18 @@ data class EnrichmentUiState(
     val isDone: Boolean = false
 )
 
+data class MorningUiState(
+    val enabled: Boolean = false,
+    val hourOfDay: Int = 8,
+    val minute: Int = 0
+)
+
 data class SettingsUiState(
     val voiceNotes: List<VoiceNoteFile> = emptyList(),
     val message: String? = null,
     val sync: SyncUiState = SyncUiState(),
-    val enrichment: EnrichmentUiState = EnrichmentUiState()
+    val enrichment: EnrichmentUiState = EnrichmentUiState(),
+    val morning: MorningUiState = MorningUiState()
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -58,6 +67,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val syncEngine = appContainer.syncEngine
     private val tokenManager = appContainer.tokenManager
     private val syncStateDao = appContainer.syncStateDao
+    private val morningPrefs = MorningPreferences(application)
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -67,6 +77,30 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         loadSyncState()
         observeSyncStatus()
         loadEnrichmentCount()
+        loadMorningState()
+    }
+
+    private fun loadMorningState() {
+        _uiState.value = _uiState.value.copy(
+            morning = MorningUiState(
+                enabled = morningPrefs.enabled,
+                hourOfDay = morningPrefs.hourOfDay,
+                minute = morningPrefs.minute
+            )
+        )
+    }
+
+    fun setMorningEnabled(enabled: Boolean) {
+        morningPrefs.enabled = enabled
+        _uiState.value = _uiState.value.copy(morning = _uiState.value.morning.copy(enabled = enabled))
+        MorningCheckInWorker.schedule(getApplication())
+    }
+
+    fun setMorningTime(hour: Int, minute: Int) {
+        morningPrefs.hourOfDay = hour
+        morningPrefs.minute = minute
+        _uiState.value = _uiState.value.copy(morning = _uiState.value.morning.copy(hourOfDay = hour, minute = minute))
+        MorningCheckInWorker.schedule(getApplication())
     }
 
     private fun loadSyncState() {

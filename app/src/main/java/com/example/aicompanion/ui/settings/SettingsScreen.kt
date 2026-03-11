@@ -27,8 +27,13 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -213,6 +218,25 @@ fun SettingsScreen(
                     onSignIn = { email -> viewModel.onGoogleSignIn(email) },
                     onSignOut = { viewModel.onGoogleSignOut() },
                     onSyncNow = { viewModel.syncNow() }
+                )
+            }
+
+            // Morning Check-In section
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Morning Check-In",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+
+            item {
+                MorningCheckInCard(
+                    morningState = uiState.morning,
+                    onEnabledChange = { viewModel.setMorningEnabled(it) },
+                    onTimeChange = { h, m -> viewModel.setMorningTime(h, m) }
                 )
             }
 
@@ -517,6 +541,95 @@ private fun EnrichTasksCard(
                         Spacer(Modifier.width(8.dp))
                     }
                     Text("Run AI enrichment")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MorningCheckInCard(
+    morningState: MorningUiState,
+    onEnabledChange: (Boolean) -> Unit,
+    onTimeChange: (hour: Int, minute: Int) -> Unit
+) {
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    if (showTimePicker) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Set notification time") },
+            text = {
+                Column {
+                    Text("Morning hours:", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    val hours = (5..11).toList()
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(hours) { h ->
+                            FilterChip(
+                                selected = h == morningState.hourOfDay,
+                                onClick = { onTimeChange(h, 0); showTimePicker = false },
+                                label = { Text(String.format("%d:00", h)) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Afternoon/evening:", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    val lateHours = (12..20).toList()
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(lateHours) { h ->
+                            FilterChip(
+                                selected = h == morningState.hourOfDay,
+                                onClick = { onTimeChange(h, 0); showTimePicker = false },
+                                label = { Text(String.format("%d:00", h)) }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showTimePicker = false }) { Text("Close") }
+            }
+        )
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Daily capacity check-in", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (morningState.enabled)
+                            "Fires at ${String.format("%d:%02d", morningState.hourOfDay, morningState.minute)}"
+                        else
+                            "Get a morning nudge to plan your tasks",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = morningState.enabled,
+                    onCheckedChange = onEnabledChange
+                )
+            }
+
+            if (morningState.enabled) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { showTimePicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Change time (${String.format("%d:%02d", morningState.hourOfDay, morningState.minute)})")
                 }
             }
         }

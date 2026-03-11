@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.aicompanion.data.sync.SyncWorker
 import com.example.aicompanion.di.AppContainer
+import com.example.aicompanion.reminder.MorningCheckInWorker
 import com.example.aicompanion.reminder.ReminderWorker
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.util.concurrent.TimeUnit
@@ -23,6 +24,7 @@ class AICompanionApplication : Application() {
         initCrashlytics()
         scheduleReminderWorker()
         scheduleSyncWorker()
+        MorningCheckInWorker.schedule(this)
     }
 
     private fun initCrashlytics() {
