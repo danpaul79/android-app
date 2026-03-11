@@ -136,6 +136,10 @@ class VoiceCommandProcessor(
             "create_project" -> VoiceCommand.CreateProject(
                 name = projectName ?: taskName ?: return VoiceCommand.Unrecognized(transcript)
             )
+            "plan_my_day" -> {
+                val minutes = json.optInt("capacityMinutes", 0).takeIf { it > 0 }
+                VoiceCommand.PlanMyDay(capacityMinutes = minutes)
+            }
             else -> VoiceCommand.Unrecognized(transcript)
         }
     }
@@ -213,6 +217,14 @@ class VoiceCommandProcessor(
             is VoiceCommand.CreateProject -> {
                 repo.createProject(command.name)
                 CommandResult(true, "Created project: ${command.name}", command)
+            }
+
+            is VoiceCommand.PlanMyDay -> {
+                val msg = if (command.capacityMinutes != null)
+                    "Opening plan for ${command.capacityMinutes}m..."
+                else
+                    "Opening Plan My Day..."
+                CommandResult(true, msg, command)
             }
 
             is VoiceCommand.Unrecognized -> {

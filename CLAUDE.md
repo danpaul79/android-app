@@ -4,7 +4,7 @@
 A "second brain" that ingests tasks from multiple sources (voice notes, email, texts, chat), extracts action items using AI, and organizes them into projects. The user interacts primarily with **tasks organized by project**, not with individual voice notes or messages. Sources are just how items arrive.
 
 ## Current Status
-**Phases 1–3a complete.** Core task hub + capacity-aware scheduling foundation operational.
+**Phases 1–3b complete.** Full capacity-aware scheduling with context filtering and Plan My Day screen.
 
 ### What works now:
 - **App name**: Pocket Pilot
@@ -16,7 +16,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel; text input option
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save
 - **Project creation from voice**: say "create a new project called X" during recording; AI detects intent, creates project, assigns extracted tasks
-- **Voice commands**: persistent bar above bottom nav on all main screens; record or type commands; supports multiple commands in one prompt; say "create task X", "complete Y", "change due date of Z to Friday", "set drop dead date for X to July 25", "move task to project W", "delete task", "rename task"
+- **Voice commands**: persistent bar above bottom nav on all main screens; record or type commands; supports multiple commands in one prompt; say "create task X", "complete Y", "change due date of Z to Friday", "set drop dead date for X to July 25", "move task to project W", "delete task", "rename task", "plan my day", "I have 45 minutes"
 - **Transcript-only mode**: toggle on Capture screen to skip extraction and just get a transcript
 - **Task Detail**: view/edit task name, change due date, set drop-dead date (hard deadline, warning color), effort estimate chips (10m/20m/30m/1h/90m/2h+), change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
@@ -26,7 +26,9 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; tapping plan opens app
 - **Effort estimates**: `estimatedMinutes` on every task; AI-guessed at extraction, user-editable in Task Detail; enrichment batch-backfills existing tasks; unestimated = 30m default for scheduling
 - **Drop-dead dates**: `dropDeadDate` separate from soft `dueDate`; voice command "set drop dead date"; Task Detail picker with warning styling
-- **Context tags**: `#hashtags` in task notes; AI suggests at extraction; `#waiting-for` excluded from scheduling
+- **Context tags**: `#hashtags` in task notes; AI suggests at extraction; `#waiting-for` excluded from scheduling; displayed as chips on task cards in Dashboard/Inbox/Project Detail
+- **Dynamic priority**: `effectivePriority()` auto-escalates to URGENT when drop-dead ≤1 day, or ≤3 days + effort ≥60m; HIGH when ≤7 days
+- **Plan My Day**: Dashboard capacity indicator (today's planned vs capacity); tap to open PlanMyDay screen; select time + context → see recommended task list; adjusting capacity saves new plan
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
@@ -37,8 +39,9 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Phase 2.5 (complete)**: Voice commands — mic button on Dashboard, Inbox, Project Detail; multi-command support
 - **Phase 2.75 (complete)**: Google Tasks bi-directional sync
 - **Phase 3a (complete)**: Effort estimates, drop-dead dates, context tags, AI enrichment, morning check-in notification
-- **Phase 3b (next)**: Context & tags UI, "pick my tasks" in-app screen, dashboard capacity indicator
+- **Phase 3b (complete)**: Tag chips on cards, PlanMyDay screen with context filter, dashboard capacity indicator, "plan my day" voice command
 - **Phase 3c (partial)**: Morning check-in notification done; stale task review in notification TBD
+- **Phase 3d (future)**: AI pattern learning, task rot detection
 - **Phase 4**: More input sources — Gmail, SMS, Google Chat
 
 ## Phase 3 — Capacity-Aware Scheduling & Living Task List
@@ -74,15 +77,17 @@ The app becomes a true "second brain" — not just storing tasks but actively ma
 - [x] Task Detail: drop-dead date picker (warning color) + effort estimate chips
 - [x] AI enrichment in Settings: bulk backfill effort + tags for existing tasks
 - [x] Voice command: "set drop dead date" correctly sets dropDeadDate (not dueDate)
-- [x] `pickTasksForCapacity()` in TaskRepository (bin-pack, excludes #waiting-for)
-- [ ] "Pick my tasks for today" in-app screen
-- [ ] Dynamic priority computation (drop-dead proximity + effort)
+- [x] `pickTasksForCapacity()` in TaskRepository (bin-pack, excludes #waiting-for, optional context tag filter)
+- [x] "Pick my tasks for today" in-app PlanMyDay screen
+- [x] Dynamic priority computation (`effectivePriority()` extension on ActionItem — drop-dead proximity auto-escalates)
 
-### Phase 3b — Context & Tags
-- [ ] Parse `#tags` from notes, display as chips on task cards
-- [ ] Context filter on "pick tasks" screen ("I'm at: computer / errands / home / anywhere")
-- [ ] Dashboard load indicator: "Today: 45 min planned / 60 min capacity"
-- [ ] Voice command support: "plan my day", "I have 45 minutes today"
+### Phase 3b — Context & Tags (complete)
+- [x] Parse `#tags` from notes (`parsedTags()` extension on ActionItem), display as chips on task cards (Dashboard/Inbox/ProjectDetail)
+- [x] Context filter on PlanMyDay screen (Anywhere / Computer / Home / Errands / Phone / Quick)
+- [x] Dashboard capacity indicator: "Today: Xm planned / Yh capacity" — tappable to PlanMyDay; red when overloaded
+- [x] Voice command: "plan my day", "I have 45 minutes today" → navigates to PlanMyDay screen
+- Capacity source: last morning check-in; adjustable on PlanMyDay screen (saves new plan → Dashboard updates)
+- New key files: `ui/plan/PlanMyDayScreen.kt`, `ui/plan/PlanMyDayViewModel.kt`, `ui/common/TagChips.kt`
 
 ### Phase 3c — Living Task List (morning check-in)
 - [x] Morning notification: capacity buttons (30m/1h/90m/2h/3h); follow-up shows task plan

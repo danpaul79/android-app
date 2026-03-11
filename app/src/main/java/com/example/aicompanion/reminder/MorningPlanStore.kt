@@ -93,4 +93,10 @@ class MorningPlanStore(context: Context) {
         val until = prefs.getLong("dismissed_until", 0L)
         return System.currentTimeMillis() < until
     }
+
+    /**
+     * Returns the capacity (in minutes) from the most recent morning check-in, regardless
+     * of date. Returns null if the user has never set a capacity.
+     */
+    fun getLastCapacityMinutes(): Int? = loadHistory().firstOrNull()?.capacityMinutes
 }

@@ -24,5 +24,8 @@ sealed class VoiceCommand {
 
     data class CreateProject(val name: String) : VoiceCommand()
 
+    /** "Plan my day" / "I have X minutes" — navigate to PlanMyDay screen. */
+    data class PlanMyDay(val capacityMinutes: Int? = null) : VoiceCommand()
+
     data class Unrecognized(val transcript: String) : VoiceCommand()
 }

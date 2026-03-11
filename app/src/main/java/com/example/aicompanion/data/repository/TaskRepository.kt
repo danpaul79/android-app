@@ -265,16 +265,27 @@ class TaskRepository(
      * Given a capacity in minutes, returns a prioritized list of tasks that fit.
      * Hard drop-dead dates take precedence. #waiting-for tasks are excluded.
      * Unestimated tasks are treated as 30 min.
+     *
+     * @param contextTag if non-null, only tasks with this #tag are included plus untagged tasks
+     *                   (untagged tasks are always eligible — they have no context restriction).
      */
-    suspend fun pickTasksForCapacity(capacityMinutes: Int): List<ActionItem> {
+    suspend fun pickTasksForCapacity(capacityMinutes: Int, contextTag: String? = null): List<ActionItem> {
         val urgentThreshold = System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000
         val allTasks = actionItemDao.getActiveItemsForScheduling(urgentThreshold)
         val result = mutableListOf<ActionItem>()
         var remaining = capacityMinutes
 
         for (task in allTasks) {
+            val notes = task.notes ?: ""
             // Skip waiting-for tasks
-            if (task.notes?.contains("#waiting-for", ignoreCase = true) == true) continue
+            if (notes.contains("#waiting-for", ignoreCase = true)) continue
+            // Context filter: if a tag is requested, only include tasks that have that tag
+            // OR tasks that have no tags at all (untagged tasks are context-agnostic)
+            if (contextTag != null) {
+                val hasTags = Regex("#[\\w-]+").containsMatchIn(notes)
+                val hasContextTag = notes.contains("#$contextTag", ignoreCase = true)
+                if (hasTags && !hasContextTag) continue
+            }
             val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
             if (estimate <= remaining) {
                 result.add(task)

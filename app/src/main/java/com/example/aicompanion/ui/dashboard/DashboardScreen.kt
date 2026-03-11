@@ -34,6 +34,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.foundation.background
@@ -66,7 +67,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.reminder.MorningPlanStore
+import com.example.aicompanion.ui.common.TagChipsRow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -91,6 +94,7 @@ fun DashboardScreen(
     onNavigateToCapture: () -> Unit,
     onNavigateToTrash: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToPlanMyDay: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -284,6 +288,19 @@ fun DashboardScreen(
                             onDismiss = { viewModel.dismissTodaysPlan() },
                             onNavigateToTask = onNavigateToTask,
                             modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
+                }
+
+                // Capacity indicator
+                val capacity = uiState.capacityMinutes
+                if (capacity != null && !uiState.isSelectionMode) {
+                    item {
+                        CapacityIndicatorRow(
+                            plannedMinutes = uiState.plannedMinutesToday,
+                            capacityMinutes = capacity,
+                            onClick = onNavigateToPlanMyDay,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
@@ -647,6 +664,10 @@ private fun TaskRowCard(
                         }
                     )
                 }
+                val tags = item.parsedTags()
+                if (tags.isNotEmpty()) {
+                    TagChipsRow(tags = tags)
+                }
             }
         }
     }
@@ -729,6 +750,65 @@ private fun TodaysPlanCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CapacityIndicatorRow(
+    plannedMinutes: Int,
+    capacityMinutes: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val progress = if (capacityMinutes > 0) (plannedMinutes.toFloat() / capacityMinutes).coerceIn(0f, 1f) else 0f
+    val overloaded = plannedMinutes > capacityMinutes
+
+    fun minutesToLabel(m: Int): String = when {
+        m < 60 -> "${m}m"
+        m % 60 == 0 -> "${m / 60}h"
+        else -> "${m / 60}h ${m % 60}m"
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (overloaded)
+                MaterialTheme.colorScheme.errorContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Today: ${minutesToLabel(plannedMinutes)} planned",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (overloaded) MaterialTheme.colorScheme.onErrorContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "${minutesToLabel(capacityMinutes)} capacity",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (overloaded) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth(),
+                color = if (overloaded) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surface
+            )
         }
     }
 }

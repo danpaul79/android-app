@@ -38,9 +38,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import com.example.aicompanion.domain.command.VoiceCommand
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
@@ -56,10 +58,20 @@ import androidx.core.content.ContextCompat
 @Composable
 fun VoiceCommandBar(
     viewModel: VoiceCommandViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToPlanMyDay: (capacityMinutes: Int?) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // Handle navigation commands emitted by the processor
+    val navCmd = uiState.navigationCommand
+    LaunchedEffect(navCmd) {
+        if (navCmd is VoiceCommand.PlanMyDay) {
+            viewModel.clearNavigationCommand()
+            onNavigateToPlanMyDay(navCmd.capacityMinutes)
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()

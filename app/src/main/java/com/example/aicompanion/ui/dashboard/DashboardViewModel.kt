@@ -23,10 +23,16 @@ data class DashboardUiState(
     val isLoading: Boolean = true,
     val selectedIds: Set<Long> = emptySet(),
     val showCompleted: Boolean = false,
-    val todaysPlan: MorningPlanStore.PlanEntry? = null
+    val todaysPlan: MorningPlanStore.PlanEntry? = null,
+    val capacityMinutes: Int? = null  // from last morning check-in; null = not set yet
 ) {
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
     val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems
+
+    /** Sum of estimated minutes for overdue + today tasks (the "load" for today). */
+    val plannedMinutesToday: Int get() = (overdueItems + todayItems).sumOf {
+        if (it.estimatedMinutes > 0) it.estimatedMinutes else 30
+    }
 }
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -61,6 +67,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             }
         }
         loadTodaysPlan()
+        _uiState.value = _uiState.value.copy(capacityMinutes = planStore.getLastCapacityMinutes())
+    }
+
+    fun refreshCapacity() {
+        _uiState.value = _uiState.value.copy(capacityMinutes = planStore.getLastCapacityMinutes())
     }
 
     fun loadTodaysPlan() {

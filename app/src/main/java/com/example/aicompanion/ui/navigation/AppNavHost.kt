@@ -37,6 +37,7 @@ import com.example.aicompanion.ui.search.SearchScreen
 import com.example.aicompanion.ui.task.TaskDetailScreen
 import com.example.aicompanion.ui.settings.SettingsScreen
 import com.example.aicompanion.ui.settings.TranscriptViewScreen
+import com.example.aicompanion.ui.plan.PlanMyDayScreen
 import com.example.aicompanion.ui.trash.TrashScreen
 import com.example.aicompanion.ui.voicecommand.VoiceCommandBar
 import com.example.aicompanion.ui.voicecommand.VoiceCommandViewModel
@@ -79,7 +80,12 @@ fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
             Column {
                 // Voice command bar — persistent across ALL screens except Capture (which has its own recorder)
                 if (showVoiceBar) {
-                    VoiceCommandBar(viewModel = voiceCommandViewModel)
+                    VoiceCommandBar(
+                        viewModel = voiceCommandViewModel,
+                        onNavigateToPlanMyDay = { _ ->
+                            navController.navigate(NavRoutes.PlanMyDay.route)
+                        }
+                    )
                 }
 
                 if (showBottomBar) {
@@ -154,6 +160,9 @@ fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
                     },
                     onNavigateToSettings = {
                         navController.navigate("settings")
+                    },
+                    onNavigateToPlanMyDay = {
+                        navController.navigate(NavRoutes.PlanMyDay.route)
                     }
                 )
             }
@@ -267,6 +276,15 @@ fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
                 TaskDetailScreen(
                     taskId = taskId,
                     onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(NavRoutes.PlanMyDay.route) {
+                PlanMyDayScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTask = { id ->
+                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                    }
                 )
             }
         }

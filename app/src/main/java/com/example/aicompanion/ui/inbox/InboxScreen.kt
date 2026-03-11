@@ -56,6 +56,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.data.local.entity.parsedTags
+import com.example.aicompanion.ui.common.TagChipsRow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -412,6 +414,10 @@ private fun InboxItemCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+                val tags = item.parsedTags()
+                if (tags.isNotEmpty()) {
+                    TagChipsRow(tags = tags)
                 }
             }
 

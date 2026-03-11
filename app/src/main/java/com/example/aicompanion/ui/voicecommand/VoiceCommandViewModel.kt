@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
 import com.example.aicompanion.audio.AudioRecorder
 import com.example.aicompanion.audio.RecorderState
+import com.example.aicompanion.domain.command.VoiceCommand
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,9 @@ data class VoiceCommandUiState(
     val commandState: CommandState = CommandState.Idle,
     val message: String? = null,
     val amplitudes: List<Float> = emptyList(),
-    val textDraft: String = ""
+    val textDraft: String = "",
+    /** Set when a navigation action is required; consumer must clear after handling. */
+    val navigationCommand: VoiceCommand? = null
 )
 
 class VoiceCommandViewModel(application: Application) : AndroidViewModel(application) {
@@ -84,9 +87,11 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
             val audioFile = File(filePath)
             val result = processor.processAudioFile(audioFile)
 
+            val navCmd = (result.command as? VoiceCommand.PlanMyDay)
             _uiState.value = _uiState.value.copy(
                 commandState = if (result.success) CommandState.Success else CommandState.Error,
-                message = result.message
+                message = result.message,
+                navigationCommand = navCmd
             )
 
             saveCommandLog(result.transcript, result.message, result.success)
@@ -125,9 +130,11 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             val result = processor.processTranscript(text)
 
+            val navCmd = (result.command as? VoiceCommand.PlanMyDay)
             _uiState.value = _uiState.value.copy(
                 commandState = if (result.success) CommandState.Success else CommandState.Error,
-                message = result.message
+                message = result.message,
+                navigationCommand = navCmd
             )
 
             saveCommandLog(result.transcript, result.message, result.success)
@@ -139,6 +146,10 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                 _uiState.value = VoiceCommandUiState()
             }
         }
+    }
+
+    fun clearNavigationCommand() {
+        _uiState.value = _uiState.value.copy(navigationCommand = null)
     }
 
     private fun saveCommandLog(transcript: String?, actionsMessage: String?, success: Boolean) {
