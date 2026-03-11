@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -30,7 +31,8 @@ class MorningPlanStore(context: Context) {
 
     data class PlanTask(val id: Long, val text: String, val estimatedMinutes: Int)
 
-    /** Save a new plan. Keeps the last 7 entries. */
+    /** Save a new plan. Keeps the last 7 entries. Clears any prior dismissal so the
+     *  Dashboard card reappears immediately when the user regenerates their plan. */
     fun savePlan(capacityMinutes: Int, tasks: List<PlanTask>) {
         val history = loadHistory().toMutableList()
         history.add(0, PlanEntry(System.currentTimeMillis(), capacityMinutes, tasks))
@@ -53,7 +55,11 @@ class MorningPlanStore(context: Context) {
             }
             arr.put(obj)
         }
-        prefs.edit().putString("history", arr.toString()).apply()
+        // Clear dismissal so the Dashboard card reappears after regenerating
+        prefs.edit()
+            .putString("history", arr.toString())
+            .remove("dismissed_until")
+            .apply()
     }
 
     /** Returns today's plan (most recent entry from today), or null if none. */
@@ -61,7 +67,10 @@ class MorningPlanStore(context: Context) {
         val history = loadHistory()
         if (history.isEmpty()) return null
         val latest = history.first()
-        val todayStart = System.currentTimeMillis() - (System.currentTimeMillis() % 86400000)
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
         return if (latest.timestamp >= todayStart) latest else null
     }
 

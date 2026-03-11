@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class PlanMyDayUiState(
     val capacityMinutes: Int = 60,
@@ -59,6 +60,30 @@ class PlanMyDayViewModel(application: Application) : AndroidViewModel(applicatio
         _uiState.value = state.copy(isLoading = true)
         viewModelScope.launch {
             val tasks = repo.pickTasksForCapacity(state.capacityMinutes, state.selectedContext)
+
+            // Set due date to today noon for any task that has no due date or an overdue date.
+            // This surfaces them in the Dashboard "Today" section.
+            val todayNoon = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 12)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val dayStart = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val dayEnd = dayStart + 24L * 60 * 60 * 1000
+            tasks.forEach { task ->
+                // Set due date to today for any task that has no date, is overdue,
+                // or is scheduled for a future date (user chose to do it today).
+                if (task.dueDate == null || task.dueDate < dayStart || task.dueDate >= dayEnd) {
+                    repo.setDueDate(task.id, todayNoon)
+                }
+            }
+
             _uiState.value = _uiState.value.copy(
                 pickedTasks = tasks,
                 isLoading = false,
