@@ -56,10 +56,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
-import java.text.SimpleDateFormat
+import com.example.aicompanion.data.local.entity.parsedTags
+import com.example.aicompanion.ui.common.DateLine
+import com.example.aicompanion.ui.common.TagChipsRow
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +72,7 @@ fun ProjectsScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
     var trashTaskId by remember { mutableStateOf<Long?>(null) }
+    var showUndatedOnly by remember { mutableStateOf(false) }
 
     if (trashTaskId != null) {
         AlertDialog(
@@ -94,6 +95,15 @@ fun ProjectsScreen(
             TopAppBar(
                 title = { Text("Projects") },
                 actions = {
+                    // "No date" filter toggle
+                    IconButton(onClick = { showUndatedOnly = !showUndatedOnly }) {
+                        Icon(
+                            if (showUndatedOnly) Icons.Filled.CheckCircle else Icons.Filled.CheckCircle,
+                            contentDescription = if (showUndatedOnly) "Show all tasks" else "Show undated tasks only",
+                            tint = if (showUndatedOnly) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                        )
+                    }
                     // Expand/Collapse all toggle
                     if (uiState.projects.isNotEmpty() || uiState.inboxItems.isNotEmpty()) {
                         IconButton(
@@ -135,51 +145,74 @@ fun ProjectsScreen(
         ) {
             item { Spacer(Modifier.height(8.dp)) }
 
-            // Inbox section (virtual project)
-            item(key = "inbox_header") {
-                ProjectHeader(
-                    icon = { Icon(Icons.Filled.Inbox, null, tint = MaterialTheme.colorScheme.primary) },
-                    name = "Inbox",
-                    taskCount = uiState.inboxItems.size,
-                    isExpanded = uiState.inboxExpanded,
-                    onToggleExpand = { viewModel.toggleInboxExpanded() },
-                    onEdit = null // No edit screen for inbox — it's the Inbox tab
-                )
+            // Filter label
+            if (showUndatedOnly) {
+                item(key = "filter_label") {
+                    Text(
+                        "Showing undated tasks only",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
             }
 
-            if (uiState.inboxExpanded) {
-                if (uiState.inboxItems.isEmpty()) {
-                    item(key = "inbox_empty") {
-                        Text(
-                            "No unassigned tasks",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 48.dp, top = 4.dp, bottom = 4.dp)
-                        )
-                    }
-                } else {
-                    items(uiState.inboxItems, key = { "inbox_${it.id}" }) { item ->
-                        InlineTaskCard(
-                            item = item,
-                            onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
-                            onClick = { onNavigateToTask(item.id) },
-                            onTrash = { trashTaskId = item.id }
-                        )
+            // Inbox section (virtual project)
+            val filteredInbox = if (showUndatedOnly)
+                uiState.inboxItems.filter { it.dueDate == null && it.dropDeadDate == null }
+            else uiState.inboxItems
+
+            if (!showUndatedOnly || filteredInbox.isNotEmpty()) {
+                item(key = "inbox_header") {
+                    ProjectHeader(
+                        icon = { Icon(Icons.Filled.Inbox, null, tint = MaterialTheme.colorScheme.primary) },
+                        name = "Inbox",
+                        taskCount = filteredInbox.size,
+                        isExpanded = uiState.inboxExpanded,
+                        onToggleExpand = { viewModel.toggleInboxExpanded() },
+                        onEdit = null
+                    )
+                }
+
+                if (uiState.inboxExpanded) {
+                    if (filteredInbox.isEmpty()) {
+                        item(key = "inbox_empty") {
+                            Text(
+                                "No unassigned tasks",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 48.dp, top = 4.dp, bottom = 4.dp)
+                            )
+                        }
+                    } else {
+                        items(filteredInbox, key = { "inbox_${it.id}" }) { item ->
+                            InlineTaskCard(
+                                item = item,
+                                onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                                onClick = { onNavigateToTask(item.id) },
+                                onTrash = { trashTaskId = item.id }
+                            )
+                        }
                     }
                 }
             }
 
             // Project sections
             uiState.projects.forEach { project ->
-                val taskCount = uiState.projectTaskCounts[project.id] ?: 0
-                val tasks = uiState.projectTasks[project.id] ?: emptyList()
+                val allTasks = uiState.projectTasks[project.id] ?: emptyList()
+                val tasks = if (showUndatedOnly)
+                    allTasks.filter { it.dueDate == null && it.dropDeadDate == null }
+                else allTasks
                 val isExpanded = project.id in uiState.expandedProjectIds
+
+                // Hide projects with no matching tasks when filter is active
+                if (showUndatedOnly && tasks.isEmpty()) return@forEach
 
                 item(key = "project_header_${project.id}") {
                     ProjectHeader(
                         icon = { Icon(Icons.Filled.Folder, null, tint = MaterialTheme.colorScheme.primary) },
                         name = project.name,
-                        taskCount = taskCount,
+                        taskCount = tasks.size,
                         isExpanded = isExpanded,
                         onToggleExpand = { viewModel.toggleProjectExpanded(project.id) },
                         onEdit = { onNavigateToProject(project.id) }
@@ -321,25 +354,14 @@ private fun InlineTaskCard(
                     overflow = TextOverflow.Ellipsis,
                     textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                 )
-                Row {
-                    if (item.dueDate != null) {
-                        val dateStr = SimpleDateFormat("MMM d", Locale.getDefault())
-                            .format(Date(item.dueDate))
-                        Text(
-                            text = dateStr,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isOverdue) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (item.priority != Priority.NONE) {
-                        if (item.dueDate != null) Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = item.priority.name.lowercase().replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                DateLine(
+                    dueDate = item.dueDate,
+                    dropDeadDate = item.dropDeadDate,
+                    isOverdue = isOverdue
+                )
+                val tags = item.parsedTags()
+                if (tags.isNotEmpty()) {
+                    TagChipsRow(tags = tags)
                 }
             }
             IconButton(onClick = onTrash) {

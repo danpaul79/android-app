@@ -80,6 +80,7 @@ import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.reminder.MorningPlanStore
+import com.example.aicompanion.ui.common.DateLine
 import com.example.aicompanion.ui.common.TagChipsRow
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -709,25 +710,11 @@ private fun TaskRowCard(
                         )
                     }
                 }
-                // Due date (soft)
-                if (item.dueDate != null) {
-                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(item.dueDate))
-                    Text(
-                        text = dateStr,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isOverdue) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                // Drop-dead date (hard deadline) — always shown when set, even alongside due date
-                if (item.dropDeadDate != null) {
-                    val deadStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(item.dropDeadDate))
-                    Text(
-                        text = "⚠ deadline $deadStr",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
+                DateLine(
+                    dueDate = item.dueDate,
+                    dropDeadDate = item.dropDeadDate,
+                    isOverdue = isOverdue
+                )
                 val tags = item.parsedTags()
                 if (tags.isNotEmpty()) {
                     TagChipsRow(tags = tags)

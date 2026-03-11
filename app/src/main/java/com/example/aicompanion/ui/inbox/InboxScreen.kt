@@ -67,6 +67,7 @@ import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
+import com.example.aicompanion.ui.common.DateLine
 import com.example.aicompanion.ui.common.TagChipsRow
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -437,15 +438,15 @@ private fun InboxItemCard(
                         )
                     }
                 }
-                if (item.dueDate != null) {
-                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault())
-                        .format(Date(item.dueDate))
-                    Text(
-                        text = "Due: $dateStr",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                val dayStart = java.util.Calendar.getInstance().apply {
+                    set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+                    set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                DateLine(
+                    dueDate = item.dueDate,
+                    dropDeadDate = item.dropDeadDate,
+                    isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
+                )
                 val tags = item.parsedTags()
                 if (tags.isNotEmpty()) {
                     TagChipsRow(tags = tags)

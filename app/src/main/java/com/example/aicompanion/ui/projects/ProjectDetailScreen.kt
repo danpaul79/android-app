@@ -57,11 +57,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.parsedTags
+import com.example.aicompanion.ui.common.DateLine
 import com.example.aicompanion.ui.common.TagChipsRow
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import java.util.TimeZone
 
 private fun utcPickerToLocalNoon(utcMillis: Long): Long {
@@ -458,29 +456,11 @@ private fun ProjectTaskCard(
                     overflow = TextOverflow.Ellipsis,
                     textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                 )
-                Row {
-                    if (item.dueDate != null) {
-                        val dateStr = SimpleDateFormat("MMM d", Locale.getDefault())
-                            .format(Date(item.dueDate))
-                        Text(
-                            text = dateStr,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isOverdue) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (item.priority != com.example.aicompanion.data.local.entity.Priority.NONE) {
-                        if (item.dueDate != null) {
-                            Spacer(Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = item.priority.name.lowercase()
-                                .replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+                DateLine(
+                    dueDate = item.dueDate,
+                    dropDeadDate = item.dropDeadDate,
+                    isOverdue = isOverdue
+                )
                 val tags = item.parsedTags()
                 if (tags.isNotEmpty()) {
                     TagChipsRow(tags = tags)
