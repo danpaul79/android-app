@@ -1,5 +1,7 @@
 package com.example.aicompanion.data.repository
 
+import android.content.Context
+import androidx.glance.appwidget.updateAll
 import com.example.aicompanion.data.local.dao.ActionItemDao
 import com.example.aicompanion.data.local.dao.ProjectDao
 import com.example.aicompanion.data.local.dao.SourceDao
@@ -11,6 +13,7 @@ import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.Source
 import com.example.aicompanion.data.export.ExportData
 import com.example.aicompanion.network.GeminiClient
+import com.example.aicompanion.widget.TodayPlanWidget
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 import java.util.concurrent.atomic.AtomicLong
@@ -20,9 +23,14 @@ class TaskRepository(
     private val projectDao: ProjectDao,
     private val sourceDao: SourceDao,
     private val syncStateDao: SyncStateDao,
-    private val geminiClient: GeminiClient = GeminiClient()
+    private val geminiClient: GeminiClient = GeminiClient(),
+    private val context: Context? = null
 ) {
     private val syncVersionCounter = AtomicLong(System.currentTimeMillis())
+
+    private suspend fun refreshWidget() {
+        context?.let { TodayPlanWidget().updateAll(it) }
+    }
 
     private fun nextSyncVersion(): Long = syncVersionCounter.incrementAndGet()
 
@@ -133,6 +141,7 @@ class TaskRepository(
         val completedAt = if (completed) System.currentTimeMillis() else null
         actionItemDao.setCompleted(id, completed, completedAt)
         markTaskDirty(id)
+        refreshWidget()
     }
 
     suspend fun assignToProject(itemId: Long, projectId: Long?) {
@@ -330,9 +339,12 @@ class TaskRepository(
         return result
     }
 
+    fun getUndatedCount(): Flow<Int> = actionItemDao.getUndatedCount()
+
     suspend fun trashTask(id: Long) {
         actionItemDao.trashItem(id)
         markTaskDirty(id)
+        refreshWidget()
     }
 
     suspend fun restoreTask(id: Long) {

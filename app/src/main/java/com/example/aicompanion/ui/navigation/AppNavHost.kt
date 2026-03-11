@@ -56,7 +56,11 @@ val bottomNavItems = listOf(
 )
 
 @Composable
-fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
+fun AppNavHost(
+    navController: NavHostController,
+    deepLinkTaskId: Long? = null,
+    openPlanMyDay: Boolean = false
+) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -65,6 +69,8 @@ fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
 
     val inboxViewModel: com.example.aicompanion.ui.inbox.InboxViewModel = viewModel()
     val inboxState by inboxViewModel.uiState.collectAsState()
+    val projectsViewModel: com.example.aicompanion.ui.projects.ProjectsViewModel = viewModel()
+    val projectsState by projectsViewModel.uiState.collectAsState()
 
     val voiceCommandViewModel: VoiceCommandViewModel = viewModel()
 
@@ -72,6 +78,13 @@ fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
     LaunchedEffect(deepLinkTaskId) {
         if (deepLinkTaskId != null) {
             navController.navigate(NavRoutes.TaskDetail.createRoute(deepLinkTaskId))
+        }
+    }
+
+    // Deep-link from morning check-in: open Plan My Day directly
+    LaunchedEffect(openPlanMyDay) {
+        if (openPlanMyDay) {
+            navController.navigate(NavRoutes.PlanMyDay.route)
         }
     }
 
@@ -106,10 +119,13 @@ fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
                                     }
                                 },
                                 icon = {
-                                    if (item.route == "inbox" && inboxState.inboxCount > 0) {
-                                        BadgedBox(badge = {
-                                            Badge { Text("${inboxState.inboxCount}") }
-                                        }) {
+                                    val badge = when {
+                                        item.route == "inbox" && inboxState.inboxCount > 0 -> "${inboxState.inboxCount}"
+                                        item.route == "projects" && projectsState.undatedCount > 0 -> "${projectsState.undatedCount}"
+                                        else -> null
+                                    }
+                                    if (badge != null) {
+                                        BadgedBox(badge = { Badge { Text(badge) } }) {
                                             Icon(item.icon, contentDescription = item.label)
                                         }
                                     } else {
@@ -204,7 +220,8 @@ fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
                     },
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))
-                    }
+                    },
+                    viewModel = projectsViewModel
                 )
             }
 

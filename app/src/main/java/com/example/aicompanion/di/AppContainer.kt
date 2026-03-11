@@ -21,7 +21,8 @@ class AppContainer(context: Context) {
         database.projectDao(),
         database.sourceDao(),
         syncStateDao,
-        geminiClient
+        geminiClient,
+        context.applicationContext
     )
     val extractor: ActionItemExtractor = GeminiExtractor(geminiClient)
     val transcriptionClient = TranscriptionClient()

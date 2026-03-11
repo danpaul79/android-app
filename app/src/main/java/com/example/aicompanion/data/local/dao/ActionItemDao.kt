@@ -27,6 +27,9 @@ interface ActionItemDao {
     @Query("SELECT COUNT(*) FROM action_items WHERE projectId IS NULL AND isCompleted = 0 AND isTrashed = 0")
     fun getInboxCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM action_items WHERE isCompleted = 0 AND isTrashed = 0 AND dueDate IS NULL AND dropDeadDate IS NULL")
+    fun getUndatedCount(): Flow<Int>
+
     @Query("SELECT * FROM action_items WHERE projectId = :projectId AND isCompleted = 0 AND isTrashed = 0 ORDER BY priority DESC, dueDate ASC, createdAt DESC")
     fun getActiveByProjectId(projectId: Long): Flow<List<ActionItem>>
 

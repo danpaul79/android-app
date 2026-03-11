@@ -19,7 +19,8 @@ data class ProjectsUiState(
     val inboxItems: List<ActionItem> = emptyList(),
     val expandedProjectIds: Set<Long> = emptySet(),
     val inboxExpanded: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val undatedCount: Int = 0
 ) {
     val allExpanded: Boolean
         get() {
@@ -38,6 +39,11 @@ class ProjectsViewModel(application: Application) : AndroidViewModel(application
     val uiState: StateFlow<ProjectsUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            repo.getUndatedCount().collect { count ->
+                _uiState.value = _uiState.value.copy(undatedCount = count)
+            }
+        }
         viewModelScope.launch {
             combine(
                 repo.getAllProjects(),
