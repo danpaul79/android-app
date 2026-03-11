@@ -19,7 +19,7 @@ import com.example.aicompanion.data.local.entity.SyncState
 
 @Database(
     entities = [Project::class, ActionItem::class, Source::class, SyncState::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -34,6 +34,11 @@ abstract class AppDatabase : RoomDatabase() {
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        val MIGRATION_4_5 = migration(4, 5) {
+            it.execSQL("ALTER TABLE action_items ADD COLUMN dropDeadDate INTEGER")
+            it.execSQL("ALTER TABLE action_items ADD COLUMN estimatedMinutes INTEGER NOT NULL DEFAULT 0")
+        }
 
         val MIGRATION_3_4 = migration(3, 4) {
             it.execSQL("ALTER TABLE action_items ADD COLUMN googleTaskId TEXT")
@@ -68,7 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ai_companion.db"
                 )
-                    .addMigrations(MIGRATION_3_4)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { INSTANCE = it }
             }

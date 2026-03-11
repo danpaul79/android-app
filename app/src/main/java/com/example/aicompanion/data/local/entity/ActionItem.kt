@@ -31,6 +31,8 @@ data class ActionItem(
     val text: String,
     val notes: String? = null,
     val dueDate: Long? = null,
+    val dropDeadDate: Long? = null,
+    val estimatedMinutes: Int = 0,
     val priority: Priority = Priority.NONE,
     val isCompleted: Boolean = false,
     val completedAt: Long? = null,

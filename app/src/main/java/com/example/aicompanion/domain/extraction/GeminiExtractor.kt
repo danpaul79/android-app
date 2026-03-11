@@ -21,8 +21,11 @@ class GeminiExtractor(
             ExtractedItem(
                 text = geminiItem.text,
                 dueDate = parseDateToEpoch(geminiItem.dueDate),
+                dropDeadDate = parseDateToEpoch(geminiItem.dropDeadDate),
                 priority = parsePriority(geminiItem.priority),
-                suggestedProject = geminiItem.suggestedProject
+                suggestedProject = geminiItem.suggestedProject,
+                estimatedMinutes = geminiItem.estimatedMinutes ?: 0,
+                suggestedTags = geminiItem.suggestedTags ?: emptyList()
             )
         }
         return ExtractionResult(items = items, newProject = extractionResult.newProject)

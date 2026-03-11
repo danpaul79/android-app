@@ -138,6 +138,36 @@ interface ActionItemDao {
     """)
     fun searchItems(query: String): Flow<List<ActionItem>>
 
+    // --- Scheduling queries ---
+
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND isTrashed = 0
+        ORDER BY
+            CASE WHEN dropDeadDate IS NOT NULL THEN dropDeadDate ELSE 9999999999999 END ASC,
+            priority DESC,
+            CASE WHEN estimatedMinutes > 0 THEN estimatedMinutes ELSE 30 END ASC,
+            createdAt ASC
+    """)
+    suspend fun getActiveItemsForScheduling(): List<ActionItem>
+
+    @Query("UPDATE action_items SET estimatedMinutes = :minutes, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setEstimatedMinutes(id: Long, minutes: Int, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE action_items SET dropDeadDate = :dropDeadDate, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setDropDeadDate(id: Long, dropDeadDate: Long?, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND isTrashed = 0
+        AND updatedAt < :staleThreshold
+        ORDER BY RANDOM()
+        LIMIT :limit
+    """)
+    suspend fun getStaleItems(staleThreshold: Long, limit: Int = 3): List<ActionItem>
+
     // --- Sync queries ---
 
     @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")

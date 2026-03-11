@@ -17,8 +17,11 @@ import java.util.concurrent.TimeUnit
 data class GeminiActionItem(
     val text: String,
     val dueDate: String? = null,
+    val dropDeadDate: String? = null,
     val priority: String? = null,
-    val suggestedProject: String? = null
+    val suggestedProject: String? = null,
+    val estimatedMinutes: Int? = null,
+    val suggestedTags: List<String>? = null
 )
 
 data class GeminiExtractionResult(
@@ -133,7 +136,15 @@ Known projects: ${projectNames.joinToString(", ")}
 {
   "newProject": "project name or null",
   "actionItems": [
-    {"text": "description of the action item", "dueDate": "YYYY-MM-DD or null", "priority": "none|low|medium|high|urgent", "suggestedProject": "project name or null"}
+    {
+      "text": "description of the action item",
+      "dueDate": "YYYY-MM-DD or null",
+      "dropDeadDate": "YYYY-MM-DD or null",
+      "priority": "none|low|medium|high|urgent",
+      "suggestedProject": "project name or null",
+      "estimatedMinutes": 30,
+      "suggestedTags": ["errand", "computer"]
+    }
   ]
 }
 
@@ -143,9 +154,11 @@ $projectSection
 Rules:
 - Each action item should be a clear, concise task
 - Only include genuine action items (things someone needs to do)
-- If a due date is mentioned or implied (including relative dates), include it in YYYY-MM-DD format
-- If no due date is mentioned, set dueDate to null
+- dueDate: a soft/aspirational date if mentioned (e.g. "I want to do this Saturday"). Set to null if not mentioned.
+- dropDeadDate: a true hard deadline — only set if the speaker implies real consequences for missing it (e.g. "must be done by Friday", "deadline is the 15th", "expires on"). Set to null otherwise.
 - Infer priority from language: "urgent"/"ASAP"/"critical" = urgent, "important"/"soon" = high, "when you get a chance"/"low priority" = low, otherwise = none
+- estimatedMinutes: estimate how long the task will realistically take. Use multiples of 10 (10, 20, 30, 60, 90, 120). Quick tasks like calls/emails = 10-20 min. Research/writing = 30-60 min. Complex tasks = 90-120 min.
+- suggestedTags: suggest relevant context tags from this set: ["computer", "errand", "phone-call", "waiting-for", "home", "quick", "creative", "financial"]. Only include tags that clearly apply. Empty array if none fit.
 - If the speaker asks to create/start a new project (e.g. "create a new project called X", "start a project for X", "new project: X"), set "newProject" to the project name. Tasks related to that project should have "suggestedProject" set to the same name.
 - If no new project is requested, set "newProject" to null
 - If no action items exist, return {"actionItems": [], "newProject": null}
@@ -357,11 +370,18 @@ $transcript"""
         val itemsArray = parsed.getJSONArray("actionItems")
         val items = (0 until itemsArray.length()).map { i ->
             val item = itemsArray.getJSONObject(i)
+            val tagsArray = item.optJSONArray("suggestedTags")
+            val tags = if (tagsArray != null) {
+                (0 until tagsArray.length()).map { tagsArray.getString(it) }
+            } else emptyList()
             GeminiActionItem(
                 text = item.getString("text"),
-                dueDate = if (item.isNull("dueDate")) null else item.optString("dueDate"),
+                dueDate = if (item.isNull("dueDate")) null else item.optString("dueDate").takeIf { it.isNotBlank() && it != "null" },
+                dropDeadDate = if (item.isNull("dropDeadDate")) null else item.optString("dropDeadDate").takeIf { it.isNotBlank() && it != "null" },
                 priority = if (item.isNull("priority")) null else item.optString("priority"),
-                suggestedProject = if (item.isNull("suggestedProject")) null else item.optString("suggestedProject")
+                suggestedProject = if (item.isNull("suggestedProject")) null else item.optString("suggestedProject").takeIf { it.isNotBlank() && it != "null" },
+                estimatedMinutes = item.optInt("estimatedMinutes", 0).takeIf { it > 0 },
+                suggestedTags = tags.ifEmpty { null }
             )
         }
         val newProject = if (parsed.has("newProject") && !parsed.isNull("newProject"))

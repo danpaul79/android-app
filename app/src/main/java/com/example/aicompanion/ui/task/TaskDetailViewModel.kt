@@ -76,6 +76,16 @@ class TaskDetailViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch { repo.setDueDate(item.id, dueDate) }
     }
 
+    fun setDropDeadDate(dropDeadDate: Long?) {
+        val item = _uiState.value.item ?: return
+        viewModelScope.launch { repo.setDropDeadDate(item.id, dropDeadDate) }
+    }
+
+    fun setEstimatedMinutes(minutes: Int) {
+        val item = _uiState.value.item ?: return
+        viewModelScope.launch { repo.setEstimatedMinutes(item.id, minutes) }
+    }
+
     fun trashTask() {
         val item = _uiState.value.item ?: return
         collectJob?.cancel()

@@ -31,7 +31,84 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Phase 2 (complete)**: Smarter AI — project-aware extraction, priority inference, auto-extraction, duplicate detection (highlights similar existing tasks in review UI)
 - **Phase 2.5 (complete)**: Voice commands — mic button on Dashboard, Inbox, Project Detail; record → transcribe → AI parses command → executes
 - **Phase 2.75 (complete)**: Google Tasks bi-directional sync
-- **Phase 3**: More input sources — Gmail, SMS, Google Chat
+- **Phase 3 (in progress)**: Capacity-aware scheduling + living task list — see full plan below
+- **Phase 4**: More input sources — Gmail, SMS, Google Chat
+
+## Phase 3 — Capacity-Aware Scheduling & Living Task List
+
+### Vision
+The app becomes a true "second brain" — not just storing tasks but actively managing them. It learns your patterns, prunes stale tasks, and each morning tells you exactly what to work on given the time you have.
+
+### Core concepts
+
+**Effort estimation** (stored as `estimatedMinutes: Int`):
+- AI estimates at extraction time from task text
+- Quick-select in review UI: `< 15 min | ~30 min | ~1 hr | 2 hr+` (stored as 10/30/60/120)
+- User can override on Task Detail screen
+- Unestimated tasks default to 30 min for scheduling purposes
+
+**Drop-dead date** (`dropDeadDate: Long?`):
+- The "holy cow, if I haven't done it by then forget it" date — a true hard deadline
+- Distinct from soft `dueDate` which is aspirational and often slips
+- Dynamic priority: as drop-dead approaches + large effort → auto-escalates to URGENT
+- `dueDate` is now considered a soft hint; `dropDeadDate` is the real anchor
+
+**Context tags** (parsed from `#hashtags` in task notes):
+- Common tags: `#computer`, `#errand`, `#phone-call`, `#waiting-for`, `#home`, `#quick`
+- AI suggests tags at extraction time based on task text
+- `#waiting-for` tasks automatically deprioritized (blocked)
+- Tags stored as derived field, parsed from notes on read (no separate table needed initially)
+- Enable context filtering: "I'm at my computer" → surface only `#computer` tasks
+
+### Phase 3a — Foundation (current)
+- [x] Add `estimatedMinutes` + `dropDeadDate` to ActionItem (DB migration v5)
+- [x] AI estimates effort at extraction time
+- [x] AI suggests context tags at extraction time
+- [ ] Task Detail: edit estimated time + drop-dead date
+- [ ] "Pick my tasks for today" screen: enter capacity → AI recommends tasks
+- [ ] Dynamic priority computation (drop-dead proximity + effort)
+
+### Phase 3b — Context & Tags
+- [ ] Parse `#tags` from notes, display as chips on task cards
+- [ ] Context filter on "pick tasks" screen ("I'm at: computer / errands / home / anywhere")
+- [ ] Dashboard load indicator: "Today: 45 min planned / 60 min capacity"
+- [ ] Voice command support: "plan my day", "I have 45 minutes today"
+
+### Phase 3c — Living Task List (morning check-in)
+- [ ] Morning notification: "Good morning! Quick check-in..."
+  1. Stale task review — pick 2-3 old tasks: "Still relevant? [Yes | Done by someone else | Not needed | Snooze]"
+  2. Capacity question: "How much time do you have today?" (inline reply buttons)
+  3. Today's recommended list (AI-curated, context-aware, respects drop-dead dates)
+- [ ] Notification must support inline quick-reply (not require opening app)
+- [ ] Track task completion patterns to improve future recommendations
+
+### Phase 3d — AI Pattern Learning (future)
+- [ ] Store behavioral patterns (which tasks get done, which rot, time-of-day preferences)
+- [ ] Storage: local Room table initially; long-term consider Google Drive JSON (app is Google-centric)
+- [ ] AI learns: "Dan never does #computer tasks on weekends", "finance tasks take 2x estimates"
+- [ ] Periodic "task rot" detection: surfaces tasks untouched for 2+ weeks with a nudge
+
+### Data model additions (Phase 3a)
+```
+ActionItem gains:
+  estimatedMinutes: Int = 0        // 0 = unestimated; AI-guessed or user-set
+  dropDeadDate: Long? = null       // hard deadline; null = no hard deadline
+  // tags parsed dynamically from notes (#hashtag) — no schema change needed
+```
+
+### "Pick my tasks" algorithm
+1. Lock tasks with drop-dead date (fixed anchors, sort by proximity)
+2. Filter by requested context (if provided)
+3. Exclude `#waiting-for` tasks
+4. Rank remaining: drop-dead proximity → priority → effort fit within remaining capacity
+5. Pack into capacity budget (bin-packing, greedy)
+6. Present as ordered list with total time shown; user can swap items
+
+### Key UX principles
+- **Zero friction at capture** — estimatedMinutes and tags are AI-guessed, never required
+- **Drop-dead date only when it truly matters** — don't encourage soft due dates
+- **Morning check-in is opt-in** — power feature, not annoying default
+- **AI decides, human approves** — always show proposed plan before committing due dates
 
 ## Project Overview
 - **Package**: com.example.aicompanion
@@ -55,7 +132,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 ### Data Model
 ```
 Project (id, name, color, icon, sortOrder, isArchived, isTrashed, createdAt, googleTaskListId, syncVersion)
-ActionItem (id, projectId, sourceId, text, notes, dueDate, priority, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt, googleTaskId, googleTaskListId, syncVersion)
+ActionItem (id, projectId, sourceId, text, notes, dueDate, dropDeadDate, priority, estimatedMinutes, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt, googleTaskId, googleTaskListId, syncVersion)
 Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, processedAt, createdAt)
 SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnabled, googleAccountEmail)
 ```
@@ -63,7 +140,8 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- DB version: 4 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
+- DB version: 5 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
+- v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - Sync fields: `googleTaskId`/`googleTaskListId` link to Google Tasks API; `syncVersion` tracks dirty items for incremental sync
 - Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
 

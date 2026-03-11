@@ -263,10 +263,17 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                 val resolvedProjectId = state.projectId
                     ?: extracted.suggestedProject?.let { projectNameToId[it] }
 
+                val baseTags = extracted.suggestedTags.joinToString(" ") { "#$it" }
+                val existingNotes = null // no notes from extraction yet
+                val notes = listOfNotNull(existingNotes, baseTags.ifBlank { null })
+                    .joinToString("\n").ifBlank { null }
                 ActionItem(
                     text = extracted.text,
                     dueDate = extracted.dueDate,
+                    dropDeadDate = extracted.dropDeadDate,
                     priority = extracted.priority,
+                    estimatedMinutes = extracted.estimatedMinutes,
+                    notes = notes,
                     projectId = resolvedProjectId
                 )
             }

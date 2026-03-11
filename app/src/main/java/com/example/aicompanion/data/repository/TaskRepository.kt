@@ -170,6 +170,51 @@ class TaskRepository(
         markTaskDirty(id)
     }
 
+    suspend fun setDropDeadDate(id: Long, dropDeadDate: Long?) {
+        actionItemDao.setDropDeadDate(id, dropDeadDate)
+        markTaskDirty(id)
+    }
+
+    suspend fun setEstimatedMinutes(id: Long, minutes: Int) {
+        actionItemDao.setEstimatedMinutes(id, minutes)
+        markTaskDirty(id)
+    }
+
+    // --- Scheduling ---
+
+    suspend fun getActiveItemsForScheduling(): List<ActionItem> =
+        actionItemDao.getActiveItemsForScheduling()
+
+    suspend fun getStaleItems(staleDaysThreshold: Int = 14, limit: Int = 3): List<ActionItem> {
+        val threshold = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -staleDaysThreshold)
+        }.timeInMillis
+        return actionItemDao.getStaleItems(threshold, limit)
+    }
+
+    /**
+     * Given a capacity in minutes, returns a prioritized list of tasks that fit.
+     * Hard drop-dead dates take precedence. #waiting-for tasks are excluded.
+     * Unestimated tasks are treated as 30 min.
+     */
+    suspend fun pickTasksForCapacity(capacityMinutes: Int): List<ActionItem> {
+        val allTasks = actionItemDao.getActiveItemsForScheduling()
+        val result = mutableListOf<ActionItem>()
+        var remaining = capacityMinutes
+
+        for (task in allTasks) {
+            // Skip waiting-for tasks
+            if (task.notes?.contains("#waiting-for", ignoreCase = true) == true) continue
+            val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
+            if (estimate <= remaining) {
+                result.add(task)
+                remaining -= estimate
+            }
+            if (remaining <= 0) break
+        }
+        return result
+    }
+
     suspend fun trashTask(id: Long) {
         actionItemDao.trashItem(id)
         markTaskDirty(id)
