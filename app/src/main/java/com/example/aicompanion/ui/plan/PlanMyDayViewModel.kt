@@ -75,11 +75,11 @@ class PlanMyDayViewModel(application: Application) : AndroidViewModel(applicatio
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
-            val dayEnd = dayStart + 24L * 60 * 60 * 1000
             tasks.forEach { task ->
-                // Set due date to today for any task that has no date, is overdue,
-                // or is scheduled for a future date (user chose to do it today).
-                if (task.dueDate == null || task.dueDate < dayStart || task.dueDate >= dayEnd) {
+                // Only set due date to today for tasks with no date or overdue dates.
+                // Tasks with a future due date keep their date — the user set it intentionally
+                // (e.g. "cancel HBO Max on April 18" shouldn't be moved to today).
+                if (task.dueDate == null || task.dueDate < dayStart) {
                     repo.setDueDate(task.id, todayNoon)
                 }
             }

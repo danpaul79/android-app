@@ -709,19 +709,23 @@ private fun TaskRowCard(
                         )
                     }
                 }
-                val displayDate = item.dueDate ?: item.dropDeadDate
-                val isDropDeadOnly = item.dueDate == null && item.dropDeadDate != null
-                if (displayDate != null) {
-                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(displayDate))
-                    val label = if (isDropDeadOnly) "⚠ deadline $dateStr" else dateStr
+                // Due date (soft)
+                if (item.dueDate != null) {
+                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(item.dueDate))
                     Text(
-                        text = label,
+                        text = dateStr,
                         style = MaterialTheme.typography.bodySmall,
-                        color = when {
-                            isOverdue -> MaterialTheme.colorScheme.error
-                            isDropDeadOnly -> MaterialTheme.colorScheme.tertiary
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        color = if (isOverdue) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // Drop-dead date (hard deadline) — always shown when set, even alongside due date
+                if (item.dropDeadDate != null) {
+                    val deadStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(item.dropDeadDate))
+                    Text(
+                        text = "⚠ deadline $deadStr",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
                 val tags = item.parsedTags()
