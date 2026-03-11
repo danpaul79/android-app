@@ -36,6 +36,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.foundation.background
@@ -60,8 +65,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
@@ -104,6 +111,22 @@ fun DashboardScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showQuickAdd by remember { mutableStateOf(false) }
     var showTrashSelectedConfirm by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    fun swipeTrashWithUndo(id: Long, text: String) {
+        viewModel.trashTask(id)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "\"${text.take(30)}${if (text.length > 30) "…" else ""}\" trashed",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoTrash(id)
+            }
+        }
+    }
 
     // Refresh capacity when returning from PlanMyDay (or morning check-in)
     LifecycleResumeEffect(Unit) {
@@ -259,6 +282,11 @@ fun DashboardScreen(
                 }
             }
         },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(snackbarData = data)
+            }
+        },
         bottomBar = {
             if (uiState.isSelectionMode) {
                 DashboardSelectionActionBar(
@@ -372,7 +400,7 @@ fun DashboardScreen(
                             },
                             onLongClick = { viewModel.toggleSelection(item.id) },
                             onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
-                            onSwipeTrash = { viewModel.trashTask(item.id) },
+                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) },
                             isOverdue = true
                         )
                     }
@@ -393,7 +421,7 @@ fun DashboardScreen(
                             },
                             onLongClick = { viewModel.toggleSelection(item.id) },
                             onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
-                            onSwipeTrash = { viewModel.trashTask(item.id) }
+                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
                         )
                     }
                 }
@@ -413,7 +441,7 @@ fun DashboardScreen(
                             },
                             onLongClick = { viewModel.toggleSelection(item.id) },
                             onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
-                            onSwipeTrash = { viewModel.trashTask(item.id) }
+                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
                         )
                     }
                 }
