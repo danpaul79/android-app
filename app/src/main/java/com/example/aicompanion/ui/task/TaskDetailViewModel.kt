@@ -73,7 +73,12 @@ class TaskDetailViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setDueDate(dueDate: Long?) {
         val item = _uiState.value.item ?: return
-        viewModelScope.launch { repo.setDueDate(item.id, dueDate) }
+        viewModelScope.launch { repo.setDueDate(item.id, dueDate, force = true) }
+    }
+
+    fun toggleDueDateLock() {
+        val item = _uiState.value.item ?: return
+        viewModelScope.launch { repo.setDueDateLocked(item.id, !item.dueDateLocked) }
     }
 
     fun setDropDeadDate(dropDeadDate: Long?) {

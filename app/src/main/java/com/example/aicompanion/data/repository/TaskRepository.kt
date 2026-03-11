@@ -183,7 +183,16 @@ class TaskRepository(
     suspend fun getTasksByIds(ids: List<Long>): List<ActionItem> =
         if (ids.isEmpty()) emptyList() else actionItemDao.getByIds(ids)
 
-    suspend fun setDueDate(id: Long, dueDate: Long?) {
+    suspend fun setDueDateLocked(id: Long, locked: Boolean) {
+        actionItemDao.setDueDateLocked(id, locked)
+        markTaskDirty(id)
+    }
+
+    suspend fun setDueDate(id: Long, dueDate: Long?, force: Boolean = false) {
+        if (!force) {
+            val item = actionItemDao.getByIds(listOf(id)).firstOrNull()
+            if (item?.dueDateLocked == true) return
+        }
         actionItemDao.setDueDate(id, dueDate)
         markTaskDirty(id)
         // If rescheduled to a future date, remove from today's plan

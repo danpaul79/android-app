@@ -3,11 +3,16 @@ package com.example.aicompanion.ui.common
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.padding
@@ -28,9 +33,10 @@ fun DateTagsRow(
     dropDeadDate: Long?,
     isOverdue: Boolean,
     tags: List<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dueDateLocked: Boolean = false
 ) {
-    if (dueDate == null && dropDeadDate == null && tags.isEmpty()) return
+    if (dueDate == null && dropDeadDate == null && tags.isEmpty() && !dueDateLocked) return
 
     val fmt = SimpleDateFormat("MMM d", Locale.getDefault())
 
@@ -46,6 +52,14 @@ fun DateTagsRow(
                 color = if (isOverdue) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.primary
             )
+            if (dueDateLocked) {
+                Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = "Due date locked",
+                    modifier = Modifier.size(10.dp).align(Alignment.CenterVertically),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         if (dropDeadDate != null) {
             Text(

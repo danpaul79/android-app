@@ -174,6 +174,7 @@ class VoiceCommandProcessor(
             is VoiceCommand.ChangeDueDate -> {
                 val task = findTask(command.taskName, tasks)
                     ?: return CommandResult(false, "Task not found: \"${command.taskName}\"", command)
+                if (task.dueDateLocked) return CommandResult(false, "Due date is locked: ${task.text}", command)
                 repo.setDueDate(task.id, command.dueDate)
                 val dateStr = command.dueDate?.let {
                     SimpleDateFormat("MMM d", Locale.getDefault()).format(it)

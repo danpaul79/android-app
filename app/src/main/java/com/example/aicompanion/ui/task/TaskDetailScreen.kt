@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.FilterChip
@@ -242,6 +244,15 @@ fun TaskDetailScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+                IconButton(onClick = { viewModel.toggleDueDateLock() }) {
+                    Icon(
+                        if (item.dueDateLocked) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                        contentDescription = if (item.dueDateLocked) "Unlock due date" else "Lock due date",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (item.dueDateLocked) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 

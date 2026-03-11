@@ -70,5 +70,6 @@ data class ActionItem(
     val updatedAt: Long = System.currentTimeMillis(),
     val googleTaskId: String? = null,
     val googleTaskListId: String? = null,
-    val syncVersion: Long = 0
+    val syncVersion: Long = 0,
+    val dueDateLocked: Boolean = false
 )

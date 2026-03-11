@@ -87,6 +87,9 @@ interface ActionItemDao {
     @Query("UPDATE action_items SET dueDate = :dueDate, updatedAt = :updatedAt WHERE id = :id")
     suspend fun setDueDate(id: Long, dueDate: Long?, updatedAt: Long = System.currentTimeMillis())
 
+    @Query("UPDATE action_items SET dueDateLocked = :locked, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setDueDateLocked(id: Long, locked: Boolean, updatedAt: Long = System.currentTimeMillis())
+
     @Query("UPDATE action_items SET text = :text, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateText(id: Long, text: String, updatedAt: Long = System.currentTimeMillis())
 
