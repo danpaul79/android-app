@@ -271,25 +271,52 @@ class TaskRepository(
      *                   (untagged tasks are always eligible — they have no context restriction).
      */
     suspend fun pickTasksForCapacity(capacityMinutes: Int, contextTag: String? = null): List<ActionItem> {
-        val urgentThreshold = System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000
-        val allTasks = actionItemDao.getActiveItemsForScheduling(urgentThreshold)
-            .sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
-                .thenBy { it.dropDeadDate ?: Long.MAX_VALUE }
-                .thenBy { if (it.estimatedMinutes > 0) it.estimatedMinutes else 30 })
-        val result = mutableListOf<ActionItem>()
-        var remaining = capacityMinutes
+        val now = System.currentTimeMillis()
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val dayEnd = dayStart + 24L * 60 * 60 * 1000
 
-        for (task in allTasks) {
+        val urgentThreshold = now + 14L * 24 * 60 * 60 * 1000
+        val allTasks = actionItemDao.getActiveItemsForScheduling(urgentThreshold)
+
+        fun isEligible(task: ActionItem): Boolean {
             val notes = task.notes ?: ""
-            // Skip waiting-for tasks
-            if (notes.contains("#waiting-for", ignoreCase = true)) continue
-            // Context filter: if a tag is requested, only include tasks that have that tag
-            // OR tasks that have no tags at all (untagged tasks are context-agnostic)
+            if (notes.contains("#waiting-for", ignoreCase = true)) return false
             if (contextTag != null) {
                 val hasTags = Regex("#[\\w-]+").containsMatchIn(notes)
                 val hasContextTag = notes.contains("#$contextTag", ignoreCase = true)
-                if (hasTags && !hasContextTag) continue
+                if (hasTags && !hasContextTag) return false
             }
+            return true
+        }
+
+        // Bucket 1: overdue + today tasks (dueDate < dayEnd), or tasks with a
+        //   drop-dead date within 7 days regardless of due date
+        // Bucket 2: undated tasks (dueDate == null)
+        // Bucket 3: future tasks (due after today) — only pulled in if capacity remains
+        val bucket1 = allTasks.filter { isEligible(it) &&
+            ((it.dueDate != null && it.dueDate < dayEnd) ||
+             (it.dropDeadDate != null && it.dropDeadDate < now + 7L * 24 * 60 * 60 * 1000))
+        }.sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
+            .thenBy { it.dropDeadDate ?: Long.MAX_VALUE }
+            .thenBy { it.dueDate ?: Long.MAX_VALUE })
+
+        val bucket2 = allTasks.filter { isEligible(it) && it.dueDate == null && it.dropDeadDate == null }
+            .sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
+                .thenBy { if (it.estimatedMinutes > 0) it.estimatedMinutes else 30 })
+
+        val bucket3 = allTasks.filter { isEligible(it) &&
+            it.dueDate != null && it.dueDate >= dayEnd &&
+            (it.dropDeadDate == null || it.dropDeadDate >= now + 7L * 24 * 60 * 60 * 1000)
+        }.sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
+            .thenBy { it.dueDate ?: Long.MAX_VALUE })
+
+        val result = mutableListOf<ActionItem>()
+        var remaining = capacityMinutes
+
+        for (task in bucket1 + bucket2 + bucket3) {
             val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
             if (estimate <= remaining) {
                 result.add(task)

@@ -84,26 +84,33 @@ object SyncMappers {
 
     /**
      * Parses an RFC 3339 date string and converts to local noon millis.
-     * Google Tasks "due" is date-only (e.g., "2024-03-15T00:00:00.000Z").
-     * We convert to local noon to match the existing utcPickerToLocalNoon() pattern.
+     * Google Tasks "due" is date-only (e.g., "2026-03-11T00:00:00.000Z").
+     * The string encodes a *local* date — we must extract year/month/day from
+     * the string directly and build a local-timezone Calendar at noon, rather
+     * than parsing as UTC and adjusting hours (which shifts the date for users
+     * in negative-UTC-offset timezones).
      */
     fun parseRfc3339ToLocalNoon(dateStr: String): Long {
-        val utcDate = try {
-            rfc3339DateOnly.parse(dateStr)
-        } catch (e: Exception) {
-            try { rfc3339Full.parse(dateStr) } catch (e2: Exception) { null }
-        } ?: return System.currentTimeMillis()
-
-        // Convert UTC midnight to local noon
-        val cal = Calendar.getInstance().apply {
-            time = utcDate
-            // The parsed date is UTC midnight — set to local noon of that date
-            set(Calendar.HOUR_OF_DAY, 12)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+        // Extract yyyy-MM-dd from the front of the string regardless of format
+        val datePart = dateStr.take(10) // "2026-03-11"
+        val parts = datePart.split("-")
+        if (parts.size == 3) {
+            val year = parts[0].toIntOrNull()
+            val month = parts[1].toIntOrNull()
+            val day = parts[2].toIntOrNull()
+            if (year != null && month != null && day != null) {
+                return Calendar.getInstance().apply {
+                    set(year, month - 1, day, 12, 0, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+            }
         }
-        return cal.timeInMillis
+        // Fallback: parse UTC and return as-is
+        return try {
+            rfc3339DateOnly.parse(dateStr)?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
     }
 
     fun parseRfc3339(dateStr: String): Long? {
