@@ -754,6 +754,7 @@ private fun TodaysPlanCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CapacityIndicatorRow(
     plannedMinutes: Int,
