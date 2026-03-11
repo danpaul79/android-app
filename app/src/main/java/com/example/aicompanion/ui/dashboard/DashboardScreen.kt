@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
@@ -60,6 +61,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
@@ -102,6 +104,13 @@ fun DashboardScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showQuickAdd by remember { mutableStateOf(false) }
     var showTrashSelectedConfirm by remember { mutableStateOf(false) }
+
+    // Refresh capacity when returning from PlanMyDay (or morning check-in)
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshCapacity()
+        viewModel.loadTodaysPlan()
+        onPauseOrDispose {}
+    }
 
     if (showTrashSelectedConfirm) {
         val count = uiState.selectedIds.size
@@ -223,6 +232,9 @@ fun DashboardScreen(
                 TopAppBar(
                     title = { Text("Pocket Pilot") },
                     actions = {
+                        IconButton(onClick = onNavigateToPlanMyDay) {
+                            Icon(Icons.Filled.Today, contentDescription = "Plan My Day")
+                        }
                         IconButton(onClick = onNavigateToSearch) {
                             Icon(Icons.Filled.Search, contentDescription = "Search tasks")
                         }
