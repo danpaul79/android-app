@@ -182,7 +182,7 @@ fun InboxScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) } }
     ) { innerPadding ->
-    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         TopAppBar(
             title = {
                 if (uiState.isSelectionMode) {
@@ -276,8 +276,9 @@ fun InboxScreen(
                 )
             }
         }
-    } // end Scaffold
-}
+    }
+}  // Scaffold
+}  // InboxScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
