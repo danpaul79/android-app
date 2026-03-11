@@ -76,11 +76,20 @@ class PlanMyDayViewModel(application: Application) : AndroidViewModel(applicatio
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
             tasks.forEach { task ->
-                // Only set due date to today for tasks with no date or overdue dates.
-                // Tasks with a future due date keep their date — the user set it intentionally
-                // (e.g. "cancel HBO Max on April 18" shouldn't be moved to today).
-                if (task.dueDate == null || task.dueDate < dayStart) {
-                    repo.setDueDate(task.id, todayNoon)
+                when {
+                    // No date or overdue → just set to today
+                    task.dueDate == null || task.dueDate < dayStart -> {
+                        repo.setDueDate(task.id, todayNoon)
+                    }
+                    // Future due date → move to today, promote old due date to drop-dead
+                    // (only if no drop-dead date already set — don't overwrite user's hard deadline)
+                    task.dueDate >= dayStart + 24L * 60 * 60 * 1000 -> {
+                        if (task.dropDeadDate == null) {
+                            repo.setDropDeadDate(task.id, task.dueDate)
+                        }
+                        repo.setDueDate(task.id, todayNoon)
+                    }
+                    // Already due today → leave as-is
                 }
             }
 

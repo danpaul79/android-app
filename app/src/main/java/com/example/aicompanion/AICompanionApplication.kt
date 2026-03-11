@@ -10,7 +10,6 @@ import androidx.work.WorkManager
 import com.example.aicompanion.data.sync.SyncWorker
 import com.example.aicompanion.di.AppContainer
 import com.example.aicompanion.reminder.MorningCheckInWorker
-import com.example.aicompanion.reminder.ReminderWorker
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.util.concurrent.TimeUnit
 
@@ -22,7 +21,9 @@ class AICompanionApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         initCrashlytics()
-        scheduleReminderWorker()
+        // ReminderWorker (hourly due-date pings) disabled — fires at wrong times until
+        // we add per-task time-of-day support. Morning check-in handles daily planning.
+        cancelReminderWorker()
         scheduleSyncWorker()
         MorningCheckInWorker.schedule(this)
     }
@@ -38,16 +39,8 @@ class AICompanionApplication : Application() {
         }
     }
 
-    private fun scheduleReminderWorker() {
-        val workRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
-            1, TimeUnit.HOURS
-        ).build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "reminder_check",
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )
+    private fun cancelReminderWorker() {
+        WorkManager.getInstance(this).cancelUniqueWork("reminder_check")
     }
 
     private fun scheduleSyncWorker() {
