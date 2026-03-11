@@ -188,4 +188,7 @@ interface ActionItemDao {
 
     @Query("UPDATE action_items SET syncVersion = :syncVersion WHERE projectId = :projectId")
     suspend fun updateSyncVersionByProjectId(projectId: Long, syncVersion: Long)
+
+    @Query("SELECT * FROM action_items WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<ActionItem>
 }

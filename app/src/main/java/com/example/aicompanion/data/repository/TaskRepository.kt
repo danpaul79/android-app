@@ -168,6 +168,9 @@ class TaskRepository(
         markTaskDirty(id)
     }
 
+    suspend fun getTasksByIds(ids: List<Long>): List<ActionItem> =
+        if (ids.isEmpty()) emptyList() else actionItemDao.getByIds(ids)
+
     suspend fun setDueDate(id: Long, dueDate: Long?) {
         actionItemDao.setDueDate(id, dueDate)
         markTaskDirty(id)
