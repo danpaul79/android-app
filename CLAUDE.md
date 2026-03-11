@@ -1,12 +1,13 @@
-# AI Companion — Personal Task Hub
+# Pocket Pilot — Personal Task Hub
 
 ## Vision
 A "second brain" that ingests tasks from multiple sources (voice notes, email, texts, chat), extracts action items using AI, and organizes them into projects. The user interacts primarily with **tasks organized by project**, not with individual voice notes or messages. Sources are just how items arrive.
 
 ## Current Status
-**Phase 1+ complete.** Core task hub is fully operational with multi-select, trash, and batch editing. See `RESTRUCTURE_PLAN.md` for the full plan.
+**Phases 1–3a complete.** Core task hub + capacity-aware scheduling foundation operational.
 
 ### What works now:
+- **App name**: Pocket Pilot
 - **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash; search, trash, and settings icons in top bar
 - **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
 - **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash; confirmation dialogs on all trash actions
@@ -15,23 +16,29 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel; text input option
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save
 - **Project creation from voice**: say "create a new project called X" during recording; AI detects intent, creates project, assigns extracted tasks
-- **Voice commands**: persistent bar above bottom nav on all main screens; record or type commands; supports multiple commands in one prompt; say "create task X", "complete Y", "change due date of Z to Friday", "move task to project W", "delete task", "rename task"
+- **Voice commands**: persistent bar above bottom nav on all main screens; record or type commands; supports multiple commands in one prompt; say "create task X", "complete Y", "change due date of Z to Friday", "set drop dead date for X to July 25", "move task to project W", "delete task", "rename task"
 - **Transcript-only mode**: toggle on Capture screen to skip extraction and just get a transcript
-- **Task Detail**: view/edit task name, change due date, change project, add notes, see source info; confirmation dialog on trash
+- **Task Detail**: view/edit task name, change due date, set drop-dead date (hard deadline, warning color), effort estimate chips (10m/20m/30m/1h/90m/2h+), change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
-- **Settings**: gear icon in Dashboard; export/import data (JSON backup); voice history with transcript viewer (voice notes + voice command logs with transcript and actions taken); Google Tasks sync toggle
+- **Settings**: gear icon in Dashboard; export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
+- **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; tapping plan opens app
+- **Effort estimates**: `estimatedMinutes` on every task; AI-guessed at extraction, user-editable in Task Detail; enrichment batch-backfills existing tasks; unestimated = 30m default for scheduling
+- **Drop-dead dates**: `dropDeadDate` separate from soft `dueDate`; voice command "set drop dead date"; Task Detail picker with warning styling
+- **Context tags**: `#hashtags` in task notes; AI suggests at extraction; `#waiting-for` excluded from scheduling
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
 - CI/CD: push to main → GitHub Actions → Firebase App Distribution
 
 ### Next phases:
-- **Phase 2 (complete)**: Smarter AI — project-aware extraction, priority inference, auto-extraction, duplicate detection (highlights similar existing tasks in review UI)
-- **Phase 2.5 (complete)**: Voice commands — mic button on Dashboard, Inbox, Project Detail; record → transcribe → AI parses command → executes
+- **Phase 2 (complete)**: Smarter AI — project-aware extraction, priority inference, auto-extraction, duplicate detection
+- **Phase 2.5 (complete)**: Voice commands — mic button on Dashboard, Inbox, Project Detail; multi-command support
 - **Phase 2.75 (complete)**: Google Tasks bi-directional sync
-- **Phase 3 (in progress)**: Capacity-aware scheduling + living task list — see full plan below
+- **Phase 3a (complete)**: Effort estimates, drop-dead dates, context tags, AI enrichment, morning check-in notification
+- **Phase 3b (next)**: Context & tags UI, "pick my tasks" in-app screen, dashboard capacity indicator
+- **Phase 3c (partial)**: Morning check-in notification done; stale task review in notification TBD
 - **Phase 4**: More input sources — Gmail, SMS, Google Chat
 
 ## Phase 3 — Capacity-Aware Scheduling & Living Task List
@@ -60,12 +67,15 @@ The app becomes a true "second brain" — not just storing tasks but actively ma
 - Tags stored as derived field, parsed from notes on read (no separate table needed initially)
 - Enable context filtering: "I'm at my computer" → surface only `#computer` tasks
 
-### Phase 3a — Foundation (current)
+### Phase 3a — Foundation (complete)
 - [x] Add `estimatedMinutes` + `dropDeadDate` to ActionItem (DB migration v5)
-- [x] AI estimates effort at extraction time
+- [x] AI estimates effort at extraction time; strengthened prompt always returns a guess
 - [x] AI suggests context tags at extraction time
-- [ ] Task Detail: edit estimated time + drop-dead date
-- [ ] "Pick my tasks for today" screen: enter capacity → AI recommends tasks
+- [x] Task Detail: drop-dead date picker (warning color) + effort estimate chips
+- [x] AI enrichment in Settings: bulk backfill effort + tags for existing tasks
+- [x] Voice command: "set drop dead date" correctly sets dropDeadDate (not dueDate)
+- [x] `pickTasksForCapacity()` in TaskRepository (bin-pack, excludes #waiting-for)
+- [ ] "Pick my tasks for today" in-app screen
 - [ ] Dynamic priority computation (drop-dead proximity + effort)
 
 ### Phase 3b — Context & Tags
@@ -75,11 +85,10 @@ The app becomes a true "second brain" — not just storing tasks but actively ma
 - [ ] Voice command support: "plan my day", "I have 45 minutes today"
 
 ### Phase 3c — Living Task List (morning check-in)
-- [ ] Morning notification: "Good morning! Quick check-in..."
-  1. Stale task review — pick 2-3 old tasks: "Still relevant? [Yes | Done by someone else | Not needed | Snooze]"
-  2. Capacity question: "How much time do you have today?" (inline reply buttons)
-  3. Today's recommended list (AI-curated, context-aware, respects drop-dead dates)
-- [ ] Notification must support inline quick-reply (not require opening app)
+- [x] Morning notification: capacity buttons (30m/1h/90m/2h/3h); follow-up shows task plan
+- [x] Settings: toggle + hour picker for notification time
+- [x] MorningCheckInWorker (WorkManager daily periodic), MorningActionReceiver (BroadcastReceiver)
+- [ ] Stale task review in notification: 2-3 old tasks with "Still relevant? [Yes | Done | Not needed]"
 - [ ] Track task completion patterns to improve future recommendations
 
 ### Phase 3d — AI Pattern Learning (future)
@@ -127,7 +136,7 @@ ActionItem gains:
 ## Architecture
 - Single-activity app (MainActivity) with Compose Navigation
 - Manual DI via `AppContainer` in `di/` (no Hilt)
-- WorkManager for hourly reminder checks and 30-min Google Tasks sync
+- WorkManager for hourly reminder checks, 30-min Google Tasks sync, and daily morning check-in
 
 ### Data Model
 ```
@@ -171,9 +180,10 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `ui/capture/` - Capture screen (voice notes + future sources)
 - `ui/task/` - Task detail/edit screen
 - `ui/voicecommand/` - Persistent voice command bar + ViewModel (record → transcribe → parse → execute); text input mode
-- `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution, multi-command support)
+- `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution, multi-command support; supports set_drop_dead_date)
+- `reminder/` - NotificationHelper, ReminderWorker (hourly due-date reminders), MorningCheckInWorker, MorningActionReceiver, MorningPreferences, MorningNotificationHelper
 - `ui/search/` - Search screen (task name + notes search)
-- `ui/settings/` - Settings screen (export/import, voice history incl. command logs, transcript viewer)
+- `ui/settings/` - Settings screen (export/import, AI enrichment, voice history, Google Tasks sync, morning check-in)
 - `ui/trash/` - Trash screen (restore / permanent delete)
 
 ## Transcription
@@ -246,7 +256,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - Keep screen on during recording (via `View.keepScreenOn`)
 - Files saved to app's external files dir under `recordings/`
 - File picker supports `audio/*` MIME types
-- Transcripts saved as .txt alongside audio + to Downloads/AI Companion
+- Transcripts saved as .txt alongside audio + to Downloads/Pocket Pilot
 - Raw Deepgram JSON also saved alongside for future analysis
 
 ## Related Projects
