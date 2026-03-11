@@ -112,6 +112,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch { repo.trashTask(id) }
     }
 
+    fun undoTrash(id: Long) {
+        viewModelScope.launch { repo.restoreTask(id) }
+    }
+
     fun trashSelected() {
         val ids = _uiState.value.selectedIds.toList()
         viewModelScope.launch {
