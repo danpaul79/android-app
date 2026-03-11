@@ -108,4 +108,35 @@ class MorningPlanStore(context: Context) {
      * of date. Returns null if the user has never set a capacity.
      */
     fun getLastCapacityMinutes(): Int? = loadHistory().firstOrNull()?.capacityMinutes
+
+    /**
+     * Removes a task from today's plan (the most recent history entry) if it's present.
+     * Called when a task is completed, trashed, or rescheduled to a future date.
+     */
+    fun removeTaskFromPlan(taskId: Long) {
+        val history = loadHistory().toMutableList()
+        if (history.isEmpty()) return
+        val latest = history[0]
+        val filtered = latest.tasks.filter { it.id != taskId }
+        if (filtered.size == latest.tasks.size) return // task not in plan, nothing to do
+        history[0] = latest.copy(tasks = filtered)
+        val arr = JSONArray()
+        history.forEach { entry ->
+            val obj = JSONObject().apply {
+                put("timestamp", entry.timestamp)
+                put("capacityMinutes", entry.capacityMinutes)
+                val taskArr = JSONArray()
+                entry.tasks.forEach { t ->
+                    taskArr.put(JSONObject().apply {
+                        put("id", t.id)
+                        put("text", t.text)
+                        put("estimatedMinutes", t.estimatedMinutes)
+                    })
+                }
+                put("tasks", taskArr)
+            }
+            arr.put(obj)
+        }
+        prefs.edit().putString("history", arr.toString()).apply()
+    }
 }

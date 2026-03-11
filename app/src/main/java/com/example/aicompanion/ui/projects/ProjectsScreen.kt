@@ -3,11 +3,15 @@ package com.example.aicompanion.ui.projects
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,16 +22,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -56,9 +64,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
+import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
-import com.example.aicompanion.ui.common.DateLine
-import com.example.aicompanion.ui.common.TagChipsRow
+import com.example.aicompanion.ui.common.DateTagsRow
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +75,7 @@ fun ProjectsScreen(
     onNavigateToProject: (Long) -> Unit,
     onNavigateToTrash: () -> Unit,
     onNavigateToTask: (Long) -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     viewModel: ProjectsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -95,13 +104,16 @@ fun ProjectsScreen(
             TopAppBar(
                 title = { Text("Projects") },
                 actions = {
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(Icons.Filled.Search, contentDescription = "Search tasks")
+                    }
                     // "No date" filter toggle
                     IconButton(onClick = { showUndatedOnly = !showUndatedOnly }) {
                         Icon(
-                            if (showUndatedOnly) Icons.Filled.CheckCircle else Icons.Filled.CheckCircle,
+                            Icons.Filled.FilterList,
                             contentDescription = if (showUndatedOnly) "Show all tasks" else "Show undated tasks only",
                             tint = if (showUndatedOnly) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                                   else MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                     // Expand/Collapse all toggle
@@ -148,11 +160,17 @@ fun ProjectsScreen(
             // Filter label
             if (showUndatedOnly) {
                 item(key = "filter_label") {
-                    Text(
-                        "Showing undated tasks only",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    AssistChip(
+                        onClick = { showUndatedOnly = false },
+                        label = { Text("Undated tasks only") },
+                        trailingIcon = {
+                            Icon(Icons.Filled.Close, "Clear filter", Modifier.size(16.dp))
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            trailingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     )
                 }
             }
@@ -321,6 +339,13 @@ private fun InlineTaskCard(
         set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
     }.timeInMillis
     val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
+    val effPriority = item.effectivePriority()
+    val priorityColor = when (effPriority) {
+        Priority.URGENT -> MaterialTheme.colorScheme.error
+        Priority.HIGH   -> MaterialTheme.colorScheme.tertiary
+        Priority.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        else            -> androidx.compose.ui.graphics.Color.Transparent
+    }
 
     Card(
         modifier = Modifier
@@ -339,14 +364,24 @@ private fun InlineTaskCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(priorityColor)
+            )
             Checkbox(
                 checked = item.isCompleted,
                 onCheckedChange = { onToggle() }
             )
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 0.dp, top = 4.dp, bottom = 4.dp)
+            ) {
                 Text(
                     text = item.text,
                     style = MaterialTheme.typography.bodyMedium,
@@ -354,15 +389,12 @@ private fun InlineTaskCard(
                     overflow = TextOverflow.Ellipsis,
                     textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                 )
-                DateLine(
+                DateTagsRow(
                     dueDate = item.dueDate,
                     dropDeadDate = item.dropDeadDate,
-                    isOverdue = isOverdue
+                    isOverdue = isOverdue,
+                    tags = item.parsedTags()
                 )
-                val tags = item.parsedTags()
-                if (tags.isNotEmpty()) {
-                    TagChipsRow(tags = tags)
-                }
             }
             IconButton(onClick = onTrash) {
                 Icon(

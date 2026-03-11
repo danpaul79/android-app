@@ -5,8 +5,10 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -80,8 +82,7 @@ import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.reminder.MorningPlanStore
-import com.example.aicompanion.ui.common.DateLine
-import com.example.aicompanion.ui.common.TagChipsRow
+import com.example.aicompanion.ui.common.DateTagsRow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -662,6 +663,13 @@ private fun TaskRowCard(
     onLongClick: () -> Unit,
     isOverdue: Boolean
 ) {
+    val effPriority = item.effectivePriority()
+    val priorityColor = when (effPriority) {
+        Priority.URGENT -> MaterialTheme.colorScheme.error
+        Priority.HIGH   -> MaterialTheme.colorScheme.tertiary
+        Priority.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        else            -> androidx.compose.ui.graphics.Color.Transparent
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -676,49 +684,38 @@ private fun TaskRowCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(priorityColor)
+            )
             if (isSelectionMode) {
                 Checkbox(checked = isSelected, onCheckedChange = { onClick() })
             } else {
                 Checkbox(checked = item.isCompleted, onCheckedChange = { onToggle() })
             }
-            Column(modifier = Modifier.weight(1f)) {
-                val effPriority = item.effectivePriority()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = item.text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (effPriority != Priority.NONE) {
-                        val (label, color) = when (effPriority) {
-                            Priority.URGENT -> "!!!" to MaterialTheme.colorScheme.error
-                            Priority.HIGH   -> "!!" to MaterialTheme.colorScheme.tertiary
-                            Priority.MEDIUM -> "!" to MaterialTheme.colorScheme.onSurfaceVariant
-                            else            -> "·" to MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = color,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-                    }
-                }
-                DateLine(
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp, top = 4.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    text = item.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
+                )
+                DateTagsRow(
                     dueDate = item.dueDate,
                     dropDeadDate = item.dropDeadDate,
-                    isOverdue = isOverdue
+                    isOverdue = isOverdue,
+                    tags = item.parsedTags()
                 )
-                val tags = item.parsedTags()
-                if (tags.isNotEmpty()) {
-                    TagChipsRow(tags = tags)
-                }
             }
         }
     }

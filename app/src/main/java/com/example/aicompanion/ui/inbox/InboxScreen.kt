@@ -5,8 +5,10 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
@@ -67,8 +70,8 @@ import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
-import com.example.aicompanion.ui.common.DateLine
-import com.example.aicompanion.ui.common.TagChipsRow
+import androidx.compose.foundation.background
+import com.example.aicompanion.ui.common.DateTagsRow
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -88,6 +91,7 @@ private fun utcPickerToLocalNoon(utcMillis: Long): Long {
 @Composable
 fun InboxScreen(
     onNavigateToTask: (Long) -> Unit,
+    onNavigateToSearch: () -> Unit = {},
     viewModel: InboxViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -199,6 +203,10 @@ fun InboxScreen(
                     }
                     IconButton(onClick = { viewModel.clearSelection() }) {
                         Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+                    }
+                } else {
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(Icons.Filled.Search, contentDescription = "Search tasks")
                     }
                 }
             },
@@ -381,6 +389,19 @@ private fun InboxItemCard(
 ) {
     var showProjectMenu by remember { mutableStateOf(false) }
 
+    val effPriority = item.effectivePriority()
+    val priorityColor = when (effPriority) {
+        Priority.URGENT -> MaterialTheme.colorScheme.error
+        Priority.HIGH   -> MaterialTheme.colorScheme.tertiary
+        Priority.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        else            -> androidx.compose.ui.graphics.Color.Transparent
+    }
+    val dayStart = java.util.Calendar.getInstance().apply {
+        set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+        set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+    val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -399,9 +420,15 @@ private fun InboxItemCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(priorityColor)
+            )
             if (isSelectionMode) {
                 Checkbox(
                     checked = isSelected,
@@ -413,44 +440,23 @@ private fun InboxItemCard(
                     onCheckedChange = { onToggle() }
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
-                val effPriority = item.effectivePriority()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = item.text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (effPriority != Priority.NONE) {
-                        val (label, color) = when (effPriority) {
-                            Priority.URGENT -> "!!!" to MaterialTheme.colorScheme.error
-                            Priority.HIGH   -> "!!" to MaterialTheme.colorScheme.tertiary
-                            Priority.MEDIUM -> "!" to MaterialTheme.colorScheme.onSurfaceVariant
-                            else            -> "·" to MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = color,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-                    }
-                }
-                val dayStart = java.util.Calendar.getInstance().apply {
-                    set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
-                    set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
-                }.timeInMillis
-                DateLine(
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 0.dp, top = 4.dp, bottom = 4.dp)
+            ) {
+                Text(
+                    text = item.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                DateTagsRow(
                     dueDate = item.dueDate,
                     dropDeadDate = item.dropDeadDate,
-                    isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
+                    isOverdue = isOverdue,
+                    tags = item.parsedTags()
                 )
-                val tags = item.parsedTags()
-                if (tags.isNotEmpty()) {
-                    TagChipsRow(tags = tags)
-                }
             }
 
             if (!isSelectionMode) {

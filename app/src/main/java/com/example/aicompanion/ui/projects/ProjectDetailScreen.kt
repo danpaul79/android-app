@@ -2,10 +2,14 @@ package com.example.aicompanion.ui.projects
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,9 +60,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.data.local.entity.Priority
+import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
-import com.example.aicompanion.ui.common.DateLine
-import com.example.aicompanion.ui.common.TagChipsRow
+import com.example.aicompanion.ui.common.DateTagsRow
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -413,6 +418,13 @@ private fun ProjectTaskCard(
         set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
     }.timeInMillis
     val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
+    val effPriority = item.effectivePriority()
+    val priorityColor = when (effPriority) {
+        Priority.URGENT -> MaterialTheme.colorScheme.error
+        Priority.HIGH   -> MaterialTheme.colorScheme.tertiary
+        Priority.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        else            -> androidx.compose.ui.graphics.Color.Transparent
+    }
 
     Card(
         modifier = Modifier
@@ -434,9 +446,15 @@ private fun ProjectTaskCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(priorityColor)
+            )
             if (isSelectionMode) {
                 Checkbox(
                     checked = isSelected,
@@ -448,7 +466,11 @@ private fun ProjectTaskCard(
                     onCheckedChange = { onToggle() }
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 0.dp, top = 4.dp, bottom = 4.dp)
+            ) {
                 Text(
                     text = item.text,
                     style = MaterialTheme.typography.bodyMedium,
@@ -456,15 +478,12 @@ private fun ProjectTaskCard(
                     overflow = TextOverflow.Ellipsis,
                     textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                 )
-                DateLine(
+                DateTagsRow(
                     dueDate = item.dueDate,
                     dropDeadDate = item.dropDeadDate,
-                    isOverdue = isOverdue
+                    isOverdue = isOverdue,
+                    tags = item.parsedTags()
                 )
-                val tags = item.parsedTags()
-                if (tags.isNotEmpty()) {
-                    TagChipsRow(tags = tags)
-                }
             }
             if (!isSelectionMode) {
                 IconButton(onClick = onTrash) {

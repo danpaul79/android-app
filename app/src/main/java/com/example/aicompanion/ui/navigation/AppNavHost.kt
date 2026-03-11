@@ -188,6 +188,9 @@ fun AppNavHost(
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))
                     },
+                    onNavigateToSearch = {
+                        navController.navigate("search")
+                    },
                     viewModel = inboxViewModel
                 )
             }
@@ -220,6 +223,9 @@ fun AppNavHost(
                     },
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                    },
+                    onNavigateToSearch = {
+                        navController.navigate("search")
                     },
                     viewModel = projectsViewModel
                 )

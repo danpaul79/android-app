@@ -3,6 +3,8 @@ package com.example.aicompanion.ui.search
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -44,9 +47,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.example.aicompanion.data.local.entity.parsedTags
+import com.example.aicompanion.ui.common.DateTagsRow
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,23 +113,30 @@ fun SearchScreen(
 
             if (uiState.query.isBlank()) {
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            Icons.Filled.Search, null,
-                            modifier = Modifier.height(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    if (uiState.popularTags.isNotEmpty()) {
+                        TagBrowseEmptyState(
+                            popularTags = uiState.popularTags,
+                            onTagClick = { tag -> viewModel.onQueryChange("#$tag") }
                         )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Search by task name or notes",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Filled.Search, null,
+                                modifier = Modifier.height(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Search by task name or notes",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             } else if (uiState.results.isEmpty() && !uiState.isSearching) {
@@ -159,6 +169,12 @@ private fun SearchResultCard(
     onClick: () -> Unit,
     onToggle: () -> Unit
 ) {
+    val dayStart = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+    val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -184,15 +200,43 @@ private fun SearchResultCard(
                     overflow = TextOverflow.Ellipsis,
                     textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (item.dueDate != null) {
-                        val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(item.dueDate))
-                        Text(dateStr, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                    }
-                    if (item.isCompleted) {
-                        Text("Completed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
+                DateTagsRow(
+                    dueDate = item.dueDate,
+                    dropDeadDate = item.dropDeadDate,
+                    isOverdue = isOverdue,
+                    tags = item.parsedTags()
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagBrowseEmptyState(
+    popularTags: List<Pair<String, Int>>,
+    onTagClick: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            "Browse by tag",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            popularTags.forEach { (tag, count) ->
+                AssistChip(
+                    onClick = { onTagClick(tag) },
+                    label = { Text("#$tag ($count)") }
+                )
             }
         }
     }

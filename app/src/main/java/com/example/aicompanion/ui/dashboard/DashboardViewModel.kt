@@ -89,7 +89,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun toggleCompleted(itemId: Long, completed: Boolean) {
-        viewModelScope.launch { repo.toggleCompleted(itemId, completed) }
+        viewModelScope.launch {
+            repo.toggleCompleted(itemId, completed)
+            if (completed) loadTodaysPlan()
+        }
     }
 
     fun toggleSelection(id: Long) {
@@ -109,7 +112,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun trashTask(id: Long) {
-        viewModelScope.launch { repo.trashTask(id) }
+        viewModelScope.launch {
+            repo.trashTask(id)
+            loadTodaysPlan()
+        }
     }
 
     fun undoTrash(id: Long) {

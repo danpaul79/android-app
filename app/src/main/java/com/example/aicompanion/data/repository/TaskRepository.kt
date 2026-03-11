@@ -13,6 +13,7 @@ import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.Source
 import com.example.aicompanion.data.export.ExportData
 import com.example.aicompanion.network.GeminiClient
+import com.example.aicompanion.reminder.MorningPlanStore
 import com.example.aicompanion.widget.TodayPlanWidget
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
@@ -27,6 +28,7 @@ class TaskRepository(
     private val context: Context? = null
 ) {
     private val syncVersionCounter = AtomicLong(System.currentTimeMillis())
+    private val planStore by lazy { context?.let { MorningPlanStore(it) } }
 
     private suspend fun refreshWidget() {
         context?.let { TodayPlanWidget().updateAll(it) }
@@ -141,6 +143,7 @@ class TaskRepository(
         val completedAt = if (completed) System.currentTimeMillis() else null
         actionItemDao.setCompleted(id, completed, completedAt)
         markTaskDirty(id)
+        if (completed) planStore?.removeTaskFromPlan(id)
         refreshWidget()
     }
 
@@ -183,6 +186,16 @@ class TaskRepository(
     suspend fun setDueDate(id: Long, dueDate: Long?) {
         actionItemDao.setDueDate(id, dueDate)
         markTaskDirty(id)
+        // If rescheduled to a future date, remove from today's plan
+        val dayEnd = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1)
+        }.timeInMillis
+        if (dueDate != null && dueDate >= dayEnd) {
+            planStore?.removeTaskFromPlan(id)
+            refreshWidget()
+        }
     }
 
     suspend fun setDropDeadDate(id: Long, dropDeadDate: Long?) {
@@ -344,6 +357,7 @@ class TaskRepository(
     suspend fun trashTask(id: Long) {
         actionItemDao.trashItem(id)
         markTaskDirty(id)
+        planStore?.removeTaskFromPlan(id)
         refreshWidget()
     }
 
@@ -385,6 +399,8 @@ class TaskRepository(
     // --- Search ---
 
     fun searchItems(query: String): Flow<List<ActionItem>> = actionItemDao.searchItems(query)
+
+    suspend fun getAllNonTrashedTasks(): List<ActionItem> = actionItemDao.getAllNonTrashed()
 
     // --- AI helpers ---
 
