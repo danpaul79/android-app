@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Project
+import com.example.aicompanion.reminder.MorningPlanStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +22,8 @@ data class DashboardUiState(
     val projects: List<Project> = emptyList(),
     val isLoading: Boolean = true,
     val selectedIds: Set<Long> = emptySet(),
-    val showCompleted: Boolean = false
+    val showCompleted: Boolean = false,
+    val todaysPlan: MorningPlanStore.PlanEntry? = null
 ) {
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
     val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems
@@ -29,6 +31,7 @@ data class DashboardUiState(
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = (application as AICompanionApplication).container.taskRepository
+    private val planStore = MorningPlanStore(application)
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -57,6 +60,17 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 _uiState.value = _uiState.value.copy(recentlyCompleted = completed)
             }
         }
+        loadTodaysPlan()
+    }
+
+    fun loadTodaysPlan() {
+        val plan = if (!planStore.isTodaysPlanDismissed()) planStore.getTodaysPlan() else null
+        _uiState.value = _uiState.value.copy(todaysPlan = plan)
+    }
+
+    fun dismissTodaysPlan() {
+        planStore.dismissTodaysPlan()
+        _uiState.value = _uiState.value.copy(todaysPlan = null)
     }
 
     fun toggleShowCompleted() {

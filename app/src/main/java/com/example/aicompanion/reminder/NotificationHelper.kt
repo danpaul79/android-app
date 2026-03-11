@@ -2,10 +2,12 @@ package com.example.aicompanion.reminder
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.example.aicompanion.R
+import com.example.aicompanion.MainActivity
 
 class NotificationHelper(private val context: Context) {
 
@@ -34,6 +36,17 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun showReminderNotification(actionItemId: Long, text: String, dueDateStr: String) {
+        val tapIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_TASK_ID, actionItemId)
+        }
+        val tapPi = PendingIntent.getActivity(
+            context,
+            actionItemId.toInt(),
+            tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Reminder: Due $dueDateStr")
@@ -41,6 +54,7 @@ class NotificationHelper(private val context: Context) {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
+            .setContentIntent(tapPi)
             .build()
 
         val manager = context.getSystemService(NotificationManager::class.java)

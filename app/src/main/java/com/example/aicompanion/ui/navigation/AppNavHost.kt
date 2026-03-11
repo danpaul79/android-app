@@ -15,6 +15,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -54,7 +55,7 @@ val bottomNavItems = listOf(
 )
 
 @Composable
-fun AppNavHost(navController: NavHostController) {
+fun AppNavHost(navController: NavHostController, deepLinkTaskId: Long? = null) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -65,6 +66,13 @@ fun AppNavHost(navController: NavHostController) {
     val inboxState by inboxViewModel.uiState.collectAsState()
 
     val voiceCommandViewModel: VoiceCommandViewModel = viewModel()
+
+    // Deep-link from notification: navigate to task detail on first composition
+    LaunchedEffect(deepLinkTaskId) {
+        if (deepLinkTaskId != null) {
+            navController.navigate(NavRoutes.TaskDetail.createRoute(deepLinkTaskId))
+        }
+    }
 
     Scaffold(
         bottomBar = {

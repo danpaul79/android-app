@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.reminder.MorningPlanStore
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -274,6 +275,19 @@ fun DashboardScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Today's plan card (dismissible)
+                val plan = uiState.todaysPlan
+                if (plan != null && !uiState.isSelectionMode) {
+                    item {
+                        TodaysPlanCard(
+                            plan = plan,
+                            onDismiss = { viewModel.dismissTodaysPlan() },
+                            onNavigateToTask = onNavigateToTask,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
+                }
+
                 // Inbox banner
                 if (uiState.inboxCount > 0 && !uiState.isSelectionMode) {
                     item {
@@ -618,14 +632,101 @@ private fun TaskRowCard(
                     overflow = TextOverflow.Ellipsis,
                     textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                 )
-                if (item.dueDate != null) {
-                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(item.dueDate))
+                val displayDate = item.dueDate ?: item.dropDeadDate
+                val isDropDeadOnly = item.dueDate == null && item.dropDeadDate != null
+                if (displayDate != null) {
+                    val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(displayDate))
+                    val label = if (isDropDeadOnly) "⚠ deadline $dateStr" else dateStr
                     Text(
-                        text = dateStr,
+                        text = label,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isOverdue) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = when {
+                            isOverdue -> MaterialTheme.colorScheme.error
+                            isDropDeadOnly -> MaterialTheme.colorScheme.tertiary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TodaysPlanCard(
+    plan: MorningPlanStore.PlanEntry,
+    onDismiss: () -> Unit,
+    onNavigateToTask: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Today's plan · ${plan.capacityLabel}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = "Dismiss",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            if (plan.tasks.isEmpty()) {
+                Text(
+                    text = "No tasks scheduled — you're all clear!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            } else {
+                plan.tasks.forEach { task ->
+                    val timeLabel = if (task.estimatedMinutes > 0) {
+                        val m = task.estimatedMinutes
+                        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
+                    } else "~30m"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(onClick = { onNavigateToTask(task.id) })
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.RadioButtonUnchecked,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = task.text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = timeLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
             }
         }

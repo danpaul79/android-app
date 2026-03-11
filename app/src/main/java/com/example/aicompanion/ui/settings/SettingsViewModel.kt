@@ -13,6 +13,7 @@ import com.example.aicompanion.data.export.DataExportImport
 import com.example.aicompanion.data.local.entity.SyncState
 import com.example.aicompanion.data.sync.SyncStatus
 import com.example.aicompanion.reminder.MorningCheckInWorker
+import com.example.aicompanion.reminder.MorningPlanStore
 import com.example.aicompanion.reminder.MorningPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,7 +59,8 @@ data class SettingsUiState(
     val message: String? = null,
     val sync: SyncUiState = SyncUiState(),
     val enrichment: EnrichmentUiState = EnrichmentUiState(),
-    val morning: MorningUiState = MorningUiState()
+    val morning: MorningUiState = MorningUiState(),
+    val morningPlanHistory: List<MorningPlanStore.PlanEntry> = emptyList()
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -68,6 +70,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val tokenManager = appContainer.tokenManager
     private val syncStateDao = appContainer.syncStateDao
     private val morningPrefs = MorningPreferences(application)
+    private val morningPlanStore = MorningPlanStore(application)
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -78,6 +81,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         observeSyncStatus()
         loadEnrichmentCount()
         loadMorningState()
+        loadMorningPlanHistory()
+    }
+
+    private fun loadMorningPlanHistory() {
+        _uiState.value = _uiState.value.copy(
+            morningPlanHistory = morningPlanStore.loadHistory()
+        )
     }
 
     private fun loadMorningState() {

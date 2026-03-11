@@ -42,6 +42,15 @@ class MorningActionReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             val tasks = repo.pickTasksForCapacity(capacityMinutes)
 
+            // Persist the plan for Dashboard card + Settings history
+            val planStore = MorningPlanStore(context)
+            planStore.savePlan(
+                capacityMinutes = capacityMinutes,
+                tasks = tasks.map { t ->
+                    MorningPlanStore.PlanTask(t.id, t.text, t.estimatedMinutes)
+                }
+            )
+
             val openAppIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }

@@ -248,8 +248,11 @@ class TaskRepository(
 
     // --- Scheduling ---
 
-    suspend fun getActiveItemsForScheduling(): List<ActionItem> =
-        actionItemDao.getActiveItemsForScheduling()
+    suspend fun getActiveItemsForScheduling(): List<ActionItem> {
+        // Drop-dead dates only sort to the top if within 14 days; further out = ranked by priority like normal
+        val urgentThreshold = System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000
+        return actionItemDao.getActiveItemsForScheduling(urgentThreshold)
+    }
 
     suspend fun getStaleItems(staleDaysThreshold: Int = 14, limit: Int = 3): List<ActionItem> {
         val threshold = Calendar.getInstance().apply {
@@ -264,7 +267,8 @@ class TaskRepository(
      * Unestimated tasks are treated as 30 min.
      */
     suspend fun pickTasksForCapacity(capacityMinutes: Int): List<ActionItem> {
-        val allTasks = actionItemDao.getActiveItemsForScheduling()
+        val urgentThreshold = System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000
+        val allTasks = actionItemDao.getActiveItemsForScheduling(urgentThreshold)
         val result = mutableListOf<ActionItem>()
         var remaining = capacityMinutes
 

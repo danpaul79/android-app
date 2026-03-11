@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.util.Log
 import com.example.aicompanion.data.sync.SyncStatus
+import com.example.aicompanion.reminder.MorningPlanStore
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -238,6 +239,22 @@ fun SettingsScreen(
                     onEnabledChange = { viewModel.setMorningEnabled(it) },
                     onTimeChange = { h, m -> viewModel.setMorningTime(h, m) }
                 )
+            }
+
+            // Morning plan history
+            if (uiState.morningPlanHistory.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Morning Plan History",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                }
+                items(uiState.morningPlanHistory, key = { "plan_${it.timestamp}" }) { entry ->
+                    MorningPlanHistoryCard(entry = entry)
+                }
             }
 
             // Voice History section
@@ -631,6 +648,78 @@ private fun MorningCheckInCard(
                 ) {
                     Text("Change time (${String.format("%d:%02d", morningState.hourOfDay, morningState.minute)})")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MorningPlanHistoryCard(entry: MorningPlanStore.PlanEntry) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = entry.dateLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = entry.capacityLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            if (entry.tasks.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                entry.tasks.forEach { task ->
+                    val timeLabel = if (task.estimatedMinutes > 0) {
+                        val m = task.estimatedMinutes
+                        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
+                    } else "~30m"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 1.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = task.text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = timeLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "No tasks scheduled",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

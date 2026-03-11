@@ -40,9 +40,11 @@ interface ActionItemDao {
         SELECT * FROM action_items
         WHERE isCompleted = 0
         AND isTrashed = 0
-        AND dueDate IS NOT NULL
-        AND dueDate < :now
-        ORDER BY dueDate ASC
+        AND (
+            (dueDate IS NOT NULL AND dueDate < :now)
+            OR (dropDeadDate IS NOT NULL AND dropDeadDate < :now AND (dueDate IS NULL OR dueDate >= :now))
+        )
+        ORDER BY COALESCE(dueDate, dropDeadDate) ASC
     """)
     fun getOverdueItems(now: Long): Flow<List<ActionItem>>
 
@@ -50,10 +52,11 @@ interface ActionItemDao {
         SELECT * FROM action_items
         WHERE isCompleted = 0
         AND isTrashed = 0
-        AND dueDate IS NOT NULL
-        AND dueDate >= :dayStart
-        AND dueDate < :dayEnd
-        ORDER BY dueDate ASC
+        AND (
+            (dueDate IS NOT NULL AND dueDate >= :dayStart AND dueDate < :dayEnd)
+            OR (dropDeadDate IS NOT NULL AND dropDeadDate >= :dayStart AND dropDeadDate < :dayEnd AND dueDate IS NULL)
+        )
+        ORDER BY COALESCE(dueDate, dropDeadDate) ASC
     """)
     fun getTodayItems(dayStart: Long, dayEnd: Long): Flow<List<ActionItem>>
 
@@ -61,10 +64,11 @@ interface ActionItemDao {
         SELECT * FROM action_items
         WHERE isCompleted = 0
         AND isTrashed = 0
-        AND dueDate IS NOT NULL
-        AND dueDate >= :start
-        AND dueDate < :end
-        ORDER BY dueDate ASC
+        AND (
+            (dueDate IS NOT NULL AND dueDate >= :start AND dueDate < :end)
+            OR (dropDeadDate IS NOT NULL AND dropDeadDate >= :start AND dropDeadDate < :end AND dueDate IS NULL)
+        )
+        ORDER BY COALESCE(dueDate, dropDeadDate) ASC
     """)
     fun getUpcomingItems(start: Long, end: Long): Flow<List<ActionItem>>
 
@@ -145,12 +149,12 @@ interface ActionItemDao {
         WHERE isCompleted = 0
         AND isTrashed = 0
         ORDER BY
-            CASE WHEN dropDeadDate IS NOT NULL THEN dropDeadDate ELSE 9999999999999 END ASC,
+            CASE WHEN dropDeadDate IS NOT NULL AND dropDeadDate <= :urgentThreshold THEN dropDeadDate ELSE 9999999999999 END ASC,
             priority DESC,
             CASE WHEN estimatedMinutes > 0 THEN estimatedMinutes ELSE 30 END ASC,
             createdAt ASC
     """)
-    suspend fun getActiveItemsForScheduling(): List<ActionItem>
+    suspend fun getActiveItemsForScheduling(urgentThreshold: Long): List<ActionItem>
 
     @Query("UPDATE action_items SET estimatedMinutes = :minutes, updatedAt = :updatedAt WHERE id = :id")
     suspend fun setEstimatedMinutes(id: Long, minutes: Int, updatedAt: Long = System.currentTimeMillis())
