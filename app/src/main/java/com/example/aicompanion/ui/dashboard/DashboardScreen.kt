@@ -76,6 +76,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.data.local.entity.Priority
+import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.reminder.MorningPlanStore
 import com.example.aicompanion.ui.common.TagChipsRow
@@ -682,13 +684,31 @@ private fun TaskRowCard(
                 Checkbox(checked = item.isCompleted, onCheckedChange = { onToggle() })
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
-                )
+                val effPriority = item.effectivePriority()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (effPriority != Priority.NONE) {
+                        val (label, color) = when (effPriority) {
+                            Priority.URGENT -> "!!!" to MaterialTheme.colorScheme.error
+                            Priority.HIGH   -> "!!" to MaterialTheme.colorScheme.tertiary
+                            Priority.MEDIUM -> "!" to MaterialTheme.colorScheme.onSurfaceVariant
+                            else            -> "·" to MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
                 val displayDate = item.dueDate ?: item.dropDeadDate
                 val isDropDeadOnly = item.dueDate == null && item.dropDeadDate != null
                 if (displayDate != null) {

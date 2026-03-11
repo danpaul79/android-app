@@ -7,6 +7,7 @@ import com.example.aicompanion.data.local.dao.SyncStateDao
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.Project
+import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.Source
 import com.example.aicompanion.data.export.ExportData
 import com.example.aicompanion.network.GeminiClient
@@ -272,6 +273,9 @@ class TaskRepository(
     suspend fun pickTasksForCapacity(capacityMinutes: Int, contextTag: String? = null): List<ActionItem> {
         val urgentThreshold = System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000
         val allTasks = actionItemDao.getActiveItemsForScheduling(urgentThreshold)
+            .sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
+                .thenBy { it.dropDeadDate ?: Long.MAX_VALUE }
+                .thenBy { if (it.estimatedMinutes > 0) it.estimatedMinutes else 30 })
         val result = mutableListOf<ActionItem>()
         var remaining = capacityMinutes
 

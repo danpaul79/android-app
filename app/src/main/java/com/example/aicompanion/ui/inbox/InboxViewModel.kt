@@ -58,6 +58,10 @@ class InboxViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { repo.trashTask(id) }
     }
 
+    fun undoTrash(id: Long) {
+        viewModelScope.launch { repo.restoreTask(id) }
+    }
+
     fun toggleSelection(id: Long) {
         val current = _uiState.value.selectedIds.toMutableSet()
         if (id in current) current.remove(id) else current.add(id)

@@ -39,6 +39,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,13 +55,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aicompanion.data.local.entity.ActionItem
+import com.example.aicompanion.data.local.entity.Priority
+import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.ui.common.TagChipsRow
 import java.text.SimpleDateFormat
@@ -83,7 +93,22 @@ fun InboxScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showTrashSelectedConfirm by remember { mutableStateOf(false) }
-    var trashSingleTaskId by remember { mutableStateOf<Long?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    fun trashWithUndo(id: Long, text: String) {
+        viewModel.trashTask(id)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "\"${text.take(30)}${if (text.length > 30) "…" else ""}\" trashed",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoTrash(id)
+            }
+        }
+    }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
@@ -154,23 +179,10 @@ fun InboxScreen(
         )
     }
 
-    if (trashSingleTaskId != null) {
-        AlertDialog(
-            onDismissRequest = { trashSingleTaskId = null },
-            title = { Text("Move task to trash?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.trashTask(trashSingleTaskId!!)
-                    trashSingleTaskId = null
-                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { trashSingleTaskId = null }) { Text("Cancel") }
-            }
-        )
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) } }
+    ) { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         TopAppBar(
             title = {
                 if (uiState.isSelectionMode) {
@@ -245,7 +257,7 @@ fun InboxScreen(
                             }
                         },
                         onLongClick = { viewModel.toggleSelection(item.id) },
-                        onTrash = { trashSingleTaskId = item.id }
+                        onTrash = { trashWithUndo(item.id, item.text) }
                     )
                 }
                 item { Spacer(Modifier.height(if (uiState.isSelectionMode) 96.dp else 80.dp)) }
@@ -264,7 +276,7 @@ fun InboxScreen(
                 )
             }
         }
-    }
+    } // end Scaffold
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -400,12 +412,30 @@ private fun InboxItemCard(
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                val effPriority = item.effectivePriority()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (effPriority != Priority.NONE) {
+                        val (label, color) = when (effPriority) {
+                            Priority.URGENT -> "!!!" to MaterialTheme.colorScheme.error
+                            Priority.HIGH   -> "!!" to MaterialTheme.colorScheme.tertiary
+                            Priority.MEDIUM -> "!" to MaterialTheme.colorScheme.onSurfaceVariant
+                            else            -> "·" to MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
                 if (item.dueDate != null) {
                     val dateStr = SimpleDateFormat("MMM d", Locale.getDefault())
                         .format(Date(item.dueDate))
