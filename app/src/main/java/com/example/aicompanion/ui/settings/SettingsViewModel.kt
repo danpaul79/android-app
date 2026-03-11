@@ -36,10 +36,20 @@ data class SyncUiState(
     val syncStatus: SyncStatus = SyncStatus.Idle
 )
 
+data class EnrichmentUiState(
+    val unenrichedCount: Int = 0,
+    val isRunning: Boolean = false,
+    val progress: Int = 0,       // tasks processed so far
+    val total: Int = 0,          // total tasks to process
+    val enriched: Int = 0,       // tasks actually updated
+    val isDone: Boolean = false
+)
+
 data class SettingsUiState(
     val voiceNotes: List<VoiceNoteFile> = emptyList(),
     val message: String? = null,
-    val sync: SyncUiState = SyncUiState()
+    val sync: SyncUiState = SyncUiState(),
+    val enrichment: EnrichmentUiState = EnrichmentUiState()
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -56,6 +66,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         loadVoiceNotes()
         loadSyncState()
         observeSyncStatus()
+        loadEnrichmentCount()
     }
 
     private fun loadSyncState() {
@@ -240,5 +251,47 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun dismissMessage() {
         _uiState.value = _uiState.value.copy(message = null)
+    }
+
+    private fun loadEnrichmentCount() {
+        viewModelScope.launch {
+            val count = repo.countUnenrichedTasks()
+            _uiState.value = _uiState.value.copy(
+                enrichment = _uiState.value.enrichment.copy(unenrichedCount = count)
+            )
+        }
+    }
+
+    fun runEnrichment() {
+        if (_uiState.value.enrichment.isRunning) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                enrichment = EnrichmentUiState(
+                    unenrichedCount = _uiState.value.enrichment.unenrichedCount,
+                    isRunning = true,
+                    isDone = false
+                )
+            )
+            val result = repo.enrichUnenrichedTasks { progress ->
+                _uiState.value = _uiState.value.copy(
+                    enrichment = _uiState.value.enrichment.copy(
+                        progress = progress.processed,
+                        total = progress.total,
+                        enriched = progress.enriched
+                    )
+                )
+            }
+            _uiState.value = _uiState.value.copy(
+                enrichment = EnrichmentUiState(
+                    unenrichedCount = 0,
+                    isRunning = false,
+                    progress = result.processed,
+                    total = result.total,
+                    enriched = result.enriched,
+                    isDone = true
+                ),
+                message = "Enriched ${result.enriched} tasks (${result.processed} analyzed)"
+            )
+        }
     }
 }

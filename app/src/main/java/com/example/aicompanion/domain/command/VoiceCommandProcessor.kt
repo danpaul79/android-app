@@ -118,6 +118,10 @@ class VoiceCommandProcessor(
                 taskName = taskName ?: return VoiceCommand.Unrecognized(transcript),
                 dueDate = dueDate
             )
+            "set_drop_dead_date" -> VoiceCommand.SetDropDeadDate(
+                taskName = taskName ?: return VoiceCommand.Unrecognized(transcript),
+                dropDeadDate = dueDate  // Gemini returns it in the dueDate field
+            )
             "move_task" -> VoiceCommand.MoveTask(
                 taskName = taskName ?: return VoiceCommand.Unrecognized(transcript),
                 projectName = projectName ?: return VoiceCommand.Unrecognized(transcript)
@@ -171,6 +175,16 @@ class VoiceCommandProcessor(
                     SimpleDateFormat("MMM d", Locale.getDefault()).format(it)
                 } ?: "none"
                 CommandResult(true, "Due date → $dateStr: ${task.text}", command)
+            }
+
+            is VoiceCommand.SetDropDeadDate -> {
+                val task = findTask(command.taskName, tasks)
+                    ?: return CommandResult(false, "Task not found: \"${command.taskName}\"", command)
+                repo.setDropDeadDate(task.id, command.dropDeadDate)
+                val dateStr = command.dropDeadDate?.let {
+                    SimpleDateFormat("MMM d", Locale.getDefault()).format(it)
+                } ?: "none"
+                CommandResult(true, "Deadline → $dateStr: ${task.text}", command)
             }
 
             is VoiceCommand.MoveTask -> {

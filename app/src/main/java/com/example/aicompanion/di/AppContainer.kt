@@ -15,13 +15,14 @@ import com.example.aicompanion.network.TranscriptionClient
 class AppContainer(context: Context) {
     private val database = AppDatabase.getInstance(context)
     val syncStateDao = database.syncStateDao()
+    val geminiClient = GeminiClient()
     val taskRepository = TaskRepository(
         database.actionItemDao(),
         database.projectDao(),
         database.sourceDao(),
-        syncStateDao
+        syncStateDao,
+        geminiClient
     )
-    val geminiClient = GeminiClient()
     val extractor: ActionItemExtractor = GeminiExtractor(geminiClient)
     val transcriptionClient = TranscriptionClient()
     val voiceCommandProcessor = VoiceCommandProcessor(geminiClient, transcriptionClient, taskRepository)

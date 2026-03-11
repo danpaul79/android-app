@@ -14,6 +14,8 @@ sealed class VoiceCommand {
 
     data class ChangeDueDate(val taskName: String, val dueDate: Long?) : VoiceCommand()
 
+    data class SetDropDeadDate(val taskName: String, val dropDeadDate: Long?) : VoiceCommand()
+
     data class MoveTask(val taskName: String, val projectName: String) : VoiceCommand()
 
     data class DeleteTask(val taskName: String) : VoiceCommand()

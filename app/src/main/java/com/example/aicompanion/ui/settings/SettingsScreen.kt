@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Description
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -174,6 +176,24 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+
+            // AI Enrichment section
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "AI Analysis",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+
+            item {
+                EnrichTasksCard(
+                    enrichmentState = uiState.enrichment,
+                    onRunEnrichment = { viewModel.runEnrichment() }
+                )
             }
 
             // Google Tasks Sync section
@@ -431,6 +451,72 @@ private fun GoogleTasksSyncCard(
                     Icon(Icons.Filled.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Sign in with Google")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EnrichTasksCard(
+    enrichmentState: EnrichmentUiState,
+    onRunEnrichment: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Enrich task metadata", style = MaterialTheme.typography.bodyLarge)
+                    val subtitle = when {
+                        enrichmentState.isDone ->
+                            "Done — ${enrichmentState.enriched} tasks updated"
+                        enrichmentState.isRunning ->
+                            "Analyzing ${enrichmentState.progress} of ${enrichmentState.total}..."
+                        enrichmentState.unenrichedCount > 0 ->
+                            "${enrichmentState.unenrichedCount} tasks need effort estimates or tags"
+                        else ->
+                            "All tasks have effort estimates and tags"
+                    }
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (enrichmentState.isRunning && enrichmentState.total > 0) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { enrichmentState.progress.toFloat() / enrichmentState.total.toFloat() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            if (!enrichmentState.isRunning && (enrichmentState.unenrichedCount > 0 || enrichmentState.isDone.not())) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onRunEnrichment,
+                    enabled = !enrichmentState.isRunning && enrichmentState.unenrichedCount > 0,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (enrichmentState.isRunning) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    } else {
+                        Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text("Run AI enrichment")
                 }
             }
         }

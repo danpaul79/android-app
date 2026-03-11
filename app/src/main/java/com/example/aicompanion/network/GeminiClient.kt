@@ -268,18 +268,20 @@ $projectSection
 Supported commands:
 1. "create_task" — create a new task (e.g. "create task buy groceries", "add task call dentist due tomorrow in Health")
 2. "complete_task" — mark a task as done (e.g. "complete buy groceries", "mark dentist appointment as done")
-3. "change_due_date" — change a task's due date (e.g. "change due date of buy groceries to Friday", "move dentist to next week")
-4. "move_task" — move a task to a different project (e.g. "move buy groceries to Home project")
-5. "delete_task" — trash a task (e.g. "delete buy groceries", "remove the dentist task")
-6. "rename_task" — rename or update a task's name (e.g. "rename buy groceries to buy organic groceries", "update the summer camp task to add Eliza and Lauren at the end")
-7. "create_project" — create a new project/folder/list (e.g. "create a project called Home", "create a folder named Vacation", "make a new list called Shopping", "create project Evans driver's license")
-8. "unrecognized" — if the command doesn't match any of the above
+3. "change_due_date" — change a task's soft/aspirational due date (e.g. "change due date of buy groceries to Friday", "move dentist to next week")
+4. "set_drop_dead_date" — set a hard deadline for a task (e.g. "set drop dead date for passport to July 25", "the deadline for renew passport is July 25", "passport must be done by July 25", "set the holy cow date")
+5. "move_task" — move a task to a different project (e.g. "move buy groceries to Home project")
+6. "delete_task" — trash a task (e.g. "delete buy groceries", "remove the dentist task")
+7. "rename_task" — rename or update a task's name (e.g. "rename buy groceries to buy organic groceries", "update the summer camp task to add Eliza and Lauren at the end")
+8. "create_project" — create a new project/folder/list (e.g. "create a project called Home", "create a folder named Vacation", "make a new list called Shopping", "create project Evans driver's license")
+9. "unrecognized" — if the command doesn't match any of the above
 
 The words "project", "folder", and "list" are synonyms. Any of them means create a project.
+"drop dead date", "deadline", "holy cow date", "must be done by" all refer to set_drop_dead_date.
 
 Return this JSON structure. If the transcript contains multiple commands, return an array. For a single command, return just the object:
 {
-  "command": "create_task|complete_task|change_due_date|move_task|delete_task|rename_task|create_project|unrecognized",
+  "command": "create_task|complete_task|change_due_date|set_drop_dead_date|move_task|delete_task|rename_task|create_project|unrecognized",
   "taskName": "exact or closest matching task name from the list, or the new task name for create_task",
   "projectName": "project name if mentioned, or the new project name for create_project, or null",
   "dueDate": "YYYY-MM-DD or null",
@@ -291,11 +293,105 @@ Rules:
 - For existing tasks, match to the closest task name from the list. Use the EXACT name from the list.
 - For create_task, use the user's wording as the task name (clean and concise).
 - For rename_task: "newName" must be the FINAL desired task name text, not a description of what to change. Apply the user's requested modification to the current task name and return the result.
+- For set_drop_dead_date: use the "dueDate" field to carry the date value.
 - If a project is mentioned, match it to the closest project name from the list.
 - Infer priority from language cues (urgent/ASAP = urgent, important = high, etc.), default to "none".
 
 Voice command transcript:
 $transcript"""
+    }
+
+    data class TaskEnrichment(
+        val id: Long,
+        val estimatedMinutes: Int,
+        val tags: List<String>
+    )
+
+    /**
+     * Enrich a batch of tasks with effort estimates and context tags.
+     * Tasks are passed as id+text pairs; only tasks needing enrichment should be sent.
+     * Returns a map of task ID -> enrichment result.
+     */
+    suspend fun enrichTasks(tasks: List<Pair<Long, String>>): Result<List<TaskEnrichment>> {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isBlank()) return Result.failure(Exception("Gemini API key not configured."))
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val prompt = buildEnrichmentPrompt(tasks)
+                val requestJson = buildRequestJson(prompt)
+
+                val request = Request.Builder()
+                    .url("$BASE_URL?key=$apiKey")
+                    .post(requestJson.toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Unknown error"
+                    return@withContext Result.failure(Exception("Gemini API failed (${response.code}): $errorBody"))
+                }
+
+                val responseBody = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response"))
+
+                val enrichments = parseEnrichmentResponse(responseBody, tasks)
+                Result.success(enrichments)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun buildEnrichmentPrompt(tasks: List<Pair<Long, String>>): String {
+        val taskList = tasks.joinToString("\n") { (id, text) -> "$id: $text" }
+        return """Analyze these tasks and return effort estimates and context tags for each.
+
+Tasks (id: text):
+$taskList
+
+Return a JSON array with one entry per task:
+[
+  {
+    "id": 123,
+    "estimatedMinutes": 30,
+    "tags": ["errand", "phone-call"]
+  }
+]
+
+Rules:
+- estimatedMinutes: realistic time to complete. Use multiples of 10 (10, 20, 30, 60, 90, 120). Quick calls/emails = 10-20 min. Research/writing = 30-60 min. Complex tasks = 90-120 min.
+- tags: choose from ["computer", "errand", "phone-call", "waiting-for", "home", "quick", "creative", "financial"]. Only include clearly applicable tags. Empty array if none fit.
+- Return ONLY the JSON array, no other text. Include every task ID from the input."""
+    }
+
+    private fun parseEnrichmentResponse(responseBody: String, tasks: List<Pair<Long, String>>): List<TaskEnrichment> {
+        val json = JSONObject(responseBody)
+        val candidates = json.getJSONArray("candidates")
+        if (candidates.length() == 0) return emptyList()
+
+        val content = candidates.getJSONObject(0)
+            .getJSONObject("content")
+            .getJSONArray("parts")
+            .getJSONObject(0)
+            .getString("text")
+            .replace(Regex("```json\\s*"), "")
+            .replace(Regex("```\\s*"), "")
+            .trim()
+
+        val arr = JSONArray(content)
+        return (0 until arr.length()).mapNotNull { i ->
+            val item = arr.getJSONObject(i)
+            val id = item.optLong("id", -1)
+            if (id < 0) return@mapNotNull null
+            val tagsArr = item.optJSONArray("tags")
+            val tags = if (tagsArr != null) (0 until tagsArr.length()).map { tagsArr.getString(it) } else emptyList()
+            TaskEnrichment(
+                id = id,
+                estimatedMinutes = item.optInt("estimatedMinutes", 30).coerceAtLeast(10),
+                tags = tags
+            )
+        }
     }
 
     private fun buildTopicPrompt(transcript: String): String {

@@ -9,6 +9,7 @@ import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.Project
 import com.example.aicompanion.data.local.entity.Source
 import com.example.aicompanion.data.export.ExportData
+import com.example.aicompanion.network.GeminiClient
 import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 import java.util.concurrent.atomic.AtomicLong
@@ -17,7 +18,8 @@ class TaskRepository(
     private val actionItemDao: ActionItemDao,
     private val projectDao: ProjectDao,
     private val sourceDao: SourceDao,
-    private val syncStateDao: SyncStateDao
+    private val syncStateDao: SyncStateDao,
+    private val geminiClient: GeminiClient = GeminiClient()
 ) {
     private val syncVersionCounter = AtomicLong(System.currentTimeMillis())
 
@@ -178,6 +180,70 @@ class TaskRepository(
     suspend fun setEstimatedMinutes(id: Long, minutes: Int) {
         actionItemDao.setEstimatedMinutes(id, minutes)
         markTaskDirty(id)
+    }
+
+    // --- AI Enrichment ---
+
+    data class EnrichmentProgress(val processed: Int, val total: Int, val enriched: Int)
+
+    /**
+     * Runs AI enrichment on tasks that are missing effort estimates or context tags.
+     * Processes in batches of 10 to stay within API limits.
+     * Non-destructive: only sets estimatedMinutes if currently 0; only appends tags not already present.
+     * Reports progress via the [onProgress] callback.
+     */
+    suspend fun enrichUnenrichedTasks(onProgress: (EnrichmentProgress) -> Unit): EnrichmentProgress {
+        val allActive = actionItemDao.getAllActiveItemTexts()
+        val needsEnrichment = allActive.filter { task ->
+            task.estimatedMinutes == 0 || !task.notes.orEmpty().contains("#")
+        }
+
+        val total = needsEnrichment.size
+        var processed = 0
+        var enriched = 0
+
+        needsEnrichment.chunked(10).forEach { batch ->
+            val pairs = batch.map { it.id to it.text }
+            val result = geminiClient.enrichTasks(pairs)
+            result.onSuccess { enrichments ->
+                enrichments.forEach { enrichment ->
+                    val task = batch.find { it.id == enrichment.id } ?: return@forEach
+                    // Set effort if unestimated
+                    if (task.estimatedMinutes == 0 && enrichment.estimatedMinutes > 0) {
+                        actionItemDao.setEstimatedMinutes(task.id, enrichment.estimatedMinutes)
+                    }
+                    // Append new tags to notes (only tags not already present)
+                    if (enrichment.tags.isNotEmpty()) {
+                        val existingNotes = task.notes.orEmpty()
+                        val existingTags = Regex("#(\\w+(-\\w+)*)").findAll(existingNotes)
+                            .map { it.groupValues[1].lowercase() }.toSet()
+                        val newTags = enrichment.tags.filter { it.lowercase() !in existingTags }
+                        if (newTags.isNotEmpty()) {
+                            val tagStr = newTags.joinToString(" ") { "#$it" }
+                            val updatedNotes = if (existingNotes.isBlank()) tagStr
+                            else "$existingNotes\n$tagStr"
+                            actionItemDao.update(task.copy(
+                                notes = updatedNotes,
+                                updatedAt = System.currentTimeMillis(),
+                                syncVersion = nextSyncVersion()
+                            ))
+                        }
+                    }
+                    enriched++
+                }
+            }
+            processed += batch.size
+            onProgress(EnrichmentProgress(processed, total, enriched))
+        }
+
+        return EnrichmentProgress(processed, total, enriched)
+    }
+
+    suspend fun countUnenrichedTasks(): Int {
+        val allActive = actionItemDao.getAllActiveItemTexts()
+        return allActive.count { task ->
+            task.estimatedMinutes == 0 || !task.notes.orEmpty().contains("#")
+        }
     }
 
     // --- Scheduling ---
