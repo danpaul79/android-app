@@ -146,7 +146,7 @@ fun SettingsScreen(
                         Column(Modifier.weight(1f)) {
                             Text("Export Data", style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "Save tasks and projects to Downloads/AI Companion",
+                                "Save tasks and projects to Downloads/Pocket Pilot",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

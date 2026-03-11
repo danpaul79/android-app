@@ -216,7 +216,7 @@ fun DashboardScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text("AI Companion") },
+                    title = { Text("Pocket Pilot") },
                     actions = {
                         IconButton(onClick = onNavigateToSearch) {
                             Icon(Icons.Filled.Search, contentDescription = "Search tasks")

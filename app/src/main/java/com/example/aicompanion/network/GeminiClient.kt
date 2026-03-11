@@ -360,9 +360,9 @@ Return a JSON array with one entry per task:
 ]
 
 Rules:
-- estimatedMinutes: realistic time to complete. Use multiples of 10 (10, 20, 30, 60, 90, 120). Quick calls/emails = 10-20 min. Research/writing = 30-60 min. Complex tasks = 90-120 min.
+- estimatedMinutes: REQUIRED — always provide a best-guess estimate even for vague tasks. Use multiples of 10: 10, 20, 30, 60, 90, or 120. NEVER return 0 or null. If unsure, default to 30. Examples: quick phone call = 10, send email = 10, read/review doc = 20, buy something at a store = 30, schedule appointment = 10, research topic = 60, write something = 60, complex multi-step task = 90-120.
 - tags: choose from ["computer", "errand", "phone-call", "waiting-for", "home", "quick", "creative", "financial"]. Only include clearly applicable tags. Empty array if none fit.
-- Return ONLY the JSON array, no other text. Include every task ID from the input."""
+- Return ONLY the JSON array, no other text. Every task ID from the input must have an entry."""
     }
 
     private fun parseEnrichmentResponse(responseBody: String, tasks: List<Pair<Long, String>>): List<TaskEnrichment> {

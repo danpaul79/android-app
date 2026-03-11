@@ -61,7 +61,7 @@ object TranscriptFileHelper {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, fileName)
                 put(MediaStore.Downloads.MIME_TYPE, mimeType)
-                put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/AI Companion")
+                put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/Pocket Pilot")
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
             val resolver = context.contentResolver
@@ -77,7 +77,7 @@ object TranscriptFileHelper {
         } else {
             val downloadsDir = File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "AI Companion"
+                "Pocket Pilot"
             )
             if (!downloadsDir.exists()) downloadsDir.mkdirs()
             File(downloadsDir, fileName).writeText(content)
