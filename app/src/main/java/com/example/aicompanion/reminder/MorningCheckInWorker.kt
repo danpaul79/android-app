@@ -67,6 +67,16 @@ class MorningCheckInWorker(
         val prefs = MorningPreferences(context)
         if (!prefs.enabled) return Result.success()
 
+        // Guard: only fire within ±45 minutes of the configured time. WorkManager
+        // periodic work can drift — if it fires at the wrong time, skip it so the
+        // next 24h interval lands correctly.
+        val now = Calendar.getInstance()
+        val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val targetMinutes = prefs.hourOfDay * 60 + prefs.minute
+        val diff = Math.abs(nowMinutes - targetMinutes)
+        val adjustedDiff = minOf(diff, 24 * 60 - diff) // handle midnight wrap
+        if (adjustedDiff > 45) return Result.success()
+
         val channel = MorningNotificationHelper.ensureChannel(context)
 
         // Build capacity option action buttons

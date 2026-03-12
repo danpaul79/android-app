@@ -132,6 +132,20 @@ fun DashboardScreen(
         }
     }
 
+    fun swipeCompleteWithUndo(id: Long, text: String) {
+        viewModel.toggleCompleted(id, true)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "\"${text.take(30)}${if (text.length > 30) "…" else ""}\" completed",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.toggleCompleted(id, false)
+            }
+        }
+    }
+
     // Refresh capacity when returning from PlanMyDay (or morning check-in)
     LifecycleResumeEffect(Unit) {
         viewModel.refreshCapacity()
@@ -403,7 +417,7 @@ fun DashboardScreen(
                                 else onNavigateToTask(item.id)
                             },
                             onLongClick = { viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
+                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
                             onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) },
                             isOverdue = true
                         )
@@ -424,7 +438,7 @@ fun DashboardScreen(
                                 else onNavigateToTask(item.id)
                             },
                             onLongClick = { viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
+                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
                             onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
                         )
                     }
@@ -444,7 +458,7 @@ fun DashboardScreen(
                                 else onNavigateToTask(item.id)
                             },
                             onLongClick = { viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { viewModel.toggleCompleted(item.id, true) },
+                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
                             onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
                         )
                     }
@@ -611,7 +625,8 @@ private fun TaskRow(
                     SwipeToDismissBoxValue.EndToStart -> { onSwipeTrash(); true }
                     SwipeToDismissBoxValue.Settled -> false
                 }
-            }
+            },
+            positionalThreshold = { totalDistance -> totalDistance * 0.75f }
         )
         SwipeToDismissBox(
             state = dismissState,
