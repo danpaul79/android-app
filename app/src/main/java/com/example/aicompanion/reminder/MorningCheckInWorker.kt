@@ -107,6 +107,87 @@ class MorningCheckInWorker(
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, builder.build())
 
+        // Post stale / waiting-for review notifications
+        val app = context.applicationContext as? com.example.aicompanion.AICompanionApplication
+        if (app != null) {
+            val repo = app.container.taskRepository
+
+            val staleTasks = repo.getStaleItems(staleDaysThreshold = 14, limit = 2)
+                .filter { task -> !task.notes.orEmpty().contains("#waiting-for", ignoreCase = true) }
+            val waitingTasks = repo.getWaitingForItems(limit = 2)
+
+            val reviewItems = (staleTasks.map { it to "stale" } + waitingTasks.map { it to "waiting" })
+                .distinctBy { it.first.id }
+                .take(3)
+
+            if (reviewItems.isNotEmpty()) {
+                // Post silent group summary notification (required for Android grouping)
+                val summaryNotif = NotificationCompat.Builder(context, channel)
+                    .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                    .setContentTitle("Quick review")
+                    .setGroupSummary(true)
+                    .setGroup("pocket_pilot_review")
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setAutoCancel(true)
+                    .build()
+                manager.notify(9099, summaryNotif)
+
+                reviewItems.forEachIndexed { index, (task, type) ->
+                    val notifId = 9100 + index
+
+                    val isStale = type == "stale"
+                    val title = if (isStale) "Still relevant?" else "Still waiting?"
+
+                    val doneAction: String
+                    val secondaryAction: String
+                    val secondaryLabel: String
+                    val skipAction: String
+
+                    if (isStale) {
+                        doneAction = MorningActionReceiver.ACTION_STALE_DONE
+                        secondaryAction = MorningActionReceiver.ACTION_STALE_NOT_NEEDED
+                        secondaryLabel = "Not needed"
+                        skipAction = MorningActionReceiver.ACTION_STALE_SKIP
+                    } else {
+                        doneAction = MorningActionReceiver.ACTION_WAITING_DONE
+                        secondaryAction = MorningActionReceiver.ACTION_WAITING_REMOVE
+                        secondaryLabel = "Remove wait"
+                        skipAction = MorningActionReceiver.ACTION_WAITING_SKIP
+                    }
+
+                    fun buildReviewIntent(action: String) =
+                        PendingIntent.getBroadcast(
+                            context,
+                            notifId * 10 + when (action) {
+                                doneAction -> 0
+                                secondaryAction -> 1
+                                else -> 2
+                            },
+                            Intent(context, MorningActionReceiver::class.java).apply {
+                                this.action = action
+                                putExtra(MorningActionReceiver.EXTRA_TASK_ID, task.id)
+                                putExtra(MorningActionReceiver.EXTRA_NOTIFICATION_ID, notifId)
+                            },
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+
+                    val reviewNotif = NotificationCompat.Builder(context, channel)
+                        .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                        .setContentTitle(title)
+                        .setContentText(task.text)
+                        .setGroup("pocket_pilot_review")
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .setAutoCancel(true)
+                        .addAction(0, "Done", buildReviewIntent(doneAction))
+                        .addAction(0, secondaryLabel, buildReviewIntent(secondaryAction))
+                        .addAction(0, "Skip", buildReviewIntent(skipAction))
+                        .build()
+
+                    manager.notify(notifId, reviewNotif)
+                }
+            }
+        }
+
         return Result.success()
     }
 }

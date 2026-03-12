@@ -296,6 +296,16 @@ class TaskRepository(
         return actionItemDao.getStaleItems(threshold, limit)
     }
 
+    suspend fun getWaitingForItems(limit: Int = 5): List<ActionItem> =
+        actionItemDao.getWaitingForItems(limit)
+
+    suspend fun removeTagFromNotes(id: Long, tag: String) {
+        val item = actionItemDao.getByIds(listOf(id)).firstOrNull() ?: return
+        val cleaned = item.notes?.replace(Regex("#$tag\\b", RegexOption.IGNORE_CASE), "")?.trim()
+        actionItemDao.update(item.copy(notes = cleaned?.ifBlank { null }, updatedAt = System.currentTimeMillis()))
+        markTaskDirty(id)
+    }
+
     /**
      * Given a capacity in minutes, returns a prioritized list of tasks that fit.
      * Hard drop-dead dates take precedence. #waiting-for tasks are excluded.

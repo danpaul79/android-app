@@ -25,10 +25,49 @@ class MorningActionReceiver : BroadcastReceiver() {
         const val ACTION_CAPACITY = "com.example.aicompanion.ACTION_CAPACITY"
         const val EXTRA_CAPACITY_MINUTES = "capacity_minutes"
         private const val PLAN_NOTIFICATION_ID = 9001
+
+        const val ACTION_STALE_DONE = "com.example.aicompanion.ACTION_STALE_DONE"
+        const val ACTION_STALE_NOT_NEEDED = "com.example.aicompanion.ACTION_STALE_NOT_NEEDED"
+        const val ACTION_STALE_SKIP = "com.example.aicompanion.ACTION_STALE_SKIP"
+        const val ACTION_WAITING_DONE = "com.example.aicompanion.ACTION_WAITING_DONE"
+        const val ACTION_WAITING_REMOVE = "com.example.aicompanion.ACTION_WAITING_REMOVE"
+        const val ACTION_WAITING_SKIP = "com.example.aicompanion.ACTION_WAITING_SKIP"
+        const val EXTRA_TASK_ID = "task_id"
+        const val EXTRA_NOTIFICATION_ID = "notification_id"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ACTION_CAPACITY) return
+        val action = intent.action ?: return
+
+        // Handle review notification actions
+        if (action in setOf(
+                ACTION_STALE_DONE, ACTION_STALE_NOT_NEEDED, ACTION_STALE_SKIP,
+                ACTION_WAITING_DONE, ACTION_WAITING_REMOVE, ACTION_WAITING_SKIP
+            )
+        ) {
+            val taskId = intent.getLongExtra(EXTRA_TASK_ID, -1L)
+            val notifId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
+
+            val manager = context.getSystemService(NotificationManager::class.java)
+            if (notifId >= 0) manager.cancel(notifId)
+
+            val app = context.applicationContext as? AICompanionApplication ?: return
+            val repo = app.container.taskRepository
+
+            CoroutineScope(Dispatchers.IO).launch {
+                when (action) {
+                    ACTION_STALE_DONE -> repo.toggleCompleted(taskId, true)
+                    ACTION_STALE_NOT_NEEDED -> repo.trashTask(taskId)
+                    ACTION_STALE_SKIP -> { /* notification already cancelled above */ }
+                    ACTION_WAITING_DONE -> repo.toggleCompleted(taskId, true)
+                    ACTION_WAITING_REMOVE -> repo.removeTagFromNotes(taskId, "waiting-for")
+                    ACTION_WAITING_SKIP -> { /* notification already cancelled above */ }
+                }
+            }
+            return
+        }
+
+        if (action != ACTION_CAPACITY) return
         val capacityMinutes = intent.getIntExtra(EXTRA_CAPACITY_MINUTES, 60)
 
         // Dismiss the check-in notification

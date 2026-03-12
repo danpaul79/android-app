@@ -178,6 +178,16 @@ interface ActionItemDao {
     """)
     suspend fun getStaleItems(staleThreshold: Long, limit: Int = 3): List<ActionItem>
 
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND isTrashed = 0
+        AND notes LIKE '%#waiting-for%'
+        ORDER BY updatedAt ASC
+        LIMIT :limit
+    """)
+    suspend fun getWaitingForItems(limit: Int = 5): List<ActionItem>
+
     // --- Sync queries ---
 
     @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")
