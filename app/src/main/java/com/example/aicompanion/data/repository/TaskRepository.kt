@@ -245,7 +245,12 @@ class TaskRepository(
 
     // --- AI Enrichment ---
 
-    data class EnrichmentProgress(val processed: Int, val total: Int, val enriched: Int)
+    data class EnrichmentProgress(
+        val processed: Int,
+        val total: Int,
+        val enriched: Int,
+        val log: List<String> = emptyList()
+    )
 
     /**
      * Runs AI enrichment on tasks that are missing effort estimates or context tags.
@@ -255,13 +260,12 @@ class TaskRepository(
      */
     suspend fun enrichUnenrichedTasks(onProgress: (EnrichmentProgress) -> Unit): EnrichmentProgress {
         val allActive = actionItemDao.getAllActiveItemTexts()
-        val needsEnrichment = allActive.filter { task ->
-            task.estimatedMinutes == 0 || !task.notes.orEmpty().contains("#")
-        }
+        val needsEnrichment = allActive.filter { task -> task.estimatedMinutes == 0 }
 
         val total = needsEnrichment.size
         var processed = 0
         var enriched = 0
+        val log = mutableListOf<String>()
 
         needsEnrichment.chunked(10).forEach { batch ->
             val pairs = batch.map { it.id to it.text }
@@ -269,9 +273,12 @@ class TaskRepository(
             result.onSuccess { enrichments ->
                 enrichments.forEach { enrichment ->
                     val task = batch.find { it.id == enrichment.id } ?: return@forEach
+                    val changes = mutableListOf<String>()
                     // Set effort if unestimated
                     if (task.estimatedMinutes == 0 && enrichment.estimatedMinutes > 0) {
                         actionItemDao.setEstimatedMinutes(task.id, enrichment.estimatedMinutes)
+                        val mins = enrichment.estimatedMinutes
+                        changes.add(if (mins >= 60) "${mins / 60}h${if (mins % 60 > 0) "${mins % 60}m" else ""}" else "${mins}m")
                     }
                     // Append new tags to notes (only tags not already present)
                     if (enrichment.tags.isNotEmpty()) {
@@ -288,23 +295,27 @@ class TaskRepository(
                                 updatedAt = System.currentTimeMillis(),
                                 syncVersion = nextSyncVersion()
                             ))
+                            changes.add(tagStr)
                         }
                     }
+                    val taskTitle = task.text.take(40) + if (task.text.length > 40) "…" else ""
+                    log.add("$taskTitle: ${if (changes.isEmpty()) "no changes" else changes.joinToString(", ")}")
                     enriched++
                 }
             }
             processed += batch.size
-            onProgress(EnrichmentProgress(processed, total, enriched))
+            onProgress(EnrichmentProgress(processed, total, enriched, log.toList()))
         }
 
-        return EnrichmentProgress(processed, total, enriched)
+        return EnrichmentProgress(processed, total, enriched, log)
     }
 
     suspend fun countUnenrichedTasks(): Int {
         val allActive = actionItemDao.getAllActiveItemTexts()
-        return allActive.count { task ->
-            task.estimatedMinutes == 0 || !task.notes.orEmpty().contains("#")
-        }
+        // Only count tasks missing an effort estimate — AI always sets a non-zero estimate
+        // for every task it processes, so this correctly reflects truly un-enriched tasks.
+        // Tags are a best-effort bonus; not every task has a meaningful context tag.
+        return allActive.count { task -> task.estimatedMinutes == 0 }
     }
 
     // --- Scheduling ---

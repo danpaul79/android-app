@@ -151,10 +151,11 @@ fun DashboardScreen(
         }
     }
 
-    // Refresh capacity when returning from PlanMyDay (or morning check-in)
+    // Refresh capacity and triage count when returning from PlanMyDay, triage, or other screens
     LifecycleResumeEffect(Unit) {
         viewModel.refreshCapacity()
         viewModel.loadTodaysPlan()
+        viewModel.refreshTriageCount()
         onPauseOrDispose {}
     }
 

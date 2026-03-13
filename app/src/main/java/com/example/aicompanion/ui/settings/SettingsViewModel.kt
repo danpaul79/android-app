@@ -45,7 +45,8 @@ data class EnrichmentUiState(
     val progress: Int = 0,       // tasks processed so far
     val total: Int = 0,          // total tasks to process
     val enriched: Int = 0,       // tasks actually updated
-    val isDone: Boolean = false
+    val isDone: Boolean = false,
+    val log: List<String> = emptyList()
 )
 
 data class MorningUiState(
@@ -321,7 +322,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     enrichment = _uiState.value.enrichment.copy(
                         progress = progress.processed,
                         total = progress.total,
-                        enriched = progress.enriched
+                        enriched = progress.enriched,
+                        log = progress.log
                     )
                 )
             }
@@ -332,7 +334,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     progress = result.processed,
                     total = result.total,
                     enriched = result.enriched,
-                    isDone = true
+                    isDone = true,
+                    log = result.log
                 ),
                 message = "Enriched ${result.enriched} tasks (${result.processed} analyzed)"
             )

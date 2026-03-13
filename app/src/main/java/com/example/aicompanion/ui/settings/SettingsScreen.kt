@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.FilterChip
@@ -570,6 +572,8 @@ private fun EnrichTasksCard(
     enrichmentState: EnrichmentUiState,
     onRunEnrichment: () -> Unit
 ) {
+    var logExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -586,13 +590,13 @@ private fun EnrichTasksCard(
                     Text("Enrich task metadata", style = MaterialTheme.typography.bodyLarge)
                     val subtitle = when {
                         enrichmentState.isDone ->
-                            "Done — ${enrichmentState.enriched} tasks updated"
+                            "Done — ${enrichmentState.enriched} of ${enrichmentState.total} tasks updated"
                         enrichmentState.isRunning ->
                             "Analyzing ${enrichmentState.progress} of ${enrichmentState.total}..."
                         enrichmentState.unenrichedCount > 0 ->
-                            "${enrichmentState.unenrichedCount} tasks need effort estimates or tags"
+                            "${enrichmentState.unenrichedCount} tasks missing effort estimates"
                         else ->
-                            "All tasks have effort estimates and tags"
+                            "All tasks have effort estimates"
                     }
                     Text(
                         subtitle,
@@ -610,21 +614,54 @@ private fun EnrichTasksCard(
                 )
             }
 
-            if (!enrichmentState.isRunning && (enrichmentState.unenrichedCount > 0 || enrichmentState.isDone.not())) {
+            if (!enrichmentState.isRunning && enrichmentState.unenrichedCount > 0) {
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(
                     onClick = onRunEnrichment,
-                    enabled = !enrichmentState.isRunning && enrichmentState.unenrichedCount > 0,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (enrichmentState.isRunning) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                    } else {
-                        Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                    }
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text("Run AI enrichment")
+                }
+            }
+
+            // Collapsible log shown after enrichment completes
+            if (enrichmentState.isDone && enrichmentState.log.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { logExpanded = !logExpanded }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Details (${enrichmentState.log.size} tasks processed)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        if (logExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (logExpanded) "Collapse" else "Expand",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (logExpanded) {
+                    Spacer(Modifier.height(4.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        enrichmentState.log.forEach { entry ->
+                            Text(
+                                entry,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }
