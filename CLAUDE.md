@@ -265,7 +265,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - **GitHub Actions** workflow at `.github/workflows/build-and-distribute.yml`
 - Triggers on push to `main`, builds release APK, uploads to **Firebase App Distribution**
 - Signing config in `app/build.gradle.kts` reads from env vars (CI) or `local.properties` (local)
-- Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PAT`, `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`, `GOOGLE_SERVICES_JSON` (optional, enables Crashlytics), `ANTHROPIC_API_KEY` (for feedback processor)
+- Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `GH_ISSUES_PAT` (GitHub PAT for feedback issues; mapped to `GITHUB_PAT` in local.properties), `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`, `GOOGLE_SERVICES_JSON` (optional, enables Crashlytics), `ANTHROPIC_API_KEY` (for feedback processor)
 
 ## Cloud Functions (legacy, no longer used by mobile app)
 - **`stream-drive-file-to-deepgram`** - Used by Apps Script pipeline only. Do NOT modify.
