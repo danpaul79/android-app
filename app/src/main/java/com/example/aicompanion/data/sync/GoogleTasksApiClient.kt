@@ -72,7 +72,8 @@ class GoogleTasksApiClient(private val tokenManager: TokenManager) {
         taskListId: String,
         updatedMin: String? = null,
         showDeleted: Boolean = false,
-        showCompleted: Boolean = true
+        showCompleted: Boolean = true,
+        showHidden: Boolean = false
     ): List<GoogleTask> = withContext(Dispatchers.IO) {
         val results = mutableListOf<GoogleTask>()
         var pageToken: String? = null
@@ -81,6 +82,7 @@ class GoogleTasksApiClient(private val tokenManager: TokenManager) {
                 append("$BASE_URL/lists/$taskListId/tasks?maxResults=100")
                 append("&showDeleted=$showDeleted")
                 append("&showCompleted=$showCompleted")
+                append("&showHidden=$showHidden")
                 updatedMin?.let { append("&updatedMin=$it") }
                 pageToken?.let { append("&pageToken=$it") }
             }

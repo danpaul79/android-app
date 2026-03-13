@@ -181,7 +181,8 @@ class SyncEngine(
                 taskListId = listId,
                 updatedMin = updatedMin,
                 showDeleted = true,
-                showCompleted = true
+                showCompleted = true,
+                showHidden = true
             )
 
             for (remoteTask in remoteTasks) {
@@ -386,7 +387,8 @@ class SyncEngine(
             val remoteTasks = apiClient.listTasks(
                 taskListId = listId,
                 showDeleted = false,
-                showCompleted = true
+                showCompleted = true,
+                showHidden = true
             )
 
             // Get local tasks for this project/inbox
