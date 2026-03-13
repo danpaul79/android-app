@@ -69,10 +69,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
         loadTodaysPlan()
         _uiState.value = _uiState.value.copy(capacityMinutes = planStore.getLastCapacityMinutes())
-        loadTriageCount()
+        refreshTriageCount()
     }
 
-    private fun loadTriageCount() {
+    fun refreshTriageCount() {
         viewModelScope.launch {
             val count = repo.getTriageCandidates().size
             _uiState.value = _uiState.value.copy(triageCount = count)
