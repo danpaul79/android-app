@@ -2,6 +2,8 @@ package com.example.aicompanion.ui.navigation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Folder
@@ -18,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,6 +47,7 @@ import com.example.aicompanion.ui.triage.TaskTriageScreen
 import com.example.aicompanion.ui.trash.TrashScreen
 import com.example.aicompanion.ui.voicecommand.VoiceCommandBar
 import com.example.aicompanion.ui.voicecommand.VoiceCommandViewModel
+import kotlinx.coroutines.launch
 
 data class BottomNavItem(
     val label: String,
@@ -69,8 +74,8 @@ fun AppNavHost(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = currentRoute in bottomNavItems.map { it.route }
-    val showVoiceBar = currentRoute?.startsWith("capture") != true
+    val showBottomBar = currentRoute == "main"
+    val showVoiceBar = currentRoute == "main" || (currentRoute != null && !currentRoute.startsWith("capture"))
 
     val inboxViewModel: com.example.aicompanion.ui.inbox.InboxViewModel = viewModel()
     val inboxState by inboxViewModel.uiState.collectAsState()
@@ -78,6 +83,10 @@ fun AppNavHost(
     val projectsState by projectsViewModel.uiState.collectAsState()
 
     val voiceCommandViewModel: VoiceCommandViewModel = viewModel()
+
+    // Pager state for swipeable tabs
+    val pagerState = rememberPagerState(initialPage = 0) { bottomNavItems.size }
+    val pagerScope = rememberCoroutineScope()
 
     // Deep-link from notification: navigate to task detail on first composition
     LaunchedEffect(deepLinkTaskId) {
@@ -100,16 +109,10 @@ fun AppNavHost(
         }
     }
 
-    // Deep-link from widget/shortcut: open Capture screen (auto-start recording)
+    // Deep-link from widget/shortcut: swipe to Capture tab
     LaunchedEffect(openCapture) {
         if (openCapture) {
-            navController.navigate("capture") {
-                popUpTo(navController.graph.findStartDestination().id) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
+            pagerState.scrollToPage(2) // Capture is index 2
         }
     }
 
@@ -123,8 +126,10 @@ fun AppNavHost(
     Scaffold(
         bottomBar = {
             Column {
-                // Voice command bar — persistent across ALL screens except Capture (which has its own recorder)
-                if (showVoiceBar) {
+                // Voice command bar — persistent across ALL screens except Capture
+                // Hide when pager is on Capture tab (index 2) AND we're on the main route
+                val onCaptureTab = currentRoute == "main" && pagerState.currentPage == 2
+                if (showVoiceBar && !onCaptureTab) {
                     VoiceCommandBar(
                         viewModel = voiceCommandViewModel,
                         onNavigateToPlanMyDay = { _ ->
@@ -138,18 +143,14 @@ fun AppNavHost(
 
                 if (showBottomBar) {
                     NavigationBar {
-                        bottomNavItems.forEach { item ->
-                            val selected = currentRoute == item.route
+                        bottomNavItems.forEachIndexed { index, item ->
+                            val selected = pagerState.currentPage == index
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
                                     if (!selected) {
-                                        navController.navigate(item.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
+                                        pagerScope.launch {
+                                            pagerState.animateScrollToPage(index)
                                         }
                                     }
                                 },
@@ -177,62 +178,86 @@ fun AppNavHost(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "dashboard",
+            startDestination = "main",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("dashboard") {
-                DashboardScreen(
-                    onNavigateToTask = { id ->
-                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
-                    },
-                    onNavigateToSearch = {
-                        navController.navigate("search")
-                    },
-                    onNavigateToInbox = {
-                        navController.navigate("inbox") {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+            composable("main") {
+                HorizontalPager(
+                    state = pagerState,
+                ) { page ->
+                    when (page) {
+                        0 -> DashboardScreen(
+                            onNavigateToTask = { id ->
+                                navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                            },
+                            onNavigateToSearch = {
+                                navController.navigate("search")
+                            },
+                            onNavigateToInbox = {
+                                pagerScope.launch {
+                                    pagerState.animateScrollToPage(1)
+                                }
+                            },
+                            onNavigateToCapture = {
+                                pagerScope.launch {
+                                    pagerState.animateScrollToPage(2)
+                                }
+                            },
+                            onNavigateToTrash = {
+                                navController.navigate("trash")
+                            },
+                            onNavigateToSettings = {
+                                navController.navigate("settings")
+                            },
+                            onNavigateToPlanMyDay = {
+                                navController.navigate(NavRoutes.PlanMyDay.route)
+                            },
+                            onNavigateToTriage = {
+                                navController.navigate(NavRoutes.TaskTriage.route)
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onNavigateToCapture = {
-                        navController.navigate("capture") {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        )
+                        1 -> InboxScreen(
+                            onNavigateToTask = { id ->
+                                navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                            },
+                            onNavigateToSearch = {
+                                navController.navigate("search")
+                            },
+                            viewModel = inboxViewModel
+                        )
+                        2 -> CaptureScreen(
+                            projectId = null,
+                            onNavigateBack = {
+                                pagerScope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            },
+                            onDone = {
+                                pagerScope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onNavigateToTrash = {
-                        navController.navigate("trash")
-                    },
-                    onNavigateToSettings = {
-                        navController.navigate("settings")
-                    },
-                    onNavigateToPlanMyDay = {
-                        navController.navigate(NavRoutes.PlanMyDay.route)
-                    },
-                    onNavigateToTriage = {
-                        navController.navigate(NavRoutes.TaskTriage.route)
+                        )
+                        3 -> ProjectsScreen(
+                            onNavigateToProject = { id ->
+                                navController.navigate(NavRoutes.ProjectDetail.createRoute(id))
+                            },
+                            onNavigateToTrash = {
+                                navController.navigate("trash")
+                            },
+                            onNavigateToTask = { id ->
+                                navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                            },
+                            onNavigateToSearch = {
+                                navController.navigate("search")
+                            },
+                            viewModel = projectsViewModel
+                        )
                     }
-                )
+                }
             }
 
-            composable("inbox") {
-                InboxScreen(
-                    onNavigateToTask = { id ->
-                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
-                    },
-                    onNavigateToSearch = {
-                        navController.navigate("search")
-                    },
-                    viewModel = inboxViewModel
-                )
-            }
-
+            // Capture with projectId (from Project Detail → capture into project)
             composable(
                 route = "capture?projectId={projectId}",
                 arguments = listOf(
@@ -248,24 +273,6 @@ fun AppNavHost(
                     projectId = projectId,
                     onNavigateBack = { navController.popBackStack() },
                     onDone = { navController.popBackStack() }
-                )
-            }
-
-            composable("projects") {
-                ProjectsScreen(
-                    onNavigateToProject = { id ->
-                        navController.navigate(NavRoutes.ProjectDetail.createRoute(id))
-                    },
-                    onNavigateToTrash = {
-                        navController.navigate("trash")
-                    },
-                    onNavigateToTask = { id ->
-                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
-                    },
-                    onNavigateToSearch = {
-                        navController.navigate("search")
-                    },
-                    viewModel = projectsViewModel
                 )
             }
 

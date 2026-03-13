@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
@@ -276,6 +277,9 @@ fun DashboardScreen(
                     actions = {
                         IconButton(onClick = onNavigateToPlanMyDay) {
                             Icon(Icons.Filled.Today, contentDescription = "Plan My Day")
+                        }
+                        IconButton(onClick = onNavigateToTriage) {
+                            Icon(Icons.Filled.Checklist, contentDescription = "Task Triage")
                         }
                         IconButton(onClick = onNavigateToSearch) {
                             Icon(Icons.Filled.Search, contentDescription = "Search tasks")
