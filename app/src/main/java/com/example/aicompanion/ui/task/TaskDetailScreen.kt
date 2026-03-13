@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.FilterChip
@@ -56,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.aicompanion.data.local.entity.RecurrenceRule
 import com.example.aicompanion.data.local.entity.SourceType
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -316,6 +318,64 @@ fun TaskDetailScreen(
                             selected = item.estimatedMinutes == minutes,
                             onClick = { viewModel.setEstimatedMinutes(minutes) },
                             label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                }
+            }
+
+            // Recurrence
+            var showRecurrenceMenu by remember { mutableStateOf(false) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Repeat,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (item.recurrenceRule != null) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(8.dp))
+                Box {
+                    TextButton(onClick = { showRecurrenceMenu = true }) {
+                        val label = if (item.recurrenceRule != null) {
+                            RecurrenceRule.fromString(item.recurrenceRule)
+                                ?.displayNameWithInterval(item.recurrenceInterval)
+                                ?: item.recurrenceRule
+                        } else "Set repeat"
+                        Text(
+                            text = label,
+                            color = if (item.recurrenceRule != null) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showRecurrenceMenu,
+                        onDismissRequest = { showRecurrenceMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("No repeat") },
+                            onClick = {
+                                viewModel.setRecurrence(null)
+                                showRecurrenceMenu = false
+                            }
+                        )
+                        RecurrenceRule.entries.forEach { rule ->
+                            DropdownMenuItem(
+                                text = { Text(rule.displayName()) },
+                                onClick = {
+                                    viewModel.setRecurrence(rule.name)
+                                    showRecurrenceMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+                if (item.recurrenceRule != null) {
+                    IconButton(onClick = { viewModel.setRecurrence(null) }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Clear repeat",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

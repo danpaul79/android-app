@@ -140,6 +140,15 @@ class VoiceCommandProcessor(
                 val minutes = json.optInt("capacityMinutes", 0).takeIf { it > 0 }
                 VoiceCommand.PlanMyDay(capacityMinutes = minutes)
             }
+            "set_recurrence" -> {
+                val rule = json.optString("recurrenceRule", "").takeIf { it.isNotBlank() }
+                val interval = json.optInt("recurrenceInterval", 1).coerceAtLeast(1)
+                VoiceCommand.SetRecurrence(
+                    taskName = taskName ?: return VoiceCommand.Unrecognized(transcript),
+                    rule = rule,
+                    interval = interval
+                )
+            }
             "review_tasks" -> VoiceCommand.ReviewTasks
             else -> VoiceCommand.Unrecognized(transcript)
         }
@@ -227,6 +236,18 @@ class VoiceCommandProcessor(
                 else
                     "Opening Plan My Day..."
                 CommandResult(true, msg, command)
+            }
+
+            is VoiceCommand.SetRecurrence -> {
+                val task = findTask(command.taskName, tasks)
+                    ?: return CommandResult(false, "Task not found: \"${command.taskName}\"", command)
+                repo.setRecurrence(task.id, command.rule, command.interval)
+                val label = if (command.rule != null) {
+                    val ruleDisplay = command.rule.lowercase().replaceFirstChar { it.uppercase() }
+                    if (command.interval > 1) "every ${command.interval} ${ruleDisplay.lowercase()}s"
+                    else ruleDisplay.lowercase()
+                } else "not recurring"
+                CommandResult(true, "Set to $label: ${task.text}", command)
             }
 
             is VoiceCommand.ReviewTasks -> {

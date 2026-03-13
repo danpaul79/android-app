@@ -91,6 +91,11 @@ class TaskDetailViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch { repo.setEstimatedMinutes(item.id, minutes) }
     }
 
+    fun setRecurrence(rule: String?, interval: Int = 1) {
+        val item = _uiState.value.item ?: return
+        viewModelScope.launch { repo.setRecurrence(item.id, rule, interval) }
+    }
+
     fun trashTask() {
         val item = _uiState.value.item ?: return
         collectJob?.cancel()

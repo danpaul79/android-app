@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,9 +35,10 @@ fun DateTagsRow(
     isOverdue: Boolean,
     tags: List<String>,
     modifier: Modifier = Modifier,
-    dueDateLocked: Boolean = false
+    dueDateLocked: Boolean = false,
+    isRecurring: Boolean = false
 ) {
-    if (dueDate == null && dropDeadDate == null && tags.isEmpty() && !dueDateLocked) return
+    if (dueDate == null && dropDeadDate == null && tags.isEmpty() && !dueDateLocked && !isRecurring) return
 
     val fmt = SimpleDateFormat("MMM d", Locale.getDefault())
 
@@ -60,6 +62,14 @@ fun DateTagsRow(
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
+        }
+        if (isRecurring) {
+            Icon(
+                Icons.Filled.Repeat,
+                contentDescription = "Recurring",
+                modifier = Modifier.size(12.dp).align(Alignment.CenterVertically),
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
         if (dropDeadDate != null) {
             Text(

@@ -56,7 +56,13 @@ object SyncMappers {
             updatedAt = now,
             googleTaskId = id,
             googleTaskListId = googleTaskListId,
-            syncVersion = 0  // Pulled from remote, not dirty
+            syncVersion = 0,  // Pulled from remote, not dirty
+            // Preserve app-only fields not synced to Google Tasks
+            dropDeadDate = existingItem?.dropDeadDate,
+            estimatedMinutes = existingItem?.estimatedMinutes ?: 0,
+            dueDateLocked = existingItem?.dueDateLocked ?: false,
+            recurrenceRule = existingItem?.recurrenceRule,
+            recurrenceInterval = existingItem?.recurrenceInterval ?: 1
         )
     }
 

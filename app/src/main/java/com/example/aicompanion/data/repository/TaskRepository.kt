@@ -13,6 +13,8 @@ import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.Project
 import com.example.aicompanion.data.local.entity.TaskEvent
+import com.example.aicompanion.data.local.entity.RecurrenceRule
+import com.example.aicompanion.data.local.entity.computeNextDueDate
 import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.data.local.entity.Source
@@ -167,6 +169,10 @@ class TaskRepository(
         if (item != null) {
             val type = if (completed) TaskEvent.TYPE_COMPLETED else TaskEvent.TYPE_UNCOMPLETED
             recordEvent(item, type)
+            // Auto-create next instance for recurring tasks
+            if (completed && item.recurrenceRule != null) {
+                createNextRecurringInstance(item)
+            }
         }
     }
 
@@ -241,6 +247,39 @@ class TaskRepository(
     suspend fun setEstimatedMinutes(id: Long, minutes: Int) {
         actionItemDao.setEstimatedMinutes(id, minutes)
         markTaskDirty(id)
+    }
+
+    // --- Recurrence ---
+
+    suspend fun setRecurrence(id: Long, rule: String?, interval: Int = 1) {
+        actionItemDao.setRecurrence(id, rule, interval)
+        markTaskDirty(id)
+    }
+
+    /**
+     * Creates the next instance of a recurring task. Called after completing a recurring task.
+     * The new task copies the original's text, project, notes, priority, effort, and recurrence rule.
+     * Due date is advanced by the recurrence interval.
+     */
+    suspend fun createNextRecurringInstance(completedItem: ActionItem): Long {
+        val rule = RecurrenceRule.fromString(completedItem.recurrenceRule) ?: return -1
+        val nextDueDate = computeNextDueDate(completedItem.dueDate, rule, completedItem.recurrenceInterval)
+
+        val nextItem = ActionItem(
+            text = completedItem.text,
+            projectId = completedItem.projectId,
+            notes = completedItem.notes,
+            dueDate = nextDueDate,
+            priority = completedItem.priority,
+            estimatedMinutes = completedItem.estimatedMinutes,
+            recurrenceRule = completedItem.recurrenceRule,
+            recurrenceInterval = completedItem.recurrenceInterval,
+            syncVersion = nextSyncVersion()
+        )
+        val id = actionItemDao.insert(nextItem)
+        recordEvent(nextItem.copy(id = id), TaskEvent.TYPE_CREATED,
+            """{"recurringFrom":${completedItem.id}}""")
+        return id
     }
 
     // --- AI Enrichment ---

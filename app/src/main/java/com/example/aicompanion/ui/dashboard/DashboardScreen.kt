@@ -803,7 +803,8 @@ private fun TaskRowCard(
                     dueDate = item.dueDate,
                     dropDeadDate = item.dropDeadDate,
                     isOverdue = isOverdue,
-                    tags = item.parsedTags()
+                    tags = item.parsedTags(),
+                    isRecurring = item.recurrenceRule != null
                 )
             }
         }

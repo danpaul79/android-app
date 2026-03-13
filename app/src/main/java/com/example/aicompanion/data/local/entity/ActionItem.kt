@@ -71,5 +71,7 @@ data class ActionItem(
     val googleTaskId: String? = null,
     val googleTaskListId: String? = null,
     val syncVersion: Long = 0,
-    val dueDateLocked: Boolean = false
+    val dueDateLocked: Boolean = false,
+    val recurrenceRule: String? = null,   // DAILY, WEEKLY, MONTHLY, YEARLY
+    val recurrenceInterval: Int = 1       // every N periods (e.g. 2 = every 2 weeks)
 )

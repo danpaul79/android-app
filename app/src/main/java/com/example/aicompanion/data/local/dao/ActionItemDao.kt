@@ -236,6 +236,9 @@ interface ActionItemDao {
     """)
     suspend fun getUndatedItems(): List<ActionItem>
 
+    @Query("UPDATE action_items SET recurrenceRule = :rule, recurrenceInterval = :interval, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setRecurrence(id: Long, rule: String?, interval: Int, updatedAt: Long = System.currentTimeMillis())
+
     // --- Sync queries ---
 
     @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")

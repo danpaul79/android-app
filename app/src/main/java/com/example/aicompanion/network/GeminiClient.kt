@@ -276,20 +276,23 @@ Supported commands:
 8. "create_project" — create a new project/folder/list (e.g. "create a project called Home", "create a folder named Vacation", "make a new list called Shopping", "create project Evans driver's license")
 9. "plan_my_day" — open the day planning screen, optionally with a capacity (e.g. "plan my day", "help me plan my day", "I have 45 minutes", "I have an hour today", "what should I work on", "what can I get done in 2 hours")
 10. "review_tasks" — open the task triage/review screen (e.g. "review my tasks", "triage", "what needs attention", "clean up my tasks")
-11. "unrecognized" — if the command doesn't match any of the above
+11. "set_recurrence" — make a task repeat on a schedule or stop repeating (e.g. "make buy groceries weekly", "set water plants to repeat every 3 days", "make workout recurring daily", "stop repeating buy groceries", "remove recurrence from water plants")
+12. "unrecognized" — if the command doesn't match any of the above
 
 The words "project", "folder", and "list" are synonyms. Any of them means create a project.
 "drop dead date", "deadline", "holy cow date", "must be done by" all refer to set_drop_dead_date.
 
 Return this JSON structure. If the transcript contains multiple commands, return an array. For a single command, return just the object:
 {
-  "command": "create_task|complete_task|change_due_date|set_drop_dead_date|move_task|delete_task|rename_task|create_project|plan_my_day|review_tasks|unrecognized",
+  "command": "create_task|complete_task|change_due_date|set_drop_dead_date|move_task|delete_task|rename_task|create_project|plan_my_day|review_tasks|set_recurrence|unrecognized",
   "taskName": "exact or closest matching task name from the list, or the new task name for create_task",
   "projectName": "project name if mentioned, or the new project name for create_project, or null",
   "dueDate": "YYYY-MM-DD or null",
   "priority": "none|low|medium|high|urgent",
   "newName": "the final complete task name for rename_task, or null",
-  "capacityMinutes": "integer minutes for plan_my_day if the user specified a duration (e.g. 45 for '45 minutes', 60 for 'an hour'), or null"
+  "capacityMinutes": "integer minutes for plan_my_day if the user specified a duration (e.g. 45 for '45 minutes', 60 for 'an hour'), or null",
+  "recurrenceRule": "DAILY|WEEKLY|MONTHLY|YEARLY or null (for set_recurrence; null = stop repeating)",
+  "recurrenceInterval": "integer, default 1 (e.g. 'every 2 weeks' = 2, 'every 3 days' = 3)"
 }
 
 Rules:
@@ -298,6 +301,7 @@ Rules:
 - For rename_task: "newName" must be the FINAL desired task name text, not a description of what to change. Apply the user's requested modification to the current task name and return the result.
 - For set_drop_dead_date: use the "dueDate" field to carry the date value.
 - For plan_my_day: extract duration if mentioned ("an hour" = 60, "90 minutes" = 90, "2 hours" = 120); set capacityMinutes to null if no duration mentioned.
+- For set_recurrence: "recurring", "repeating", "repeat", "every day/week/month/year" all map to set_recurrence. Use recurrenceRule (DAILY/WEEKLY/MONTHLY/YEARLY) and recurrenceInterval (default 1). To stop: set recurrenceRule to null.
 - If a project is mentioned, match it to the closest project name from the list.
 - Infer priority from language cues (urgent/ASAP = urgent, important = high, etc.), default to "none".
 

@@ -21,7 +21,7 @@ import com.example.aicompanion.data.local.entity.TaskEvent
 
 @Database(
     entities = [Project::class, ActionItem::class, Source::class, SyncState::class, TaskEvent::class],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -37,6 +37,11 @@ abstract class AppDatabase : RoomDatabase() {
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        val MIGRATION_7_8 = migration(7, 8) {
+            it.execSQL("ALTER TABLE action_items ADD COLUMN recurrenceRule TEXT")
+            it.execSQL("ALTER TABLE action_items ADD COLUMN recurrenceInterval INTEGER NOT NULL DEFAULT 1")
+        }
 
         val MIGRATION_6_7 = migration(6, 7) {
             it.execSQL("""
@@ -97,7 +102,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ai_companion.db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                     .also { INSTANCE = it }
             }

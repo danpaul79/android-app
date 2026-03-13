@@ -22,6 +22,8 @@ sealed class VoiceCommand {
 
     data class RenameTask(val taskName: String, val newName: String) : VoiceCommand()
 
+    data class SetRecurrence(val taskName: String, val rule: String?, val interval: Int = 1) : VoiceCommand()
+
     data class CreateProject(val name: String) : VoiceCommand()
 
     /** "Plan my day" / "I have X minutes" — navigate to PlanMyDay screen. */
