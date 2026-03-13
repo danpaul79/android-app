@@ -27,6 +27,13 @@ interface TaskEventDao {
     """)
     suspend fun getFrequentlyRescheduledTaskIds(minCount: Int = 3): List<TaskIdCount>
 
+    @Query("""
+        SELECT DISTINCT taskId FROM task_events
+        WHERE eventType IN ('TRIAGED', 'SNOOZED')
+        AND timestamp > :since
+    """)
+    suspend fun getRecentlyTriagedTaskIds(since: Long): List<Long>
+
     @Query("DELETE FROM task_events WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
 }

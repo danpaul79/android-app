@@ -440,7 +440,10 @@ class TaskRepository(
 
     suspend fun getTriageCandidates(): List<TriageItem> {
         val now = System.currentTimeMillis()
+        val fourteenDaysAgo = now - 14L * 24 * 60 * 60 * 1000
+        val recentlyTriaged = taskEventDao?.getRecentlyTriagedTaskIds(fourteenDaysAgo)?.toSet() ?: emptySet()
         val seen = mutableSetOf<Long>()
+        seen.addAll(recentlyTriaged)
         val items = mutableListOf<TriageItem>()
 
         // 1. Stale tasks (untouched 14+ days)
@@ -484,6 +487,12 @@ class TaskRepository(
         }
 
         return items.take(10)
+    }
+
+    suspend fun triageTask(id: Long) {
+        val item = actionItemDao.getByIdSync(id) ?: return
+        actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis(), syncVersion = nextSyncVersion()))
+        recordEvent(item, TaskEvent.TYPE_TRIAGED)
     }
 
     suspend fun snoozeTask(id: Long) {
