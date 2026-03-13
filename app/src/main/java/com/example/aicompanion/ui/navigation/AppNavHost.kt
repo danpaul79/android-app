@@ -37,6 +37,7 @@ import com.example.aicompanion.ui.projects.ProjectDetailScreen
 import com.example.aicompanion.ui.projects.ProjectsScreen
 import com.example.aicompanion.ui.search.SearchScreen
 import com.example.aicompanion.ui.task.TaskDetailScreen
+import com.example.aicompanion.ui.feedback.FeedbackScreen
 import com.example.aicompanion.ui.settings.HelpScreen
 import com.example.aicompanion.ui.settings.SettingsScreen
 import com.example.aicompanion.ui.settings.TranscriptViewScreen
@@ -256,6 +257,9 @@ fun AppNavHost(
                             },
                             onNavigateToHelp = {
                                 navController.navigate(NavRoutes.Help.route)
+                            },
+                            onNavigateToFeedback = {
+                                navController.navigate(NavRoutes.Feedback.route)
                             }
                         )
                     }
@@ -312,6 +316,12 @@ fun AppNavHost(
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))
                     }
+                )
+            }
+
+            composable(NavRoutes.Feedback.route) {
+                FeedbackScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

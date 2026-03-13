@@ -61,6 +61,11 @@ android {
             "GEMINI_API_KEY",
             "\"${localProps.getProperty("GEMINI_API_KEY", "")}\""
         )
+        buildConfigField(
+            "String",
+            "GITHUB_PAT",
+            "\"${localProps.getProperty("GITHUB_PAT", "")}\""
+        )
     }
 
     buildTypes {

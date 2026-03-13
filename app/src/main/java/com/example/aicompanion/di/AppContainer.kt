@@ -10,6 +10,7 @@ import com.example.aicompanion.domain.command.VoiceCommandProcessor
 import com.example.aicompanion.domain.extraction.ActionItemExtractor
 import com.example.aicompanion.domain.extraction.GeminiExtractor
 import com.example.aicompanion.network.GeminiClient
+import com.example.aicompanion.network.GitHubIssuesClient
 import com.example.aicompanion.network.TranscriptionClient
 
 class AppContainer(context: Context) {
@@ -27,6 +28,7 @@ class AppContainer(context: Context) {
     )
     val extractor: ActionItemExtractor = GeminiExtractor(geminiClient)
     val transcriptionClient = TranscriptionClient()
+    val gitHubIssuesClient = GitHubIssuesClient()
     val voiceCommandProcessor = VoiceCommandProcessor(geminiClient, transcriptionClient, taskRepository)
 
     // Google Tasks Sync

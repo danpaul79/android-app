@@ -1,0 +1,74 @@
+name: Feedback Processor
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'  # Every 4 hours
+  workflow_dispatch:        # Manual trigger
+
+concurrency:
+  group: feedback-processor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  process-feedback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find oldest open feedback issue
+        id: find-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE=$(gh issue list --label feedback --state open --json number,title,body --limit 1 --jq '.[0]')
+          if [ "$ISSUE" = "" ] || [ "$ISSUE" = "null" ]; then
+            echo "No open feedback issues found"
+            echo "found=false" >> $GITHUB_OUTPUT
+          else
+            ISSUE_NUMBER=$(echo "$ISSUE" | jq -r '.number')
+            echo "Found issue #$ISSUE_NUMBER"
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "$ISSUE" | jq -r '.title' > /tmp/issue_title.txt
+            echo "$ISSUE" | jq -r '.body' > /tmp/issue_body.txt
+          fi
+
+      - name: Process feedback with Claude
+        if: steps.find-issue.outputs.found == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            A user submitted feedback via the in-app feedback form. Read the issue below and implement the requested change.
+
+            **Issue #${{ steps.find-issue.outputs.number }}**
+            **Title**: $(cat /tmp/issue_title.txt)
+            **Body**:
+            $(cat /tmp/issue_body.txt)
+
+            Instructions:
+            1. Read CLAUDE.md for project context and architecture
+            2. Explore the codebase to understand the relevant code
+            3. Implement the change (bug fix or feature request)
+            4. Make sure the code compiles: run `JAVA_HOME="/usr/lib/jvm/temurin-17-jdk-amd64" ./gradlew :app:compileDebugKotlin`
+            5. Create a branch named `feedback/${{ steps.find-issue.outputs.number }}`
+            6. Commit your changes
+            7. Create a PR with "Closes #${{ steps.find-issue.outputs.number }}" in the body
+
+      - name: Comment on issue
+        if: steps.find-issue.outputs.found == 'true' && failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ steps.find-issue.outputs.number }} \
+            --body "Automated processing attempted but encountered an error. Manual review needed."

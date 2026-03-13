@@ -27,6 +27,7 @@ jobs:
           cat > local.properties <<EOF
           DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
           GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          GITHUB_PAT=${{ secrets.GITHUB_PAT }}
           EOF
           sed -i 's/^ *//' local.properties
 
