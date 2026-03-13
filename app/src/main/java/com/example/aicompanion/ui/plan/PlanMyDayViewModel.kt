@@ -76,6 +76,8 @@ class PlanMyDayViewModel(application: Application) : AndroidViewModel(applicatio
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
             tasks.forEach { task ->
+                // Never modify locked due dates
+                if (task.dueDateLocked) return@forEach
                 when {
                     // No date or overdue → just set to today
                     task.dueDate == null || task.dueDate < dayStart -> {

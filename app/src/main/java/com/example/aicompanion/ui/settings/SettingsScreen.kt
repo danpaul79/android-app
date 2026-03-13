@@ -589,12 +589,14 @@ private fun EnrichTasksCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Enrich task metadata", style = MaterialTheme.typography.bodyLarge)
                     val subtitle = when {
+                        enrichmentState.isDone && enrichmentState.enriched == 0 ->
+                            "Done — no changes needed (${enrichmentState.total} analyzed)"
                         enrichmentState.isDone ->
                             "Done — ${enrichmentState.enriched} of ${enrichmentState.total} tasks updated"
                         enrichmentState.isRunning ->
                             "Analyzing ${enrichmentState.progress} of ${enrichmentState.total}..."
                         enrichmentState.unenrichedCount > 0 ->
-                            "${enrichmentState.unenrichedCount} tasks missing effort estimates"
+                            "${enrichmentState.unenrichedCount} tasks without effort estimates"
                         else ->
                             "All tasks have effort estimates"
                     }

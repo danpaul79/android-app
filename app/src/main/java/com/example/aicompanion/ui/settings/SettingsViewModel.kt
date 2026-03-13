@@ -327,9 +327,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     )
                 )
             }
+            // Re-check count from DB — some tasks may still be unenriched if Gemini
+            // returned 0 or the API call failed for a batch
+            val remainingCount = repo.countUnenrichedTasks()
             _uiState.value = _uiState.value.copy(
                 enrichment = EnrichmentUiState(
-                    unenrichedCount = 0,
+                    unenrichedCount = remainingCount,
                     isRunning = false,
                     progress = result.processed,
                     total = result.total,
@@ -337,7 +340,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     isDone = true,
                     log = result.log
                 ),
-                message = "Enriched ${result.enriched} tasks (${result.processed} analyzed)"
+                message = if (result.enriched > 0) "Enriched ${result.enriched} tasks (${result.processed} analyzed)"
+                    else "No changes needed (${result.processed} tasks analyzed)"
             )
         }
     }

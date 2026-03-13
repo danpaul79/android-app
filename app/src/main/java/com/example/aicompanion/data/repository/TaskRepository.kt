@@ -300,7 +300,7 @@ class TaskRepository(
                     }
                     val taskTitle = task.text.take(40) + if (task.text.length > 40) "…" else ""
                     log.add("$taskTitle: ${if (changes.isEmpty()) "no changes" else changes.joinToString(", ")}")
-                    enriched++
+                    if (changes.isNotEmpty()) enriched++
                 }
             }
             processed += batch.size
@@ -390,6 +390,7 @@ class TaskRepository(
 
         val bucket3 = allTasks.filter { isEligible(it) &&
             it.dueDate != null && it.dueDate >= dayEnd &&
+            !it.dueDateLocked &&  // Don't pull in locked future-date tasks
             (it.dropDeadDate == null || it.dropDeadDate >= now + 7L * 24 * 60 * 60 * 1000)
         }.sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
             .thenBy { it.dueDate ?: Long.MAX_VALUE })
