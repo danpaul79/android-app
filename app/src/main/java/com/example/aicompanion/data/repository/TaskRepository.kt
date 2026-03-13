@@ -410,6 +410,8 @@ class TaskRepository(
 
     fun getUndatedCount(): Flow<Int> = actionItemDao.getUndatedCount()
 
+    fun getUndatedItems(): Flow<List<ActionItem>> = actionItemDao.getUndatedItemsFlow()
+
     suspend fun trashTask(id: Long) {
         val item = actionItemDao.getByIdSync(id)
         actionItemDao.trashItem(id)

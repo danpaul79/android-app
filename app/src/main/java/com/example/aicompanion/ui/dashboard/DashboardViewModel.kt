@@ -17,6 +17,7 @@ data class DashboardUiState(
     val overdueItems: List<ActionItem> = emptyList(),
     val todayItems: List<ActionItem> = emptyList(),
     val upcomingItems: List<ActionItem> = emptyList(),
+    val undatedItems: List<ActionItem> = emptyList(),
     val recentlyCompleted: List<ActionItem> = emptyList(),
     val inboxCount: Int = 0,
     val projects: List<Project> = emptyList(),
@@ -28,7 +29,7 @@ data class DashboardUiState(
     val triageCount: Int = 0
 ) {
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
-    val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems
+    val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems + undatedItems
 
     /** Sum of estimated minutes for overdue + today tasks (the "load" for today). */
     val plannedMinutesToday: Int get() = (overdueItems + todayItems).sumOf {
@@ -65,6 +66,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             repo.getRecentlyCompleted().collect { completed ->
                 _uiState.value = _uiState.value.copy(recentlyCompleted = completed)
+            }
+        }
+        viewModelScope.launch {
+            repo.getUndatedItems().collect { undated ->
+                _uiState.value = _uiState.value.copy(undatedItems = undated)
             }
         }
         loadTodaysPlan()

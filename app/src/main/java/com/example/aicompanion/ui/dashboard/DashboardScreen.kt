@@ -518,6 +518,26 @@ fun DashboardScreen(
                     }
                 }
 
+                if (uiState.undatedItems.isNotEmpty()) {
+                    item { SectionHeader(title = "No date") }
+                    items(uiState.undatedItems, key = { "undated_${it.id}" }) { item ->
+                        val isSelected = item.id in uiState.selectedIds
+                        TaskRow(
+                            item = item,
+                            isSelectionMode = uiState.isSelectionMode,
+                            isSelected = isSelected,
+                            onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                            onClick = {
+                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                else onNavigateToTask(item.id)
+                            },
+                            onLongClick = { viewModel.toggleSelection(item.id) },
+                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
+                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
+                        )
+                    }
+                }
+
                 // Recently completed (collapsible)
                 if (uiState.recentlyCompleted.isNotEmpty() && !uiState.isSelectionMode) {
                     item {
