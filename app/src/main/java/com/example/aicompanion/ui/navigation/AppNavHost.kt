@@ -35,6 +35,7 @@ import com.example.aicompanion.ui.projects.ProjectDetailScreen
 import com.example.aicompanion.ui.projects.ProjectsScreen
 import com.example.aicompanion.ui.search.SearchScreen
 import com.example.aicompanion.ui.task.TaskDetailScreen
+import com.example.aicompanion.ui.settings.HelpScreen
 import com.example.aicompanion.ui.settings.SettingsScreen
 import com.example.aicompanion.ui.settings.TranscriptViewScreen
 import com.example.aicompanion.ui.plan.PlanMyDayScreen
@@ -266,7 +267,16 @@ fun AppNavHost(
                     onNavigateBack = { navController.popBackStack() },
                     onViewTranscript = { filePath ->
                         navController.navigate(NavRoutes.TranscriptView.createRoute(filePath))
+                    },
+                    onNavigateToHelp = {
+                        navController.navigate(NavRoutes.Help.route)
                     }
+                )
+            }
+
+            composable(NavRoutes.Help.route) {
+                HelpScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

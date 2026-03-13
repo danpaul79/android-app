@@ -78,6 +78,7 @@ import java.util.Locale
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onViewTranscript: (String) -> Unit,
+    onNavigateToHelp: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -302,6 +303,47 @@ fun SettingsScreen(
                             note.transcriptFile?.let { onViewTranscript(it.absolutePath) }
                         }
                     )
+                }
+            }
+
+            // Help section
+            item {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "About",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToHelp() }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Description,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Help & Features", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "Voice commands, features, tips",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
 

@@ -18,6 +18,7 @@ sealed class NavRoutes(val route: String) {
     data object Settings : NavRoutes("settings")
     data object PlanMyDay : NavRoutes("plan_my_day")
     data object TaskTriage : NavRoutes("task_triage")
+    data object Help : NavRoutes("help")
     data object TranscriptView : NavRoutes("transcript/{filePath}") {
         fun createRoute(filePath: String) = "transcript/${java.net.URLEncoder.encode(filePath, "UTF-8")}"
     }
