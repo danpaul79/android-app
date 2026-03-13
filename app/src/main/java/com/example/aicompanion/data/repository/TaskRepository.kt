@@ -6,10 +6,13 @@ import com.example.aicompanion.data.local.dao.ActionItemDao
 import com.example.aicompanion.data.local.dao.ProjectDao
 import com.example.aicompanion.data.local.dao.SourceDao
 import com.example.aicompanion.data.local.dao.SyncStateDao
+import com.example.aicompanion.data.local.dao.TaskEventDao
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.Project
+import com.example.aicompanion.data.local.entity.TaskEvent
 import com.example.aicompanion.data.local.entity.effectivePriority
+import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.data.local.entity.Source
 import com.example.aicompanion.data.export.ExportData
 import com.example.aicompanion.network.GeminiClient
@@ -25,7 +28,8 @@ class TaskRepository(
     private val sourceDao: SourceDao,
     private val syncStateDao: SyncStateDao,
     private val geminiClient: GeminiClient = GeminiClient(),
-    private val context: Context? = null
+    private val context: Context? = null,
+    private val taskEventDao: TaskEventDao? = null
 ) {
     private val syncVersionCounter = AtomicLong(System.currentTimeMillis())
     private val planStore by lazy { context?.let { MorningPlanStore(it) } }
@@ -43,6 +47,18 @@ class TaskRepository(
     private suspend fun markProjectDirty(id: Long) {
         projectDao.updateSyncVersion(id, nextSyncVersion())
     }
+
+    private suspend fun recordEvent(item: ActionItem, eventType: String, metadata: String? = null) {
+        taskEventDao?.insert(TaskEvent(
+            taskId = item.id,
+            eventType = eventType,
+            projectId = item.projectId,
+            tags = item.parsedTags().takeIf { it.isNotEmpty() }?.joinToString(","),
+            estimatedMinutes = item.estimatedMinutes,
+            metadata = metadata
+        ))
+    }
+
     // --- Projects ---
 
     fun getAllProjects(): Flow<List<Project>> = projectDao.getAll()
@@ -140,11 +156,16 @@ class TaskRepository(
     fun getTrashedTasks(): Flow<List<ActionItem>> = actionItemDao.getTrashedItems()
 
     suspend fun toggleCompleted(id: Long, completed: Boolean) {
+        val item = actionItemDao.getByIdSync(id)
         val completedAt = if (completed) System.currentTimeMillis() else null
         actionItemDao.setCompleted(id, completed, completedAt)
         markTaskDirty(id)
         if (completed) planStore?.removeTaskFromPlan(id)
         refreshWidget()
+        if (item != null) {
+            val type = if (completed) TaskEvent.TYPE_COMPLETED else TaskEvent.TYPE_UNCOMPLETED
+            recordEvent(item, type)
+        }
     }
 
     suspend fun assignToProject(itemId: Long, projectId: Long?) {
@@ -159,16 +180,17 @@ class TaskRepository(
         priority: Priority = Priority.NONE,
         notes: String? = null
     ): Long {
-        return actionItemDao.insert(
-            ActionItem(
-                text = text,
-                projectId = projectId,
-                dueDate = dueDate,
-                priority = priority,
-                notes = notes,
-                syncVersion = nextSyncVersion()
-            )
+        val item = ActionItem(
+            text = text,
+            projectId = projectId,
+            dueDate = dueDate,
+            priority = priority,
+            notes = notes,
+            syncVersion = nextSyncVersion()
         )
+        val id = actionItemDao.insert(item)
+        recordEvent(item.copy(id = id), TaskEvent.TYPE_CREATED)
+        return id
     }
 
     suspend fun updateTask(item: ActionItem) {
@@ -189,12 +211,14 @@ class TaskRepository(
     }
 
     suspend fun setDueDate(id: Long, dueDate: Long?, force: Boolean = false) {
-        if (!force) {
-            val item = actionItemDao.getByIds(listOf(id)).firstOrNull()
-            if (item?.dueDateLocked == true) return
-        }
+        val item = actionItemDao.getByIdSync(id)
+        if (!force && item?.dueDateLocked == true) return
         actionItemDao.setDueDate(id, dueDate)
         markTaskDirty(id)
+        if (item != null) {
+            recordEvent(item, TaskEvent.TYPE_DUE_DATE_CHANGED,
+                """{"oldDueDate":${item.dueDate},"newDueDate":$dueDate}""")
+        }
         // If rescheduled to a future date, remove from today's plan
         val dayEnd = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
@@ -300,7 +324,7 @@ class TaskRepository(
         actionItemDao.getWaitingForItems(limit)
 
     suspend fun removeTagFromNotes(id: Long, tag: String) {
-        val item = actionItemDao.getByIds(listOf(id)).firstOrNull() ?: return
+        val item = actionItemDao.getByIdSync(id) ?: return
         val cleaned = item.notes?.replace(Regex("#$tag\\b", RegexOption.IGNORE_CASE), "")?.trim()
         actionItemDao.update(item.copy(notes = cleaned?.ifBlank { null }, updatedAt = System.currentTimeMillis()))
         markTaskDirty(id)
@@ -374,18 +398,30 @@ class TaskRepository(
     fun getUndatedCount(): Flow<Int> = actionItemDao.getUndatedCount()
 
     suspend fun trashTask(id: Long) {
+        val item = actionItemDao.getByIdSync(id)
         actionItemDao.trashItem(id)
         markTaskDirty(id)
         planStore?.removeTaskFromPlan(id)
         refreshWidget()
+        if (item != null) recordEvent(item, TaskEvent.TYPE_TRASHED)
     }
 
     suspend fun restoreTask(id: Long) {
+        val item = actionItemDao.getByIdSync(id)
         actionItemDao.restoreItem(id)
         markTaskDirty(id)
+        if (item != null) recordEvent(item, TaskEvent.TYPE_RESTORED)
     }
 
     suspend fun deleteTask(id: Long) = actionItemDao.deleteById(id)
+
+    // --- Task Events ---
+
+    suspend fun getTaskEvents(taskId: Long): List<TaskEvent> =
+        taskEventDao?.getEventsForTask(taskId) ?: emptyList()
+
+    suspend fun getDueDateChangeCount(taskId: Long): Int =
+        taskEventDao?.countEventsForTask(taskId, TaskEvent.TYPE_DUE_DATE_CHANGED) ?: 0
 
     // --- Sources ---
 

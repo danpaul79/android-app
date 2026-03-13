@@ -12,14 +12,16 @@ import com.example.aicompanion.data.local.dao.ActionItemDao
 import com.example.aicompanion.data.local.dao.ProjectDao
 import com.example.aicompanion.data.local.dao.SourceDao
 import com.example.aicompanion.data.local.dao.SyncStateDao
+import com.example.aicompanion.data.local.dao.TaskEventDao
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Project
 import com.example.aicompanion.data.local.entity.Source
 import com.example.aicompanion.data.local.entity.SyncState
+import com.example.aicompanion.data.local.entity.TaskEvent
 
 @Database(
-    entities = [Project::class, ActionItem::class, Source::class, SyncState::class],
-    version = 6,
+    entities = [Project::class, ActionItem::class, Source::class, SyncState::class, TaskEvent::class],
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -28,12 +30,30 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun actionItemDao(): ActionItemDao
     abstract fun sourceDao(): SourceDao
     abstract fun syncStateDao(): SyncStateDao
+    abstract fun taskEventDao(): TaskEventDao
 
     companion object {
         private const val TAG = "AppDatabase"
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        val MIGRATION_6_7 = migration(6, 7) {
+            it.execSQL("""
+                CREATE TABLE IF NOT EXISTS task_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    taskId INTEGER NOT NULL,
+                    eventType TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    projectId INTEGER,
+                    tags TEXT,
+                    estimatedMinutes INTEGER NOT NULL DEFAULT 0,
+                    metadata TEXT
+                )
+            """.trimIndent())
+            it.execSQL("CREATE INDEX IF NOT EXISTS index_task_events_taskId ON task_events (taskId)")
+            it.execSQL("CREATE INDEX IF NOT EXISTS index_task_events_eventType ON task_events (eventType)")
+        }
 
         val MIGRATION_5_6 = migration(5, 6) {
             it.execSQL("ALTER TABLE action_items ADD COLUMN dueDateLocked INTEGER NOT NULL DEFAULT 0")
@@ -77,7 +97,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ai_companion.db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build()
                     .also { INSTANCE = it }
             }

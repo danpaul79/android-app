@@ -25,6 +25,9 @@ class MorningCheckInWorker(
     companion object {
         const val WORK_NAME = "morning_checkin"
         const val NOTIFICATION_ID = 9000
+        private const val REVIEW_SUMMARY_NOTIFICATION_ID = 9099
+        private const val REVIEW_NOTIFICATION_BASE_ID = 9100
+        private const val REVIEW_GROUP = "pocket_pilot_review"
 
         /** Schedule (or reschedule) the daily morning worker. */
         fun schedule(context: Context) {
@@ -113,74 +116,50 @@ class MorningCheckInWorker(
             val repo = app.container.taskRepository
 
             val staleTasks = repo.getStaleItems(staleDaysThreshold = 14, limit = 2)
-                .filter { task -> !task.notes.orEmpty().contains("#waiting-for", ignoreCase = true) }
             val waitingTasks = repo.getWaitingForItems(limit = 2)
 
-            val reviewItems = (staleTasks.map { it to "stale" } + waitingTasks.map { it to "waiting" })
+            val reviewItems = (staleTasks.map { it to ReviewType.STALE } + waitingTasks.map { it to ReviewType.WAITING })
                 .distinctBy { it.first.id }
                 .take(3)
 
             if (reviewItems.isNotEmpty()) {
-                // Post silent group summary notification (required for Android grouping)
                 val summaryNotif = NotificationCompat.Builder(context, channel)
                     .setSmallIcon(android.R.drawable.ic_popup_reminder)
                     .setContentTitle("Quick review")
                     .setGroupSummary(true)
-                    .setGroup("pocket_pilot_review")
+                    .setGroup(REVIEW_GROUP)
                     .setPriority(NotificationCompat.PRIORITY_LOW)
                     .setAutoCancel(true)
                     .build()
-                manager.notify(9099, summaryNotif)
+                manager.notify(REVIEW_SUMMARY_NOTIFICATION_ID, summaryNotif)
 
-                reviewItems.forEachIndexed { index, (task, type) ->
-                    val notifId = 9100 + index
+                reviewItems.forEachIndexed { index, (task, reviewType) ->
+                    val notifId = REVIEW_NOTIFICATION_BASE_ID + index
 
-                    val isStale = type == "stale"
-                    val title = if (isStale) "Still relevant?" else "Still waiting?"
-
-                    val doneAction: String
-                    val secondaryAction: String
-                    val secondaryLabel: String
-                    val skipAction: String
-
-                    if (isStale) {
-                        doneAction = MorningActionReceiver.ACTION_STALE_DONE
-                        secondaryAction = MorningActionReceiver.ACTION_STALE_NOT_NEEDED
-                        secondaryLabel = "Not needed"
-                        skipAction = MorningActionReceiver.ACTION_STALE_SKIP
-                    } else {
-                        doneAction = MorningActionReceiver.ACTION_WAITING_DONE
-                        secondaryAction = MorningActionReceiver.ACTION_WAITING_REMOVE
-                        secondaryLabel = "Remove wait"
-                        skipAction = MorningActionReceiver.ACTION_WAITING_SKIP
-                    }
-
-                    fun buildReviewIntent(action: String) =
+                    fun buildReviewIntent(action: String, slot: Int) =
                         PendingIntent.getBroadcast(
                             context,
-                            notifId * 10 + when (action) {
-                                doneAction -> 0
-                                secondaryAction -> 1
-                                else -> 2
-                            },
+                            notifId * 10 + slot,
                             Intent(context, MorningActionReceiver::class.java).apply {
                                 this.action = action
                                 putExtra(MorningActionReceiver.EXTRA_TASK_ID, task.id)
                                 putExtra(MorningActionReceiver.EXTRA_NOTIFICATION_ID, notifId)
+                                putExtra(MorningActionReceiver.EXTRA_REVIEW_TYPE, reviewType.name)
                             },
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                         )
 
                     val reviewNotif = NotificationCompat.Builder(context, channel)
                         .setSmallIcon(android.R.drawable.ic_popup_reminder)
-                        .setContentTitle(title)
-                        .setContentText(task.text)
-                        .setGroup("pocket_pilot_review")
+                        .setContentTitle(task.text)
+                        .setContentText(reviewType.subtitle)
+                        .setStyle(NotificationCompat.BigTextStyle().bigText(reviewType.subtitle))
+                        .setGroup(REVIEW_GROUP)
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                         .setAutoCancel(true)
-                        .addAction(0, "Done", buildReviewIntent(doneAction))
-                        .addAction(0, secondaryLabel, buildReviewIntent(secondaryAction))
-                        .addAction(0, "Skip", buildReviewIntent(skipAction))
+                        .addAction(0, "Done", buildReviewIntent(MorningActionReceiver.ACTION_REVIEW_DONE, 0))
+                        .addAction(0, reviewType.secondaryLabel, buildReviewIntent(MorningActionReceiver.ACTION_REVIEW_SECONDARY, 1))
+                        .addAction(0, "Skip", buildReviewIntent(MorningActionReceiver.ACTION_REVIEW_SKIP, 2))
                         .build()
 
                     manager.notify(notifId, reviewNotif)

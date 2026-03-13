@@ -21,6 +21,9 @@ interface ActionItemDao {
     @Query("SELECT * FROM action_items WHERE id = :id")
     fun getById(id: Long): Flow<ActionItem?>
 
+    @Query("SELECT * FROM action_items WHERE id = :id")
+    suspend fun getByIdSync(id: Long): ActionItem?
+
     @Query("SELECT * FROM action_items WHERE projectId IS NULL AND isCompleted = 0 AND isTrashed = 0 ORDER BY createdAt DESC")
     fun getInboxItems(): Flow<List<ActionItem>>
 
@@ -173,6 +176,7 @@ interface ActionItemDao {
         WHERE isCompleted = 0
         AND isTrashed = 0
         AND updatedAt < :staleThreshold
+        AND (notes IS NULL OR notes NOT LIKE '%#waiting-for%')
         ORDER BY RANDOM()
         LIMIT :limit
     """)
