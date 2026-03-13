@@ -38,16 +38,20 @@ jobs:
         id: find-issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
         run: |
-          if [ "${{ github.event_name }}" = "issues" ]; then
-            # Triggered by issue event — use the triggering issue
+          if [ "$EVENT_NAME" = "issues" ]; then
+            # Triggered by issue event — fetch issue data safely via gh CLI
+            ISSUE=$(gh issue view "$EVENT_ISSUE_NUMBER" --json number,title,body)
             echo "found=true" >> $GITHUB_OUTPUT
-            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            echo "title=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
-            echo '${{ github.event.issue.body }}' > /tmp/issue_body.txt
-          elif [ -n "${{ inputs.issue_number }}" ]; then
+            echo "number=$(echo "$ISSUE" | jq -r '.number')" >> $GITHUB_OUTPUT
+            echo "title=$(echo "$ISSUE" | jq -r '.title')" >> $GITHUB_OUTPUT
+            echo "$ISSUE" | jq -r '.body' > /tmp/issue_body.txt
+          elif [ -n "$INPUT_ISSUE_NUMBER" ]; then
             # Manual dispatch with specific issue number
-            ISSUE=$(gh issue view ${{ inputs.issue_number }} --json number,title,body)
+            ISSUE=$(gh issue view "$INPUT_ISSUE_NUMBER" --json number,title,body)
             echo "found=true" >> $GITHUB_OUTPUT
             echo "number=$(echo "$ISSUE" | jq -r '.number')" >> $GITHUB_OUTPUT
             echo "title=$(echo "$ISSUE" | jq -r '.title')" >> $GITHUB_OUTPUT
@@ -95,7 +99,7 @@ jobs:
         run: |
           # Find the PR created by Claude for this feedback issue
           PR_NUMBER=$(gh pr list --search "Closes #${{ steps.find-issue.outputs.number }}" --json number --jq '.[0].number')
-          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ] && [ "$PR_NUMBER" != "" ]; then
             echo "Merging PR #$PR_NUMBER"
             gh pr merge "$PR_NUMBER" --merge --delete-branch
           else
