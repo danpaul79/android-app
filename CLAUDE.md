@@ -4,31 +4,38 @@
 A "second brain" that ingests tasks from multiple sources (voice notes, email, texts, chat), extracts action items using AI, and organizes them into projects. The user interacts primarily with **tasks organized by project**, not with individual voice notes or messages. Sources are just how items arrive.
 
 ## Current Status
-**Phases 1–3b complete.** Full capacity-aware scheduling with context filtering and Plan My Day screen.
+**Phases 1–3c complete.** Full capacity-aware scheduling, task triage, home screen widget, and living task list.
 
 ### What works now:
 - **App name**: Pocket Pilot
-- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash; search, trash, and settings icons in top bar
+- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); triage card when tasks need review; capacity indicator tappable to Plan My Day; Today's Plan card after morning check-in; priority color bars on task cards; search, trash, and settings icons in top bar
 - **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
-- **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash; confirmation dialogs on all trash actions
-- **Projects**: create projects, view tasks per project; trash icon navigates to Trash screen
-- **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash; confirmation dialog on project delete (warns about cascading task deletion)
+- **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); confirmation dialogs on all trash actions
+- **Projects**: create projects, view tasks per project; undated tasks filter (filter icon); navigation badge shows undated task count; trash icon navigates to Trash screen
+- **Project Detail**: tasks within a project; long-press multi-select with batch due date/rename/trash; swipe right to complete, swipe left to trash (with undo snackbar); (+) quick add; mic icon to capture into project; confirmation dialog on project delete (warns about cascading task deletion)
 - **Capture**: voice recording with waveform visualization, timer, pause/resume/cancel; text input option
 - **Auto-pipeline**: record → auto-transcribe (Deepgram) → auto-extract (Gemini) → review → save
 - **Project creation from voice**: say "create a new project called X" during recording; AI detects intent, creates project, assigns extracted tasks
-- **Voice commands**: persistent bar above bottom nav on all main screens; record or type commands; supports multiple commands in one prompt; say "create task X", "complete Y", "change due date of Z to Friday", "set drop dead date for X to July 25", "move task to project W", "delete task", "rename task", "plan my day", "I have 45 minutes"
+- **Voice commands**: persistent bar above bottom nav on all main screens; record or type commands; supports multiple commands in one prompt; say "create task X", "complete Y", "change due date of Z to Friday", "set drop dead date for X to July 25", "move task to project W", "delete task", "rename task", "plan my day", "I have 45 minutes", "review my tasks", "triage"
 - **Transcript-only mode**: toggle on Capture screen to skip extraction and just get a transcript
-- **Task Detail**: view/edit task name, change due date, set drop-dead date (hard deadline, warning color), effort estimate chips (10m/20m/30m/1h/90m/2h+), change project, add notes, see source info; confirmation dialog on trash
+- **Task Detail**: view/edit task name, change due date, set drop-dead date (hard deadline, warning color), lock due date (prevents voice command changes), effort estimate chips (10m/20m/30m/1h/90m/2h+), change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
 - **Settings**: gear icon in Dashboard; export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
-- **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; tapping plan opens app
+- **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; also surfaces 2-3 stale/waiting-for tasks as review notifications with quick actions (Done, Trash/Unblock, Skip); "Review all" opens triage screen
 - **Effort estimates**: `estimatedMinutes` on every task; AI-guessed at extraction, user-editable in Task Detail; enrichment batch-backfills existing tasks; unestimated = 30m default for scheduling
 - **Drop-dead dates**: `dropDeadDate` separate from soft `dueDate`; voice command "set drop dead date"; Task Detail picker with warning styling
 - **Context tags**: `#hashtags` in task notes; AI suggests at extraction; `#waiting-for` excluded from scheduling; displayed as chips on task cards in Dashboard/Inbox/Project Detail
 - **Dynamic priority**: `effectivePriority()` auto-escalates to URGENT when drop-dead ≤1 day, or ≤3 days + effort ≥60m; HIGH when ≤7 days
 - **Plan My Day**: Dashboard capacity indicator (today's planned vs capacity); tap to open PlanMyDay screen; select time + context → see recommended task list; adjusting capacity saves new plan
+- **Task Triage**: guided review screen; surfaces stale (14+ days untouched), frequently rescheduled (3+ date changes), large undated (60+ min), and #waiting-for tasks; actions: done, keep, set due date, break it down (AI subtask generation), snooze 2w, toggle #waiting-for, trash; accessible via dashboard card, voice command "review my tasks", morning notification
+- **Task event tracking**: records lifecycle events (created, completed, uncompleted, trashed, restored, due date changed, triaged, snoozed) in task_events table; powers triage logic and future pattern learning
+- **Home screen widget**: Jetpack Glance "Today's Plan" widget; shows up to 7 tasks with completion status and effort; auto-refreshes on complete/trash/reschedule; updates every 30 min
+- **Swipe undo**: swipe-to-complete and swipe-to-trash show snackbar with "Undo" button on Dashboard, Inbox, and Project Detail
+- **Lock due date**: lock icon in Task Detail prevents voice commands from changing due date; `dueDateLocked` field in ActionItem
+- **Priority color bars**: left-edge color bar on task cards; red = URGENT, accent = HIGH, subtle = MEDIUM
+- **Help & Features guide**: Settings → Help & Features; comprehensive in-app documentation of all features
 - **Bottom nav**: Dashboard | Inbox | Capture | Projects
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
@@ -40,7 +47,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Phase 2.75 (complete)**: Google Tasks bi-directional sync
 - **Phase 3a (complete)**: Effort estimates, drop-dead dates, context tags, AI enrichment, morning check-in notification
 - **Phase 3b (complete)**: Tag chips on cards, PlanMyDay screen with context filter, dashboard capacity indicator, "plan my day" voice command
-- **Phase 3c (partial)**: Morning check-in notification done; stale task review in notification TBD
+- **Phase 3c (complete)**: Morning check-in notification, task triage screen, morning review notifications with quick actions, task event tracking
 - **Phase 3d (future)**: AI pattern learning, task rot detection
 - **Phase 4**: More input sources — Gmail, SMS, Google Chat
 
@@ -89,11 +96,15 @@ The app becomes a true "second brain" — not just storing tasks but actively ma
 - Capacity source: last morning check-in; adjustable on PlanMyDay screen (saves new plan → Dashboard updates)
 - New key files: `ui/plan/PlanMyDayScreen.kt`, `ui/plan/PlanMyDayViewModel.kt`, `ui/common/TagChips.kt`
 
-### Phase 3c — Living Task List (morning check-in)
+### Phase 3c — Living Task List (complete)
 - [x] Morning notification: capacity buttons (30m/1h/90m/2h/3h); follow-up shows task plan
 - [x] Settings: toggle + hour picker for notification time
 - [x] MorningCheckInWorker (WorkManager daily periodic), MorningActionReceiver (BroadcastReceiver)
-- [ ] Stale task review in notification: 2-3 old tasks with "Still relevant? [Yes | Done | Not needed]"
+- [x] Stale/waiting-for task review in morning notification: 2-3 tasks with quick actions (Done, Trash/Unblock, Skip) + "Review all" opens triage
+- [x] Task Triage screen: guided card-by-card review with AI breakdown, snooze, set due date, toggle #waiting-for
+- [x] Task event tracking: task_events table records lifecycle (created, completed, trashed, restored, due_date_changed, triaged, snoozed)
+- [x] Dashboard triage card: "X tasks need review" prompt
+- [x] Voice command: "review my tasks" / "triage" → navigates to Task Triage screen
 - [ ] Track task completion patterns to improve future recommendations
 
 ### Phase 3d — AI Pattern Learning (future)
@@ -146,7 +157,8 @@ ActionItem gains:
 ### Data Model
 ```
 Project (id, name, color, icon, sortOrder, isArchived, isTrashed, createdAt, googleTaskListId, syncVersion)
-ActionItem (id, projectId, sourceId, text, notes, dueDate, dropDeadDate, priority, estimatedMinutes, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt, googleTaskId, googleTaskListId, syncVersion)
+ActionItem (id, projectId, sourceId, text, notes, dueDate, dropDeadDate, dueDateLocked, priority, estimatedMinutes, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt, googleTaskId, googleTaskListId, syncVersion)
+TaskEvent (id, taskId, eventType, timestamp, projectId, tags, estimatedMinutes, metadata)
 Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, processedAt, createdAt)
 SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnabled, googleAccountEmail)
 ```
@@ -154,19 +166,24 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- DB version: 5 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
+- DB version: 7 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
+- v6 adds: `task_events` table for lifecycle tracking
+- v7 adds: `dueDateLocked INTEGER NOT NULL DEFAULT 0` to action_items
 - Sync fields: `googleTaskId`/`googleTaskListId` link to Google Tasks API; `syncVersion` tracks dirty items for incremental sync
 - Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
 
 ### Screen Flow
-- **Dashboard** — overdue, today, upcoming tasks; recently completed section; long-press → multi-select mode; top bar: search, trash, settings
-- **Inbox** — unassigned tasks; long-press → multi-select mode
-- **Projects** — list of projects with task counts; trash icon → Trash screen
-- **Project Detail** — tasks within a project; long-press → multi-select mode; confirmation on project/task trash
+- **Dashboard** — overdue, today, upcoming tasks; recently completed section; triage card; capacity indicator; Today's Plan card; long-press → multi-select mode; swipe gestures with undo; top bar: search, trash, settings
+- **Inbox** — unassigned tasks; long-press → multi-select mode; swipe gestures with undo
+- **Projects** — list of projects with task counts; undated filter; trash icon → Trash screen
+- **Project Detail** — tasks within a project; long-press → multi-select mode; swipe gestures with undo; (+) quick add; mic capture; confirmation on project/task trash
 - **Capture** — voice note recording/transcription/extraction; text input option
-- **Task Detail** — view/edit a single task; confirmation on trash
-- **Settings** — export/import data; Google Tasks sync (sign in/out, sync now, status); voice history with transcript viewer
+- **Task Detail** — view/edit a single task; lock due date; effort chips; confirmation on trash
+- **Plan My Day** — capacity selection + context filter → AI-picked task list
+- **Task Triage** — guided card-by-card review of tasks needing attention; AI breakdown
+- **Settings** — export/import data; Google Tasks sync; AI enrichment; voice history; morning check-in; Help & Features
+- **Help & Features** — comprehensive in-app documentation of all features
 - **Trash** — trashed tasks and projects; restore or permanently delete
 - Bottom navigation: Dashboard | Inbox | Capture | Projects
 
@@ -187,9 +204,13 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `ui/voicecommand/` - Persistent voice command bar + ViewModel (record → transcribe → parse → execute); text input mode
 - `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution, multi-command support; supports set_drop_dead_date)
 - `reminder/` - NotificationHelper, ReminderWorker (hourly due-date reminders), MorningCheckInWorker, MorningActionReceiver, MorningPreferences, MorningNotificationHelper
+- `ui/plan/` - Plan My Day screen + ViewModel (capacity selection, context filter, AI task picking)
+- `ui/triage/` - Task Triage screen + ViewModel + models (guided review, AI breakdown)
+- `ui/common/` - Shared composables (TagChips)
 - `ui/search/` - Search screen (task name + notes search)
-- `ui/settings/` - Settings screen (export/import, AI enrichment, voice history, Google Tasks sync, morning check-in)
+- `ui/settings/` - Settings screen (export/import, AI enrichment, voice history, Google Tasks sync, morning check-in); HelpScreen (feature guide)
 - `ui/trash/` - Trash screen (restore / permanent delete)
+- `widget/` - TodayPlanWidget (Jetpack Glance home screen widget)
 
 ## Transcription
 - **Calls Deepgram API directly** from the Android app (no cloud function middleman)
