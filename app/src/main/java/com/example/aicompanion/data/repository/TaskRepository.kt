@@ -357,6 +357,10 @@ class TaskRepository(
         return allActive.count { task -> task.estimatedMinutes == 0 }
     }
 
+    suspend fun countDueTodayAndOverdue(dayEnd: Long): Int {
+        return actionItemDao.countDueTodayAndOverdue(dayEnd)
+    }
+
     // --- Scheduling ---
 
     suspend fun getActiveItemsForScheduling(): List<ActionItem> {

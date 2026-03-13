@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -243,6 +244,25 @@ fun SettingsScreen(
                     morningState = uiState.morning,
                     onEnabledChange = { viewModel.setMorningEnabled(it) },
                     onTimeChange = { h, m -> viewModel.setMorningTime(h, m) }
+                )
+            }
+
+            // Nudge Times section
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Task Nudges",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+
+            item {
+                NudgeTimesCard(
+                    nudgeState = uiState.nudge,
+                    onEnabledChange = { viewModel.setNudgeEnabled(it) },
+                    onToggleHour = { viewModel.toggleNudgeHour(it) }
                 )
             }
 
@@ -828,6 +848,73 @@ private fun MorningPlanHistoryCard(entry: MorningPlanStore.PlanEntry) {
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NudgeTimesCard(
+    nudgeState: NudgeUiState,
+    onEnabledChange: (Boolean) -> Unit,
+    onToggleHour: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Task nudges", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (nudgeState.enabled && nudgeState.hours.isNotEmpty())
+                            "Nudges at ${nudgeState.hours.sorted().joinToString(", ") { formatHour(it) }}"
+                        else
+                            "Remind you about due tasks throughout the day",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = nudgeState.enabled,
+                    onCheckedChange = onEnabledChange
+                )
+            }
+
+            if (nudgeState.enabled) {
+                Spacer(Modifier.height(12.dp))
+                Text("Nudge at:", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val allHours = (8..20).toList()
+                    allHours.forEach { h ->
+                        FilterChip(
+                            selected = h in nudgeState.hours,
+                            onClick = { onToggleHour(h) },
+                            label = { Text(formatHour(h)) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatHour(hour: Int): String {
+    return when {
+        hour == 0 -> "12 AM"
+        hour < 12 -> "$hour AM"
+        hour == 12 -> "12 PM"
+        else -> "${hour - 12} PM"
     }
 }
 

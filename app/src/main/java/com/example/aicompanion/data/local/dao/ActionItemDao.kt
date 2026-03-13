@@ -239,6 +239,16 @@ interface ActionItemDao {
     @Query("UPDATE action_items SET recurrenceRule = :rule, recurrenceInterval = :interval, updatedAt = :updatedAt WHERE id = :id")
     suspend fun setRecurrence(id: Long, rule: String?, interval: Int, updatedAt: Long = System.currentTimeMillis())
 
+    @Query("""
+        SELECT COUNT(*) FROM action_items
+        WHERE isCompleted = 0 AND isTrashed = 0
+        AND (
+            (dueDate IS NOT NULL AND dueDate < :dayEnd)
+            OR (dropDeadDate IS NOT NULL AND dropDeadDate < :dayEnd AND dueDate IS NULL)
+        )
+    """)
+    suspend fun countDueTodayAndOverdue(dayEnd: Long): Int
+
     // --- Sync queries ---
 
     @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")

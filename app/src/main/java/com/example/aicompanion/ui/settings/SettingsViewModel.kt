@@ -15,6 +15,8 @@ import com.example.aicompanion.data.sync.SyncStatus
 import com.example.aicompanion.reminder.MorningCheckInWorker
 import com.example.aicompanion.reminder.MorningPlanStore
 import com.example.aicompanion.reminder.MorningPreferences
+import com.example.aicompanion.reminder.NudgePreferences
+import com.example.aicompanion.reminder.NudgeWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,13 +57,19 @@ data class MorningUiState(
     val minute: Int = 0
 )
 
+data class NudgeUiState(
+    val enabled: Boolean = false,
+    val hours: Set<Int> = setOf(14)
+)
+
 data class SettingsUiState(
     val voiceNotes: List<VoiceNoteFile> = emptyList(),
     val message: String? = null,
     val sync: SyncUiState = SyncUiState(),
     val enrichment: EnrichmentUiState = EnrichmentUiState(),
     val morning: MorningUiState = MorningUiState(),
-    val morningPlanHistory: List<MorningPlanStore.PlanEntry> = emptyList()
+    val morningPlanHistory: List<MorningPlanStore.PlanEntry> = emptyList(),
+    val nudge: NudgeUiState = NudgeUiState()
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -72,6 +80,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val syncStateDao = appContainer.syncStateDao
     private val morningPrefs = MorningPreferences(application)
     private val morningPlanStore = MorningPlanStore(application)
+    private val nudgePrefs = NudgePreferences(application)
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -83,6 +92,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         loadEnrichmentCount()
         loadMorningState()
         loadMorningPlanHistory()
+        loadNudgeState()
     }
 
     private fun loadMorningPlanHistory() {
@@ -112,6 +122,29 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         morningPrefs.minute = minute
         _uiState.value = _uiState.value.copy(morning = _uiState.value.morning.copy(hourOfDay = hour, minute = minute))
         MorningCheckInWorker.schedule(getApplication())
+    }
+
+    private fun loadNudgeState() {
+        _uiState.value = _uiState.value.copy(
+            nudge = NudgeUiState(
+                enabled = nudgePrefs.enabled,
+                hours = nudgePrefs.hours
+            )
+        )
+    }
+
+    fun setNudgeEnabled(enabled: Boolean) {
+        nudgePrefs.enabled = enabled
+        _uiState.value = _uiState.value.copy(nudge = _uiState.value.nudge.copy(enabled = enabled))
+        NudgeWorker.schedule(getApplication())
+    }
+
+    fun toggleNudgeHour(hour: Int) {
+        val current = nudgePrefs.hours.toMutableSet()
+        if (hour in current) current.remove(hour) else current.add(hour)
+        nudgePrefs.hours = current
+        _uiState.value = _uiState.value.copy(nudge = _uiState.value.nudge.copy(hours = current))
+        NudgeWorker.schedule(getApplication())
     }
 
     private fun loadSyncState() {
