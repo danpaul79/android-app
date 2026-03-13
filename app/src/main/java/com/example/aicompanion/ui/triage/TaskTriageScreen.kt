@@ -147,11 +147,31 @@ fun TaskTriageScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Mode toggle — always visible at top
+            if (!uiState.isLoading) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = uiState.mode == TriageMode.SMART,
+                        onClick = { viewModel.setMode(TriageMode.SMART) },
+                        label = { Text("Needs attention") }
+                    )
+                    FilterChip(
+                        selected = uiState.mode == TriageMode.ALL,
+                        onClick = { viewModel.setMode(TriageMode.ALL) },
+                        label = { Text("Overdue & undated") }
+                    )
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
             when {
                 uiState.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -165,7 +185,7 @@ fun TaskTriageScreen(
                     )
                 }
                 uiState.items.isEmpty() -> {
-                    EmptyState(mode = uiState.mode, onSwitchMode = { viewModel.setMode(it) })
+                    EmptyState(mode = uiState.mode)
                 }
                 else -> {
                     val item = uiState.currentItem ?: return@Box
@@ -176,22 +196,6 @@ fun TaskTriageScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item { Spacer(Modifier.height(4.dp)) }
-
-                        // Mode toggle
-                        item(key = "mode_toggle") {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                FilterChip(
-                                    selected = uiState.mode == TriageMode.SMART,
-                                    onClick = { viewModel.setMode(TriageMode.SMART) },
-                                    label = { Text("Needs attention") }
-                                )
-                                FilterChip(
-                                    selected = uiState.mode == TriageMode.ALL,
-                                    onClick = { viewModel.setMode(TriageMode.ALL) },
-                                    label = { Text("Overdue & undated") }
-                                )
-                            }
-                        }
 
                         // Task card
                         item(key = "card_${item.task.id}") {
@@ -259,7 +263,8 @@ fun TaskTriageScreen(
                     }
                 }
             }
-        }
+            } // Box weight(1f)
+        } // Column
     }
 }
 
@@ -550,14 +555,14 @@ private fun CompletionCard(
 }
 
 @Composable
-private fun EmptyState(mode: TriageMode, onSwitchMode: (TriageMode) -> Unit) {
+private fun EmptyState(mode: TriageMode) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val (title, subtitle) = when (mode) {
-                TriageMode.SMART -> "No tasks need review right now" to "Tasks will appear here when they go stale,\nget rescheduled often, or need attention."
+                TriageMode.SMART -> "No tasks need review right now" to "Try the \"Overdue & undated\" tab above."
                 TriageMode.ALL -> "No overdue or undated tasks" to "All your tasks have due dates and none are overdue."
             }
             Text(
@@ -571,12 +576,6 @@ private fun EmptyState(mode: TriageMode, onSwitchMode: (TriageMode) -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (mode == TriageMode.SMART) {
-                Spacer(Modifier.height(16.dp))
-                OutlinedButton(onClick = { onSwitchMode(TriageMode.ALL) }) {
-                    Text("Review overdue & undated")
-                }
-            }
         }
     }
 }
