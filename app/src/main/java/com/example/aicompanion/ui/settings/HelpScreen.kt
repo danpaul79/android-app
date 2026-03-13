@@ -72,7 +72,7 @@ fun HelpScreen(
             item {
                 HelpSection(
                     title = "Voice Commands",
-                    content = "The voice command bar sits above the bottom navigation on every screen (except Capture). Tap the mic icon to speak, or tap the keyboard icon to type a command.\n\nYou can say multiple commands in one prompt.",
+                    content = "The voice command bar sits above the bottom navigation on every screen (except Settings). Tap the mic icon to speak, or tap the keyboard icon to type a command.\n\nYou can say multiple commands in one prompt.",
                     bullets = listOf(
                         bold("Create tasks:") + " \"Create task buy groceries\" \u2022 \"Add task call dentist due tomorrow in Health\" \u2022 \"Create task plan birthday party, priority high\"",
                         bold("Complete tasks:") + " \"Complete buy groceries\" \u2022 \"Mark dentist as done\"",
@@ -91,11 +91,13 @@ fun HelpScreen(
             // Voice Capture
             item {
                 HelpSection(
-                    title = "Voice Capture (Capture Tab)",
+                    title = "Voice Capture",
                     content = "Record a voice note and Pocket Pilot will automatically transcribe it (via Deepgram), extract action items using AI (Gemini), and show you the extracted tasks for review before saving.",
                     bullets = listOf(
+                        "Tap the mic icon in the Dashboard top bar to open the Capture screen",
                         "Say \"create a new project called X\" during a recording to auto-create a project and assign tasks to it",
                         "Toggle \"Transcript only\" mode if you just want a transcript without task extraction",
+                        "Share audio or video files from other apps to Pocket Pilot \u2014 they'll be auto-transcribed in transcript-only mode",
                         "Recording from within a project auto-assigns all extracted tasks to that project",
                         "Transcripts are saved to Downloads/Pocket Pilot"
                     )
