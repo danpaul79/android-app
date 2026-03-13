@@ -88,6 +88,20 @@ jobs:
             6. Commit your changes
             7. Create a PR with "Closes #${{ steps.find-issue.outputs.number }}" in the body
 
+      - name: Auto-merge feedback PR
+        if: steps.find-issue.outputs.found == 'true' && success()
+        env:
+          GH_TOKEN: ${{ secrets.GH_ISSUES_PAT }}
+        run: |
+          # Find the PR created by Claude for this feedback issue
+          PR_NUMBER=$(gh pr list --search "Closes #${{ steps.find-issue.outputs.number }}" --json number --jq '.[0].number')
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+            echo "Merging PR #$PR_NUMBER"
+            gh pr merge "$PR_NUMBER" --merge --delete-branch
+          else
+            echo "No PR found for issue #${{ steps.find-issue.outputs.number }}"
+          fi
+
       - name: Comment on issue if processing failed
         if: steps.find-issue.outputs.found == 'true' && failure()
         env:
