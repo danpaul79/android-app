@@ -1,9 +1,13 @@
 name: Feedback Processor
 
 on:
-  schedule:
-    - cron: '0 */4 * * *'  # Every 4 hours
-  workflow_dispatch:        # Manual trigger
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to process (leave empty for oldest open feedback issue)'
+        required: false
 
 concurrency:
   group: feedback-processor
@@ -18,6 +22,10 @@ jobs:
   process-feedback:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Only run for issues with "feedback" label (or manual dispatch)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'feedback'))
 
     steps:
       - name: Checkout code
@@ -25,22 +33,36 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find oldest open feedback issue
+      - name: Determine issue to process
         id: find-issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE=$(gh issue list --label feedback --state open --json number,title,body --limit 1 --jq '.[0]')
-          if [ "$ISSUE" = "" ] || [ "$ISSUE" = "null" ]; then
-            echo "No open feedback issues found"
-            echo "found=false" >> $GITHUB_OUTPUT
-          else
-            ISSUE_NUMBER=$(echo "$ISSUE" | jq -r '.number')
-            echo "Found issue #$ISSUE_NUMBER"
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            # Triggered by issue event — use the triggering issue
             echo "found=true" >> $GITHUB_OUTPUT
-            echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
-            echo "$ISSUE" | jq -r '.title' > /tmp/issue_title.txt
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "title=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
+            echo '${{ github.event.issue.body }}' > /tmp/issue_body.txt
+          elif [ -n "${{ inputs.issue_number }}" ]; then
+            # Manual dispatch with specific issue number
+            ISSUE=$(gh issue view ${{ inputs.issue_number }} --json number,title,body)
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "number=$(echo "$ISSUE" | jq -r '.number')" >> $GITHUB_OUTPUT
+            echo "title=$(echo "$ISSUE" | jq -r '.title')" >> $GITHUB_OUTPUT
             echo "$ISSUE" | jq -r '.body' > /tmp/issue_body.txt
+          else
+            # Manual dispatch without issue number — find oldest open feedback issue
+            ISSUE=$(gh issue list --label feedback --state open --json number,title,body --limit 1 --jq '.[0]')
+            if [ "$ISSUE" = "" ] || [ "$ISSUE" = "null" ]; then
+              echo "No open feedback issues found"
+              echo "found=false" >> $GITHUB_OUTPUT
+            else
+              echo "found=true" >> $GITHUB_OUTPUT
+              echo "number=$(echo "$ISSUE" | jq -r '.number')" >> $GITHUB_OUTPUT
+              echo "title=$(echo "$ISSUE" | jq -r '.title')" >> $GITHUB_OUTPUT
+              echo "$ISSUE" | jq -r '.body' > /tmp/issue_body.txt
+            fi
           fi
 
       - name: Process feedback with Claude
@@ -52,7 +74,7 @@ jobs:
             A user submitted feedback via the in-app feedback form. Read the issue below and implement the requested change.
 
             **Issue #${{ steps.find-issue.outputs.number }}**
-            **Title**: $(cat /tmp/issue_title.txt)
+            **Title**: ${{ steps.find-issue.outputs.title }}
             **Body**:
             $(cat /tmp/issue_body.txt)
 
@@ -65,7 +87,7 @@ jobs:
             6. Commit your changes
             7. Create a PR with "Closes #${{ steps.find-issue.outputs.number }}" in the body
 
-      - name: Comment on issue
+      - name: Comment on issue if processing failed
         if: steps.find-issue.outputs.found == 'true' && failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
