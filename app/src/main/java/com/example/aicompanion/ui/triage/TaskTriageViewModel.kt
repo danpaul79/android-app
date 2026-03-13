@@ -2,6 +2,7 @@ package com.example.aicompanion.ui.triage
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
 import com.example.aicompanion.data.local.entity.parsedTags
@@ -30,10 +31,15 @@ data class TaskTriageUiState(
     val hasPrev: Boolean get() = currentIndex > 0
 }
 
-class TaskTriageViewModel(application: Application) : AndroidViewModel(application) {
+class TaskTriageViewModel(
+    application: Application,
+    savedStateHandle: SavedStateHandle
+) : AndroidViewModel(application) {
     private val container = (application as AICompanionApplication).container
     private val repo = container.taskRepository
     private val geminiClient = container.geminiClient
+
+    private val fullMode: Boolean = savedStateHandle.get<Boolean>("fullMode") ?: false
 
     private val _uiState = MutableStateFlow(TaskTriageUiState())
     val uiState: StateFlow<TaskTriageUiState> = _uiState.asStateFlow()
@@ -45,7 +51,7 @@ class TaskTriageViewModel(application: Application) : AndroidViewModel(applicati
     private fun loadItems() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val candidates = repo.getTriageCandidates()
+            val candidates = if (fullMode) repo.getFullTriageCandidates() else repo.getTriageCandidates()
             val projectMap = repo.getAllProjectNamesWithIds()
                 .associate { (name, id) -> id to name }
             _uiState.value = _uiState.value.copy(

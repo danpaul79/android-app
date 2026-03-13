@@ -489,6 +489,20 @@ class TaskRepository(
         return items.take(10)
     }
 
+    suspend fun getFullTriageCandidates(): List<TriageItem> {
+        val now = System.currentTimeMillis()
+        val tasks = actionItemDao.getOverdueOrUndatedItems(now)
+        return tasks.map { task ->
+            if (task.dueDate != null && task.dueDate < now) {
+                val daysOverdue = ((now - task.dueDate) / (24 * 60 * 60 * 1000)).toInt()
+                val reason = if (daysOverdue == 0) "Due today" else "Overdue by $daysOverdue day${if (daysOverdue != 1) "s" else ""}"
+                TriageItem(task, reason, TriageCategory.OVERDUE)
+            } else {
+                TriageItem(task, "No due date", TriageCategory.UNDATED)
+            }
+        }
+    }
+
     suspend fun triageTask(id: Long) {
         val item = actionItemDao.getByIdSync(id) ?: return
         actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis(), syncVersion = nextSyncVersion()))

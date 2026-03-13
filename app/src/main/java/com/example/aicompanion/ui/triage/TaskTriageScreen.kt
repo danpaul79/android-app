@@ -270,12 +270,16 @@ private fun TaskTriageCard(
                 TriageCategory.RESCHEDULED -> MaterialTheme.colorScheme.tertiaryContainer
                 TriageCategory.LARGE_UNDATED -> MaterialTheme.colorScheme.secondaryContainer
                 TriageCategory.WAITING_FOR -> MaterialTheme.colorScheme.surfaceVariant
+                TriageCategory.OVERDUE -> MaterialTheme.colorScheme.errorContainer
+                TriageCategory.UNDATED -> MaterialTheme.colorScheme.secondaryContainer
             }
             val badgeTextColor = when (item.category) {
                 TriageCategory.STALE -> MaterialTheme.colorScheme.onErrorContainer
                 TriageCategory.RESCHEDULED -> MaterialTheme.colorScheme.onTertiaryContainer
                 TriageCategory.LARGE_UNDATED -> MaterialTheme.colorScheme.onSecondaryContainer
                 TriageCategory.WAITING_FOR -> MaterialTheme.colorScheme.onSurfaceVariant
+                TriageCategory.OVERDUE -> MaterialTheme.colorScheme.onErrorContainer
+                TriageCategory.UNDATED -> MaterialTheme.colorScheme.onSecondaryContainer
             }
             Surface(
                 shape = RoundedCornerShape(4.dp),

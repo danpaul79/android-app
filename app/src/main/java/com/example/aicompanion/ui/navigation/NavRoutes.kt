@@ -17,7 +17,10 @@ sealed class NavRoutes(val route: String) {
     data object Search : NavRoutes("search")
     data object Settings : NavRoutes("settings")
     data object PlanMyDay : NavRoutes("plan_my_day")
-    data object TaskTriage : NavRoutes("task_triage")
+    data object TaskTriage : NavRoutes("task_triage?fullMode={fullMode}") {
+        fun createRoute(fullMode: Boolean = false) = "task_triage?fullMode=$fullMode"
+        val baseRoute = "task_triage"
+    }
     data object Feedback : NavRoutes("feedback")
     data object Help : NavRoutes("help")
     data object TranscriptView : NavRoutes("transcript/{filePath}") {

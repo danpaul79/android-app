@@ -102,10 +102,10 @@ fun AppNavHost(
         }
     }
 
-    // Deep-link from morning notification: open Task Triage
+    // Deep-link from morning notification: open Task Triage (smart candidates, not full mode)
     LaunchedEffect(openTaskTriage) {
         if (openTaskTriage) {
-            navController.navigate(NavRoutes.TaskTriage.route)
+            navController.navigate(NavRoutes.TaskTriage.createRoute(fullMode = false))
         }
     }
 
@@ -142,7 +142,7 @@ fun AppNavHost(
                             navController.navigate(NavRoutes.PlanMyDay.route)
                         },
                         onNavigateToTaskTriage = {
-                            navController.navigate(NavRoutes.TaskTriage.route)
+                            navController.navigate(NavRoutes.TaskTriage.createRoute(fullMode = true))
                         }
                     )
                 }
@@ -219,7 +219,7 @@ fun AppNavHost(
                                 navController.navigate(NavRoutes.PlanMyDay.route)
                             },
                             onNavigateToTriage = {
-                                navController.navigate(NavRoutes.TaskTriage.route)
+                                navController.navigate(NavRoutes.TaskTriage.createRoute(fullMode = true))
                             }
                         )
                         1 -> InboxScreen(
@@ -387,7 +387,15 @@ fun AppNavHost(
                 )
             }
 
-            composable(NavRoutes.TaskTriage.route) {
+            composable(
+                route = NavRoutes.TaskTriage.route,
+                arguments = listOf(
+                    navArgument("fullMode") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    }
+                )
+            ) {
                 TaskTriageScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToTask = { id ->
