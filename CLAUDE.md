@@ -21,7 +21,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Task Detail**: view/edit task name, change due date, set drop-dead date (hard deadline, warning color), lock due date (prevents voice command changes), effort estimate chips (10m/20m/30m/1h/90m/2h+), change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
-- **Settings**: bottom nav tab; export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker
+- **Settings**: bottom nav tab; export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker; Send Feedback (GitHub issue submission)
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
 - **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; also surfaces 2-3 stale/waiting-for tasks as review notifications with quick actions (Done, Trash/Unblock, Skip); "Review all" opens triage screen
 - **Effort estimates**: `estimatedMinutes` on every task; AI-guessed at extraction, user-editable in Task Detail; enrichment batch-backfills existing tasks; unestimated = 30m default for scheduling
@@ -183,7 +183,8 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - **Task Detail** — view/edit a single task; lock due date; effort chips; confirmation on trash
 - **Plan My Day** — capacity selection + context filter → AI-picked task list
 - **Task Triage** — guided card-by-card review of tasks needing attention; AI breakdown
-- **Settings** — bottom nav tab; export/import data; Google Tasks sync; AI enrichment; voice history; morning check-in; Help & Features
+- **Settings** — bottom nav tab; export/import data; Google Tasks sync; AI enrichment; voice history; morning check-in; Help & Features; Send Feedback
+- **Feedback** — submit bugs/feature requests as GitHub Issues; optional screenshot attachment; auto-populated device info
 - **Help & Features** — comprehensive in-app documentation of all features
 - **Trash** — trashed tasks and projects; restore or permanently delete
 - Bottom navigation: Dashboard | Inbox | Projects | Settings
@@ -192,7 +193,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `auth/` - Google Sign-In via Credential Manager (dormant, for future Gmail Phase 3)
 - `data/sync/` - Google Tasks bi-directional sync: TokenManager, GoogleTasksApiClient, SyncEngine, SyncWorker, SyncMappers
 - `audio/` - MediaRecorder wrapper (AudioRecorder), transcript file helpers
-- `network/` - TranscriptionClient (Deepgram), GeminiClient (extraction)
+- `network/` - TranscriptionClient (Deepgram), GeminiClient (extraction), GitHubIssuesClient (feedback)
 - `data/local/` - Room DB, DAOs, entities, type converters
 - `data/repository/` - TaskRepository (replaces CaptureRepository)
 - `domain/extraction/` - Action item extraction from text
@@ -209,6 +210,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `ui/triage/` - Task Triage screen + ViewModel + models (guided review, AI breakdown)
 - `ui/common/` - Shared composables (TagChips)
 - `ui/search/` - Search screen (task name + notes search)
+- `ui/feedback/` - FeedbackScreen + FeedbackViewModel (in-app feedback → GitHub Issues)
 - `ui/settings/` - Settings screen (export/import, AI enrichment, voice history, Google Tasks sync, morning check-in); HelpScreen (feature guide)
 - `ui/trash/` - Trash screen (restore / permanent delete)
 - `widget/` - TodayPlanWidget (Jetpack Glance home screen widget)
@@ -263,7 +265,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - **GitHub Actions** workflow at `.github/workflows/build-and-distribute.yml`
 - Triggers on push to `main`, builds release APK, uploads to **Firebase App Distribution**
 - Signing config in `app/build.gradle.kts` reads from env vars (CI) or `local.properties` (local)
-- Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`, `GOOGLE_SERVICES_JSON` (optional, enables Crashlytics)
+- Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `GITHUB_PAT`, `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`, `GOOGLE_SERVICES_JSON` (optional, enables Crashlytics), `ANTHROPIC_API_KEY` (for feedback processor)
 
 ## Cloud Functions (legacy, no longer used by mobile app)
 - **`stream-drive-file-to-deepgram`** - Used by Apps Script pipeline only. Do NOT modify.
