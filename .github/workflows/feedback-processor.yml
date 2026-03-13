@@ -1,8 +1,10 @@
 name: Feedback Processor
 
 on:
-  issues:
-    types: [labeled]
+  # Automatic trigger disabled — feedback issues are reviewed locally first
+  # To re-enable: uncomment the issues trigger below
+  # issues:
+  #   types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -23,10 +25,6 @@ jobs:
   process-feedback:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Only run for issues with "feedback" label (or manual dispatch)
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'feedback'))
 
     steps:
       - name: Checkout code
@@ -38,26 +36,16 @@ jobs:
         id: find-issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
           INPUT_ISSUE_NUMBER: ${{ inputs.issue_number }}
         run: |
-          if [ "$EVENT_NAME" = "issues" ]; then
-            # Triggered by issue event — fetch issue data safely via gh CLI
-            ISSUE=$(gh issue view "$EVENT_ISSUE_NUMBER" --json number,title,body)
-            echo "found=true" >> $GITHUB_OUTPUT
-            echo "number=$(echo "$ISSUE" | jq -r '.number')" >> $GITHUB_OUTPUT
-            echo "title=$(echo "$ISSUE" | jq -r '.title')" >> $GITHUB_OUTPUT
-            echo "$ISSUE" | jq -r '.body' > /tmp/issue_body.txt
-          elif [ -n "$INPUT_ISSUE_NUMBER" ]; then
-            # Manual dispatch with specific issue number
+          if [ -n "$INPUT_ISSUE_NUMBER" ]; then
             ISSUE=$(gh issue view "$INPUT_ISSUE_NUMBER" --json number,title,body)
             echo "found=true" >> $GITHUB_OUTPUT
             echo "number=$(echo "$ISSUE" | jq -r '.number')" >> $GITHUB_OUTPUT
             echo "title=$(echo "$ISSUE" | jq -r '.title')" >> $GITHUB_OUTPUT
             echo "$ISSUE" | jq -r '.body' > /tmp/issue_body.txt
           else
-            # Manual dispatch without issue number — find oldest open feedback issue
+            # No issue number — find oldest open feedback issue
             ISSUE=$(gh issue list --label feedback --state open --json number,title,body --limit 1 --jq '.[0]')
             if [ "$ISSUE" = "" ] || [ "$ISSUE" = "null" ]; then
               echo "No open feedback issues found"
