@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import com.example.aicompanion.MainActivity
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -123,13 +124,23 @@ class MorningCheckInWorker(
                 .take(3)
 
             if (reviewItems.isNotEmpty()) {
+                val triageIntent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    putExtra(MainActivity.EXTRA_OPEN_TRIAGE, true)
+                }
+                val triagePi = PendingIntent.getActivity(
+                    context, 7777, triageIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
                 val summaryNotif = NotificationCompat.Builder(context, channel)
                     .setSmallIcon(android.R.drawable.ic_popup_reminder)
-                    .setContentTitle("Quick review")
+                    .setContentTitle("${reviewItems.size} tasks need review")
+                    .setContentText("Tap to review all")
                     .setGroupSummary(true)
                     .setGroup(REVIEW_GROUP)
                     .setPriority(NotificationCompat.PRIORITY_LOW)
                     .setAutoCancel(true)
+                    .setContentIntent(triagePi)
                     .build()
                 manager.notify(REVIEW_SUMMARY_NOTIFICATION_ID, summaryNotif)
 

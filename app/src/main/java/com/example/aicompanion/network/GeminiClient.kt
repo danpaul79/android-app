@@ -275,14 +275,15 @@ Supported commands:
 7. "rename_task" — rename or update a task's name (e.g. "rename buy groceries to buy organic groceries", "update the summer camp task to add Eliza and Lauren at the end")
 8. "create_project" — create a new project/folder/list (e.g. "create a project called Home", "create a folder named Vacation", "make a new list called Shopping", "create project Evans driver's license")
 9. "plan_my_day" — open the day planning screen, optionally with a capacity (e.g. "plan my day", "help me plan my day", "I have 45 minutes", "I have an hour today", "what should I work on", "what can I get done in 2 hours")
-10. "unrecognized" — if the command doesn't match any of the above
+10. "review_tasks" — open the task triage/review screen (e.g. "review my tasks", "triage", "what needs attention", "clean up my tasks")
+11. "unrecognized" — if the command doesn't match any of the above
 
 The words "project", "folder", and "list" are synonyms. Any of them means create a project.
 "drop dead date", "deadline", "holy cow date", "must be done by" all refer to set_drop_dead_date.
 
 Return this JSON structure. If the transcript contains multiple commands, return an array. For a single command, return just the object:
 {
-  "command": "create_task|complete_task|change_due_date|set_drop_dead_date|move_task|delete_task|rename_task|create_project|plan_my_day|unrecognized",
+  "command": "create_task|complete_task|change_due_date|set_drop_dead_date|move_task|delete_task|rename_task|create_project|plan_my_day|review_tasks|unrecognized",
   "taskName": "exact or closest matching task name from the list, or the new task name for create_task",
   "projectName": "project name if mentioned, or the new project name for create_project, or null",
   "dueDate": "YYYY-MM-DD or null",
@@ -394,6 +395,90 @@ Rules:
                 estimatedMinutes = item.optInt("estimatedMinutes", 30).coerceAtLeast(10),
                 tags = tags
             )
+        }
+    }
+
+    data class BreakdownItem(
+        val text: String,
+        val estimatedMinutes: Int,
+        val suggestedTags: List<String>
+    )
+
+    suspend fun breakdownTask(
+        taskText: String,
+        taskNotes: String?,
+        existingProjects: List<String> = emptyList()
+    ): Result<List<BreakdownItem>> {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isBlank()) return Result.failure(Exception("Gemini API key not configured."))
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val notesSection = if (!taskNotes.isNullOrBlank()) "\nNotes: $taskNotes" else ""
+                val projectSection = if (existingProjects.isNotEmpty()) {
+                    "\nKnown projects: ${existingProjects.joinToString(", ")}"
+                } else ""
+
+                val prompt = """Break down this task into 2-5 concrete, actionable subtasks.
+
+Task: "$taskText"$notesSection$projectSection
+
+Return a JSON array:
+[
+  {
+    "text": "concrete subtask description",
+    "estimatedMinutes": 30,
+    "suggestedTags": ["computer"]
+  }
+]
+
+Rules:
+- Each subtask should be a single, clear action that can be completed in one sitting
+- estimatedMinutes: use multiples of 10 (10, 20, 30, 60, 90). Never return 0.
+- suggestedTags: choose from ["computer", "errand", "phone-call", "waiting-for", "home", "quick", "creative", "financial"]. Only include clearly applicable tags. Empty array if none fit.
+- Return ONLY the JSON array, no other text"""
+
+                val requestJson = buildRequestJson(prompt)
+                val request = Request.Builder()
+                    .url("$BASE_URL?key=$apiKey")
+                    .post(requestJson.toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Unknown error"
+                    return@withContext Result.failure(Exception("Gemini API failed (${response.code}): $errorBody"))
+                }
+
+                val responseBody = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response"))
+
+                val json = JSONObject(responseBody)
+                val content = json.getJSONArray("candidates")
+                    .getJSONObject(0)
+                    .getJSONObject("content")
+                    .getJSONArray("parts")
+                    .getJSONObject(0)
+                    .getString("text")
+                    .replace(Regex("```json\\s*"), "")
+                    .replace(Regex("```\\s*"), "")
+                    .trim()
+
+                val arr = JSONArray(content)
+                val items = (0 until arr.length()).map { i ->
+                    val item = arr.getJSONObject(i)
+                    val tagsArr = item.optJSONArray("suggestedTags")
+                    val tags = if (tagsArr != null) (0 until tagsArr.length()).map { tagsArr.getString(it) } else emptyList()
+                    BreakdownItem(
+                        text = item.getString("text"),
+                        estimatedMinutes = item.optInt("estimatedMinutes", 30).coerceAtLeast(10),
+                        suggestedTags = tags
+                    )
+                }
+                Result.success(items)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 

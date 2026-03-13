@@ -140,6 +140,7 @@ class VoiceCommandProcessor(
                 val minutes = json.optInt("capacityMinutes", 0).takeIf { it > 0 }
                 VoiceCommand.PlanMyDay(capacityMinutes = minutes)
             }
+            "review_tasks" -> VoiceCommand.ReviewTasks
             else -> VoiceCommand.Unrecognized(transcript)
         }
     }
@@ -226,6 +227,10 @@ class VoiceCommandProcessor(
                 else
                     "Opening Plan My Day..."
                 CommandResult(true, msg, command)
+            }
+
+            is VoiceCommand.ReviewTasks -> {
+                CommandResult(true, "Opening task triage...", command)
             }
 
             is VoiceCommand.Unrecognized -> {

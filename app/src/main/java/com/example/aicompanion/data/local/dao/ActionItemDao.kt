@@ -192,6 +192,18 @@ interface ActionItemDao {
     """)
     suspend fun getWaitingForItems(limit: Int = 5): List<ActionItem>
 
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND isTrashed = 0
+        AND estimatedMinutes >= :minEffort
+        AND dueDate IS NULL
+        AND dropDeadDate IS NULL
+        ORDER BY estimatedMinutes DESC
+        LIMIT :limit
+    """)
+    suspend fun getLargeUndatedItems(minEffort: Int = 60, limit: Int = 5): List<ActionItem>
+
     // --- Sync queries ---
 
     @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")

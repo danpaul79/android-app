@@ -31,5 +31,7 @@ data class TaskEvent(
         const val TYPE_RESTORED = "RESTORED"
         const val TYPE_DUE_DATE_CHANGED = "DUE_DATE_CHANGED"
         const val TYPE_CREATED = "CREATED"
+        const val TYPE_TRIAGED = "TRIAGED"
+        const val TYPE_SNOOZED = "SNOOZED"
     }
 }

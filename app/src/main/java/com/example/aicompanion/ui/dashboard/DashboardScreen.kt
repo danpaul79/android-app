@@ -108,6 +108,7 @@ fun DashboardScreen(
     onNavigateToTrash: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToPlanMyDay: () -> Unit = {},
+    onNavigateToTriage: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -360,6 +361,34 @@ fun DashboardScreen(
                             onClick = onNavigateToPlanMyDay,
                             modifier = Modifier.padding(top = 4.dp)
                         )
+                    }
+                }
+
+                // Triage prompt
+                if (uiState.triageCount > 0 && !uiState.isSelectionMode) {
+                    item {
+                        Card(
+                            onClick = onNavigateToTriage,
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${uiState.triageCount} task${if (uiState.triageCount != 1) "s" else ""} need review",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "Review",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
                     }
                 }
 

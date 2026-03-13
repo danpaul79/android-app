@@ -87,7 +87,10 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
             val audioFile = File(filePath)
             val result = processor.processAudioFile(audioFile)
 
-            val navCmd = (result.command as? VoiceCommand.PlanMyDay)
+            val navCmd = when (result.command) {
+                is VoiceCommand.PlanMyDay, is VoiceCommand.ReviewTasks -> result.command
+                else -> null
+            }
             _uiState.value = _uiState.value.copy(
                 commandState = if (result.success) CommandState.Success else CommandState.Error,
                 message = result.message,
@@ -130,7 +133,10 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             val result = processor.processTranscript(text)
 
-            val navCmd = (result.command as? VoiceCommand.PlanMyDay)
+            val navCmd = when (result.command) {
+                is VoiceCommand.PlanMyDay, is VoiceCommand.ReviewTasks -> result.command
+                else -> null
+            }
             _uiState.value = _uiState.value.copy(
                 commandState = if (result.success) CommandState.Success else CommandState.Error,
                 message = result.message,

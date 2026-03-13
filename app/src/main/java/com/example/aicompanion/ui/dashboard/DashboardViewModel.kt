@@ -24,7 +24,8 @@ data class DashboardUiState(
     val selectedIds: Set<Long> = emptySet(),
     val showCompleted: Boolean = false,
     val todaysPlan: MorningPlanStore.PlanEntry? = null,
-    val capacityMinutes: Int? = null  // from last morning check-in; null = not set yet
+    val capacityMinutes: Int? = null,  // from last morning check-in; null = not set yet
+    val triageCount: Int = 0
 ) {
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
     val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems
@@ -68,6 +69,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
         loadTodaysPlan()
         _uiState.value = _uiState.value.copy(capacityMinutes = planStore.getLastCapacityMinutes())
+        loadTriageCount()
+    }
+
+    private fun loadTriageCount() {
+        viewModelScope.launch {
+            val count = repo.getTriageCandidates().size
+            _uiState.value = _uiState.value.copy(triageCount = count)
+        }
     }
 
     fun refreshCapacity() {

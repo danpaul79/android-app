@@ -7,6 +7,8 @@ import com.example.aicompanion.data.local.dao.ProjectDao
 import com.example.aicompanion.data.local.dao.SourceDao
 import com.example.aicompanion.data.local.dao.SyncStateDao
 import com.example.aicompanion.data.local.dao.TaskEventDao
+import com.example.aicompanion.ui.triage.TriageCategory
+import com.example.aicompanion.ui.triage.TriageItem
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.Project
@@ -422,6 +424,72 @@ class TaskRepository(
 
     suspend fun getDueDateChangeCount(taskId: Long): Int =
         taskEventDao?.countEventsForTask(taskId, TaskEvent.TYPE_DUE_DATE_CHANGED) ?: 0
+
+    // --- Triage ---
+
+    suspend fun getTriageCandidates(): List<TriageItem> {
+        val now = System.currentTimeMillis()
+        val seen = mutableSetOf<Long>()
+        val items = mutableListOf<TriageItem>()
+
+        // 1. Stale tasks (untouched 14+ days)
+        val staleTasks = getStaleItems(staleDaysThreshold = 14, limit = 5)
+        for (task in staleTasks) {
+            if (seen.add(task.id)) {
+                val daysAgo = ((now - task.updatedAt) / (24 * 60 * 60 * 1000)).toInt()
+                items.add(TriageItem(task, "Untouched for $daysAgo days", TriageCategory.STALE))
+            }
+        }
+
+        // 2. Frequently rescheduled (3+ due date changes)
+        val rescheduledIds = taskEventDao?.getFrequentlyRescheduledTaskIds(3) ?: emptyList()
+        if (rescheduledIds.isNotEmpty()) {
+            val tasks = actionItemDao.getByIds(rescheduledIds.map { it.taskId })
+                .filter { !it.isCompleted && !it.isTrashed }
+            for (task in tasks) {
+                if (seen.add(task.id)) {
+                    val count = rescheduledIds.first { it.taskId == task.id }.cnt
+                    items.add(TriageItem(task, "Rescheduled $count times", TriageCategory.RESCHEDULED))
+                }
+            }
+        }
+
+        // 3. Large undated tasks (60+ min effort, no dates)
+        val largeTasks = actionItemDao.getLargeUndatedItems(minEffort = 60, limit = 5)
+        for (task in largeTasks) {
+            if (seen.add(task.id)) {
+                val mins = task.estimatedMinutes
+                val label = if (mins >= 60) "${mins / 60}h${if (mins % 60 > 0) "${mins % 60}m" else ""}" else "${mins}m"
+                items.add(TriageItem(task, "Large task ($label) with no due date", TriageCategory.LARGE_UNDATED))
+            }
+        }
+
+        // 4. Waiting-for tasks
+        val waitingTasks = getWaitingForItems(limit = 5)
+        for (task in waitingTasks) {
+            if (seen.add(task.id)) {
+                items.add(TriageItem(task, "Still blocked?", TriageCategory.WAITING_FOR))
+            }
+        }
+
+        return items.take(10)
+    }
+
+    suspend fun snoozeTask(id: Long) {
+        val item = actionItemDao.getByIdSync(id) ?: return
+        actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis(), syncVersion = nextSyncVersion()))
+        recordEvent(item, TaskEvent.TYPE_SNOOZED)
+    }
+
+    suspend fun addTagToNotes(id: Long, tag: String) {
+        val item = actionItemDao.getByIdSync(id) ?: return
+        val existingNotes = item.notes.orEmpty()
+        if (existingNotes.contains("#$tag", ignoreCase = true)) return
+        val tagStr = "#$tag"
+        val updatedNotes = if (existingNotes.isBlank()) tagStr else "$existingNotes $tagStr"
+        actionItemDao.update(item.copy(notes = updatedNotes, updatedAt = System.currentTimeMillis(), syncVersion = nextSyncVersion()))
+        markTaskDirty(id)
+    }
 
     // --- Sources ---
 

@@ -38,6 +38,7 @@ import com.example.aicompanion.ui.task.TaskDetailScreen
 import com.example.aicompanion.ui.settings.SettingsScreen
 import com.example.aicompanion.ui.settings.TranscriptViewScreen
 import com.example.aicompanion.ui.plan.PlanMyDayScreen
+import com.example.aicompanion.ui.triage.TaskTriageScreen
 import com.example.aicompanion.ui.trash.TrashScreen
 import com.example.aicompanion.ui.voicecommand.VoiceCommandBar
 import com.example.aicompanion.ui.voicecommand.VoiceCommandViewModel
@@ -59,7 +60,8 @@ val bottomNavItems = listOf(
 fun AppNavHost(
     navController: NavHostController,
     deepLinkTaskId: Long? = null,
-    openPlanMyDay: Boolean = false
+    openPlanMyDay: Boolean = false,
+    openTaskTriage: Boolean = false
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -88,6 +90,13 @@ fun AppNavHost(
         }
     }
 
+    // Deep-link from morning notification: open Task Triage
+    LaunchedEffect(openTaskTriage) {
+        if (openTaskTriage) {
+            navController.navigate(NavRoutes.TaskTriage.route)
+        }
+    }
+
     Scaffold(
         bottomBar = {
             Column {
@@ -97,6 +106,9 @@ fun AppNavHost(
                         viewModel = voiceCommandViewModel,
                         onNavigateToPlanMyDay = { _ ->
                             navController.navigate(NavRoutes.PlanMyDay.route)
+                        },
+                        onNavigateToTaskTriage = {
+                            navController.navigate(NavRoutes.TaskTriage.route)
                         }
                     )
                 }
@@ -179,6 +191,9 @@ fun AppNavHost(
                     },
                     onNavigateToPlanMyDay = {
                         navController.navigate(NavRoutes.PlanMyDay.route)
+                    },
+                    onNavigateToTriage = {
+                        navController.navigate(NavRoutes.TaskTriage.route)
                     }
                 )
             }
@@ -304,6 +319,15 @@ fun AppNavHost(
 
             composable(NavRoutes.PlanMyDay.route) {
                 PlanMyDayScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTask = { id ->
+                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                    }
+                )
+            }
+
+            composable(NavRoutes.TaskTriage.route) {
+                TaskTriageScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))

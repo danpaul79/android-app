@@ -16,6 +16,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_TASK_ID = "extra_task_id"
         const val EXTRA_OPEN_PLAN = "extra_open_plan"
+        const val EXTRA_OPEN_TRIAGE = "extra_open_triage"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,13 +24,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val deepLinkTaskId = intent?.getLongExtra(EXTRA_TASK_ID, -1L)?.takeIf { it != -1L }
         val openPlan = intent?.getBooleanExtra(EXTRA_OPEN_PLAN, false) ?: false
+        val openTriage = intent?.getBooleanExtra(EXTRA_OPEN_TRIAGE, false) ?: false
         setContent {
             AICompanionTheme {
                 val navController = rememberNavController()
                 AppNavHost(
                     navController = navController,
                     deepLinkTaskId = deepLinkTaskId,
-                    openPlanMyDay = openPlan
+                    openPlanMyDay = openPlan,
+                    openTaskTriage = openTriage
                 )
             }
         }

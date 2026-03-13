@@ -19,6 +19,16 @@ interface TaskEventDao {
     @Query("SELECT COUNT(*) FROM task_events WHERE taskId = :taskId AND eventType = :eventType")
     suspend fun countEventsForTask(taskId: Long, eventType: String): Int
 
+    @Query("""
+        SELECT taskId, COUNT(*) as cnt FROM task_events
+        WHERE eventType = 'DUE_DATE_CHANGED'
+        GROUP BY taskId
+        HAVING cnt >= :minCount
+    """)
+    suspend fun getFrequentlyRescheduledTaskIds(minCount: Int = 3): List<TaskIdCount>
+
     @Query("DELETE FROM task_events WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
 }
+
+data class TaskIdCount(val taskId: Long, val cnt: Int)

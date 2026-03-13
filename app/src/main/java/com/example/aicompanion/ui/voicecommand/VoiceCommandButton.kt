@@ -59,7 +59,8 @@ import androidx.core.content.ContextCompat
 fun VoiceCommandBar(
     viewModel: VoiceCommandViewModel,
     modifier: Modifier = Modifier,
-    onNavigateToPlanMyDay: (capacityMinutes: Int?) -> Unit = {}
+    onNavigateToPlanMyDay: (capacityMinutes: Int?) -> Unit = {},
+    onNavigateToTaskTriage: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -70,6 +71,9 @@ fun VoiceCommandBar(
         if (navCmd is VoiceCommand.PlanMyDay) {
             viewModel.clearNavigationCommand()
             onNavigateToPlanMyDay(navCmd.capacityMinutes)
+        } else if (navCmd is VoiceCommand.ReviewTasks) {
+            viewModel.clearNavigationCommand()
+            onNavigateToTaskTriage()
         }
     }
 

@@ -27,5 +27,8 @@ sealed class VoiceCommand {
     /** "Plan my day" / "I have X minutes" — navigate to PlanMyDay screen. */
     data class PlanMyDay(val capacityMinutes: Int? = null) : VoiceCommand()
 
+    /** "Review my tasks" / "triage" — navigate to Task Triage screen. */
+    data object ReviewTasks : VoiceCommand()
+
     data class Unrecognized(val transcript: String) : VoiceCommand()
 }
