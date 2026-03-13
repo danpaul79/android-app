@@ -51,7 +51,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -305,6 +304,11 @@ fun DashboardScreen(
                                     onClick = { showOverflow = false; onNavigateToTriage() }
                                 )
                                 DropdownMenuItem(
+                                    text = { Text("Quick Add Task") },
+                                    leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                                    onClick = { showOverflow = false; showQuickAdd = true }
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Trash") },
                                     leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
                                     onClick = { showOverflow = false; onNavigateToTrash() }
@@ -317,13 +321,6 @@ fun DashboardScreen(
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 )
-            }
-        },
-        floatingActionButton = {
-            if (!uiState.isSelectionMode) {
-                FloatingActionButton(onClick = { showQuickAdd = true }) {
-                    Icon(Icons.Filled.Add, "Quick add task")
-                }
             }
         },
         snackbarHost = {
@@ -465,7 +462,10 @@ fun DashboardScreen(
                             item = item,
                             isSelectionMode = uiState.isSelectionMode,
                             isSelected = isSelected,
-                            onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                            onToggle = {
+                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                else viewModel.toggleCompleted(item.id, false)
+                            },
                             onClick = {
                                 if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
                                 else onNavigateToTask(item.id)
@@ -486,7 +486,10 @@ fun DashboardScreen(
                             item = item,
                             isSelectionMode = uiState.isSelectionMode,
                             isSelected = isSelected,
-                            onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                            onToggle = {
+                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                else viewModel.toggleCompleted(item.id, false)
+                            },
                             onClick = {
                                 if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
                                 else onNavigateToTask(item.id)
@@ -506,7 +509,10 @@ fun DashboardScreen(
                             item = item,
                             isSelectionMode = uiState.isSelectionMode,
                             isSelected = isSelected,
-                            onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                            onToggle = {
+                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                else viewModel.toggleCompleted(item.id, false)
+                            },
                             onClick = {
                                 if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
                                 else onNavigateToTask(item.id)
@@ -526,7 +532,10 @@ fun DashboardScreen(
                             item = item,
                             isSelectionMode = uiState.isSelectionMode,
                             isSelected = isSelected,
-                            onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                            onToggle = {
+                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                else viewModel.toggleCompleted(item.id, false)
+                            },
                             onClick = {
                                 if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
                                 else onNavigateToTask(item.id)

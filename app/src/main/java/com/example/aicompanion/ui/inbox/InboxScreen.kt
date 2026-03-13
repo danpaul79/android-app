@@ -115,6 +115,20 @@ fun InboxScreen(
         }
     }
 
+    fun completeWithUndo(id: Long, text: String) {
+        viewModel.toggleCompleted(id, true)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "\"${text.take(30)}${if (text.length > 30) "…" else ""}\" completed",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.toggleCompleted(id, false)
+            }
+        }
+    }
+
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
         DatePickerDialog(
@@ -257,7 +271,10 @@ fun InboxScreen(
                         isSelectionMode = uiState.isSelectionMode,
                         isSelected = isSelected,
                         onAssign = { projectId -> viewModel.assignToProject(item.id, projectId) },
-                        onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                        onToggle = {
+                            if (!item.isCompleted) completeWithUndo(item.id, item.text)
+                            else viewModel.toggleCompleted(item.id, false)
+                        },
                         onClick = {
                             if (uiState.isSelectionMode) {
                                 viewModel.toggleSelection(item.id)

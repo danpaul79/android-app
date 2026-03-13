@@ -41,6 +41,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -52,7 +57,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
@@ -92,6 +99,22 @@ fun ProjectDetailScreen(
     var showTrashProjectConfirm by remember { mutableStateOf(false) }
     var showTrashSelectedConfirm by remember { mutableStateOf(false) }
     var trashSingleTaskId by remember { mutableStateOf<Long?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    fun completeWithUndo(id: Long, text: String) {
+        viewModel.toggleCompleted(id, true)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "\"${text.take(30)}${if (text.length > 30) "…" else ""}\" completed",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.toggleCompleted(id, false)
+            }
+        }
+    }
 
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
@@ -230,6 +253,9 @@ fun ProjectDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
+        },
         topBar = {
             if (uiState.isSelectionMode) {
                 TopAppBar(
@@ -339,7 +365,10 @@ fun ProjectDetailScreen(
                     item = item,
                     isSelectionMode = uiState.isSelectionMode,
                     isSelected = isSelected,
-                    onToggle = { viewModel.toggleCompleted(item.id, !item.isCompleted) },
+                    onToggle = {
+                        if (!item.isCompleted) completeWithUndo(item.id, item.text)
+                        else viewModel.toggleCompleted(item.id, false)
+                    },
                     onClick = {
                         if (uiState.isSelectionMode) {
                             viewModel.toggleSelection(item.id)

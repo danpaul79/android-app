@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AudioFile
@@ -266,68 +268,23 @@ fun SettingsScreen(
                 )
             }
 
-            // Morning plan history
-            if (uiState.morningPlanHistory.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Morning Plan History",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(4.dp))
-                }
-                items(uiState.morningPlanHistory, key = { "plan_${it.timestamp}" }) { entry ->
-                    MorningPlanHistoryCard(entry = entry)
-                }
-            }
-
-            // Voice History section
+            // History section (consolidated plans + voice)
             item {
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "Voice History",
+                    "History",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(4.dp))
             }
 
-            if (uiState.voiceNotes.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Filled.Mic,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(16.dp))
-                            Text(
-                                "No voice history yet",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            } else {
-                items(uiState.voiceNotes, key = { it.audioFile.absolutePath }) { note ->
-                    VoiceNoteCard(
-                        note = note,
-                        onViewTranscript = {
-                            note.transcriptFile?.let { onViewTranscript(it.absolutePath) }
-                        }
-                    )
-                }
+            item {
+                HistorySection(
+                    planHistory = uiState.morningPlanHistory,
+                    voiceNotes = uiState.voiceNotes,
+                    onViewTranscript = onViewTranscript
+                )
             }
 
             // Help section
@@ -395,6 +352,139 @@ fun SettingsScreen(
             }
 
             item { Spacer(Modifier.height(80.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun HistorySection(
+    planHistory: List<MorningPlanStore.PlanEntry>,
+    voiceNotes: List<VoiceNoteFile>,
+    onViewTranscript: (String) -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Plans, 1 = Voice
+    var showAllPlans by remember { mutableStateOf(false) }
+    var showAllVoice by remember { mutableStateOf(false) }
+    val previewLimit = 3
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Tab row
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FilterChip(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    label = {
+                        Text(
+                            "Daily Plans" + if (planHistory.isNotEmpty()) " (${planHistory.size})" else ""
+                        )
+                    }
+                )
+                FilterChip(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    label = {
+                        Text(
+                            "Voice Notes" + if (voiceNotes.isNotEmpty()) " (${voiceNotes.size})" else ""
+                        )
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            if (selectedTab == 0) {
+                // Plans tab
+                if (planHistory.isEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.History,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "No plan history yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    val visiblePlans = if (showAllPlans) planHistory else planHistory.take(previewLimit)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        visiblePlans.forEach { entry ->
+                            MorningPlanHistoryCard(entry = entry)
+                        }
+                    }
+                    if (planHistory.size > previewLimit) {
+                        Spacer(Modifier.height(4.dp))
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showAllPlans = !showAllPlans }
+                            ) {
+                                Text(
+                                    if (showAllPlans) "Show less" else "Show ${planHistory.size - previewLimit} more"
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Voice notes tab
+                if (voiceNotes.isEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "No voice history yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    val visibleNotes = if (showAllVoice) voiceNotes else voiceNotes.take(previewLimit)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        visibleNotes.forEach { note ->
+                            VoiceNoteCard(
+                                note = note,
+                                onViewTranscript = {
+                                    note.transcriptFile?.let { onViewTranscript(it.absolutePath) }
+                                }
+                            )
+                        }
+                    }
+                    if (voiceNotes.size > previewLimit) {
+                        Spacer(Modifier.height(4.dp))
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showAllVoice = !showAllVoice }
+                            ) {
+                                Text(
+                                    if (showAllVoice) "Show less" else "Show ${voiceNotes.size - previewLimit} more"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
