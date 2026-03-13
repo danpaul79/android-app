@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="quick_capture"
+        android:enabled="true"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        android:shortcutShortLabel="@string/shortcut_capture"
+        android:shortcutLongLabel="@string/shortcut_capture_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.example.aicompanion"
+            android:targetClass="com.example.aicompanion.MainActivity">
+            <extra android:name="extra_open_capture" android:value="true" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="quick_type"
+        android:enabled="true"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:shortcutShortLabel="@string/shortcut_type"
+        android:shortcutLongLabel="@string/shortcut_type_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.example.aicompanion"
+            android:targetClass="com.example.aicompanion.MainActivity">
+            <extra android:name="extra_open_voice_command" android:value="true" />
+        </intent>
+    </shortcut>
+</shortcuts>

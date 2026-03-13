@@ -62,7 +62,9 @@ fun AppNavHost(
     navController: NavHostController,
     deepLinkTaskId: Long? = null,
     openPlanMyDay: Boolean = false,
-    openTaskTriage: Boolean = false
+    openTaskTriage: Boolean = false,
+    openCapture: Boolean = false,
+    openVoiceCommand: Boolean = false
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -95,6 +97,26 @@ fun AppNavHost(
     LaunchedEffect(openTaskTriage) {
         if (openTaskTriage) {
             navController.navigate(NavRoutes.TaskTriage.route)
+        }
+    }
+
+    // Deep-link from widget/shortcut: open Capture screen (auto-start recording)
+    LaunchedEffect(openCapture) {
+        if (openCapture) {
+            navController.navigate("capture") {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
+    // Deep-link from widget/shortcut: open voice command text input
+    LaunchedEffect(openVoiceCommand) {
+        if (openVoiceCommand) {
+            voiceCommandViewModel.showTextInput()
         }
     }
 

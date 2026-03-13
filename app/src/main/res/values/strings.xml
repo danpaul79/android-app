@@ -2,4 +2,8 @@
 <resources>
     <string name="app_name">Pocket Pilot</string>
     <string name="widget_description">Today\'s plan from Pocket Pilot</string>
+    <string name="shortcut_capture">Voice Capture</string>
+    <string name="shortcut_capture_long">Record a voice note</string>
+    <string name="shortcut_type">Quick Command</string>
+    <string name="shortcut_type_long">Type a command</string>
 </resources>

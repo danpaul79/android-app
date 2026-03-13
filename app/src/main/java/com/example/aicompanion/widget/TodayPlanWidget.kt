@@ -22,6 +22,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -62,6 +63,16 @@ private fun WidgetContent(
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
 
+    val captureIntent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        putExtra(MainActivity.EXTRA_OPEN_CAPTURE, true)
+    }
+
+    val voiceCommandIntent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        putExtra(MainActivity.EXTRA_OPEN_VOICE_COMMAND, true)
+    }
+
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -69,7 +80,7 @@ private fun WidgetContent(
             .padding(12.dp)
             .clickable { context.startActivity(launchIntent) }
     ) {
-        // Header row
+        // Header row with title + action buttons
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -83,11 +94,28 @@ private fun WidgetContent(
                 ),
                 modifier = GlanceModifier.defaultWeight()
             )
+
+            // Quick capture buttons
+            Text(
+                text = "\uD83C\uDFA4",  // microphone emoji
+                style = TextStyle(fontSize = 16.sp),
+                modifier = GlanceModifier
+                    .padding(horizontal = 6.dp)
+                    .clickable { context.startActivity(captureIntent) }
+            )
+            Text(
+                text = "\u2328",  // keyboard emoji
+                style = TextStyle(fontSize = 16.sp),
+                modifier = GlanceModifier
+                    .padding(start = 2.dp, end = 6.dp)
+                    .clickable { context.startActivity(voiceCommandIntent) }
+            )
+
             if (plan != null) {
                 val done = completedIds.size
                 val total = plan.tasks.size
                 Text(
-                    text = "$done/$total · ${plan.capacityLabel}",
+                    text = "$done/$total \u00b7 ${plan.capacityLabel}",
                     style = TextStyle(
                         color = ColorProvider(Color(0xFFCAC4D0)),
                         fontSize = 12.sp
@@ -100,7 +128,7 @@ private fun WidgetContent(
 
         if (plan == null || plan.tasks.isEmpty()) {
             Text(
-                text = "No plan yet — open Pocket Pilot to plan your day",
+                text = "No plan yet \u2014 open Pocket Pilot to plan your day",
                 style = TextStyle(
                     color = ColorProvider(Color(0xFFCAC4D0)),
                     fontSize = 12.sp
@@ -114,7 +142,7 @@ private fun WidgetContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (done) "✓" else "○",
+                        text = if (done) "\u2713" else "\u25CB",
                         style = TextStyle(
                             color = ColorProvider(
                                 if (done) Color(0xFF4CAF50) else Color(0xFFCAC4D0)
