@@ -31,6 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -164,7 +165,7 @@ fun TaskTriageScreen(
                     )
                 }
                 uiState.items.isEmpty() -> {
-                    EmptyState()
+                    EmptyState(mode = uiState.mode, onSwitchMode = { viewModel.setMode(it) })
                 }
                 else -> {
                     val item = uiState.currentItem ?: return@Box
@@ -175,6 +176,22 @@ fun TaskTriageScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item { Spacer(Modifier.height(4.dp)) }
+
+                        // Mode toggle
+                        item(key = "mode_toggle") {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = uiState.mode == TriageMode.SMART,
+                                    onClick = { viewModel.setMode(TriageMode.SMART) },
+                                    label = { Text("Needs attention") }
+                                )
+                                FilterChip(
+                                    selected = uiState.mode == TriageMode.ALL,
+                                    onClick = { viewModel.setMode(TriageMode.ALL) },
+                                    label = { Text("Overdue & undated") }
+                                )
+                            }
+                        }
 
                         // Task card
                         item(key = "card_${item.task.id}") {
@@ -270,12 +287,16 @@ private fun TaskTriageCard(
                 TriageCategory.RESCHEDULED -> MaterialTheme.colorScheme.tertiaryContainer
                 TriageCategory.LARGE_UNDATED -> MaterialTheme.colorScheme.secondaryContainer
                 TriageCategory.WAITING_FOR -> MaterialTheme.colorScheme.surfaceVariant
+                TriageCategory.OVERDUE -> MaterialTheme.colorScheme.errorContainer
+                TriageCategory.UNDATED -> MaterialTheme.colorScheme.secondaryContainer
             }
             val badgeTextColor = when (item.category) {
                 TriageCategory.STALE -> MaterialTheme.colorScheme.onErrorContainer
                 TriageCategory.RESCHEDULED -> MaterialTheme.colorScheme.onTertiaryContainer
                 TriageCategory.LARGE_UNDATED -> MaterialTheme.colorScheme.onSecondaryContainer
                 TriageCategory.WAITING_FOR -> MaterialTheme.colorScheme.onSurfaceVariant
+                TriageCategory.OVERDUE -> MaterialTheme.colorScheme.onErrorContainer
+                TriageCategory.UNDATED -> MaterialTheme.colorScheme.onSecondaryContainer
             }
             Surface(
                 shape = RoundedCornerShape(4.dp),
@@ -529,23 +550,33 @@ private fun CompletionCard(
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(mode: TriageMode, onSwitchMode: (TriageMode) -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            val (title, subtitle) = when (mode) {
+                TriageMode.SMART -> "No tasks need review right now" to "Tasks will appear here when they go stale,\nget rescheduled often, or need attention."
+                TriageMode.ALL -> "No overdue or undated tasks" to "All your tasks have due dates and none are overdue."
+            }
             Text(
-                text = "No tasks need review right now",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Tasks will appear here when they go stale,\nget rescheduled often, or need attention.",
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (mode == TriageMode.SMART) {
+                Spacer(Modifier.height(16.dp))
+                OutlinedButton(onClick = { onSwitchMode(TriageMode.ALL) }) {
+                    Text("Review overdue & undated")
+                }
+            }
         }
     }
 }

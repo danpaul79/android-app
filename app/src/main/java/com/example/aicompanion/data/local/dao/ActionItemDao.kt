@@ -204,6 +204,28 @@ interface ActionItemDao {
     """)
     suspend fun getLargeUndatedItems(minEffort: Int = 60, limit: Int = 5): List<ActionItem>
 
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND isTrashed = 0
+        AND (
+            (dueDate IS NOT NULL AND dueDate < :now)
+            OR (dropDeadDate IS NOT NULL AND dropDeadDate < :now AND (dueDate IS NULL OR dueDate >= :now))
+        )
+        ORDER BY COALESCE(dueDate, dropDeadDate) ASC
+    """)
+    suspend fun getOverdueItemsSync(now: Long): List<ActionItem>
+
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND isTrashed = 0
+        AND dueDate IS NULL
+        AND dropDeadDate IS NULL
+        ORDER BY updatedAt ASC
+    """)
+    suspend fun getUndatedItems(): List<ActionItem>
+
     // --- Sync queries ---
 
     @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")

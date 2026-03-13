@@ -22,7 +22,8 @@ data class TaskTriageUiState(
     val showTrashConfirm: Boolean = false,
     val snackbarMessage: String? = null,
     val triageComplete: Boolean = false,
-    val projectNames: Map<Long, String> = emptyMap()
+    val projectNames: Map<Long, String> = emptyMap(),
+    val mode: TriageMode = TriageMode.SMART
 ) {
     val currentItem: TriageItem? get() = items.getOrNull(currentIndex)
     val progress: String get() = "${currentIndex + 1} of ${items.size}"
@@ -45,16 +46,29 @@ class TaskTriageViewModel(application: Application) : AndroidViewModel(applicati
     private fun loadItems() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val candidates = repo.getTriageCandidates()
+            val mode = _uiState.value.mode
+            val candidates = when (mode) {
+                TriageMode.SMART -> repo.getTriageCandidates()
+                TriageMode.ALL -> repo.getAllTriageCandidates()
+            }
             val projectMap = repo.getAllProjectNamesWithIds()
                 .associate { (name, id) -> id to name }
             _uiState.value = _uiState.value.copy(
                 items = candidates,
+                currentIndex = 0,
                 isLoading = false,
                 triageComplete = candidates.isEmpty(),
-                projectNames = projectMap
+                projectNames = projectMap,
+                breakdownResult = null,
+                breakdownSelections = emptySet()
             )
         }
+    }
+
+    fun setMode(mode: TriageMode) {
+        if (_uiState.value.mode == mode) return
+        _uiState.value = _uiState.value.copy(mode = mode)
+        loadItems()
     }
 
     private fun advance() {

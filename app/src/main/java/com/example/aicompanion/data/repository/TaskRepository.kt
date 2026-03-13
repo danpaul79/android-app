@@ -489,6 +489,40 @@ class TaskRepository(
         return items.take(10)
     }
 
+    suspend fun getAllTriageCandidates(): List<TriageItem> {
+        val now = System.currentTimeMillis()
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val seen = mutableSetOf<Long>()
+        val items = mutableListOf<TriageItem>()
+
+        val dateFmt = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
+
+        // 1. Overdue tasks
+        val overdueTasks = actionItemDao.getOverdueItemsSync(dayStart)
+        for (task in overdueTasks) {
+            if (seen.add(task.id)) {
+                val dueDate = task.dueDate ?: task.dropDeadDate ?: now
+                val daysOverdue = ((now - dueDate) / (24 * 60 * 60 * 1000)).toInt()
+                val label = if (daysOverdue <= 0) "Due today" else "Overdue by $daysOverdue day${if (daysOverdue != 1) "s" else ""}"
+                items.add(TriageItem(task, label, TriageCategory.OVERDUE))
+            }
+        }
+
+        // 2. Undated tasks (no due date, no drop-dead date)
+        val undatedTasks = actionItemDao.getUndatedItems()
+        for (task in undatedTasks) {
+            if (seen.add(task.id)) {
+                val daysAgo = ((now - task.createdAt) / (24 * 60 * 60 * 1000)).toInt()
+                val label = if (daysAgo > 0) "No date (created $daysAgo days ago)" else "No date"
+                items.add(TriageItem(task, label, TriageCategory.UNDATED))
+            }
+        }
+
+        return items
+    }
+
     suspend fun triageTask(id: Long) {
         val item = actionItemDao.getByIdSync(id) ?: return
         actionItemDao.update(item.copy(updatedAt = System.currentTimeMillis(), syncVersion = nextSyncVersion()))
