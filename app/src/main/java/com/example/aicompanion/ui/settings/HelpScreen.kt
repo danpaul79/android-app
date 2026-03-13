@@ -292,10 +292,13 @@ fun HelpScreen(
                         "Shows up to 7 tasks from your daily plan with completion status",
                         "Displays progress (e.g., \"2/5 \u00b7 2h 15m\")",
                         "Completed tasks show a checkmark; incomplete tasks show an open circle",
-                        "Tap the widget to open Pocket Pilot",
+                        bold("Quick capture buttons:") + " tap the mic icon to start voice recording, or the keyboard icon to type a command \u2014 directly from the home screen",
+                        "Tap the widget body to open Pocket Pilot",
                         "Auto-refreshes when you complete, trash, or reschedule tasks",
                         "Updates every 30 minutes in the background",
-                        "Add via: long-press home screen \u2192 Widgets \u2192 Pocket Pilot"
+                        "Add via: long-press home screen \u2192 Widgets \u2192 Pocket Pilot",
+                        "",
+                        bold("App shortcuts:") + " long-press the Pocket Pilot app icon for \"Voice Capture\" and \"Quick Command\" shortcuts"
                     )
                 )
             }
