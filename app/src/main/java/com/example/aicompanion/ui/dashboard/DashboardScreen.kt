@@ -29,10 +29,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
@@ -272,23 +275,40 @@ fun DashboardScreen(
                     )
                 )
             } else {
+                var showOverflow by remember { mutableStateOf(false) }
                 TopAppBar(
                     title = { Text("Pocket Pilot") },
                     actions = {
-                        IconButton(onClick = onNavigateToPlanMyDay) {
-                            Icon(Icons.Filled.Today, contentDescription = "Plan My Day")
-                        }
-                        IconButton(onClick = onNavigateToTriage) {
-                            Icon(Icons.Filled.Checklist, contentDescription = "Task Triage")
+                        IconButton(onClick = onNavigateToCapture) {
+                            Icon(Icons.Filled.Mic, contentDescription = "Capture")
                         }
                         IconButton(onClick = onNavigateToSearch) {
                             Icon(Icons.Filled.Search, contentDescription = "Search tasks")
                         }
-                        IconButton(onClick = onNavigateToTrash) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Trash")
-                        }
-                        IconButton(onClick = onNavigateToSettings) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        Box {
+                            IconButton(onClick = { showOverflow = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                            }
+                            DropdownMenu(
+                                expanded = showOverflow,
+                                onDismissRequest = { showOverflow = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Plan My Day") },
+                                    leadingIcon = { Icon(Icons.Filled.Today, contentDescription = null) },
+                                    onClick = { showOverflow = false; onNavigateToPlanMyDay() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Task Triage") },
+                                    leadingIcon = { Icon(Icons.Filled.Checklist, contentDescription = null) },
+                                    onClick = { showOverflow = false; onNavigateToTriage() }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Trash") },
+                                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                                    onClick = { showOverflow = false; onNavigateToTrash() }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(

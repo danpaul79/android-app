@@ -8,7 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -21,11 +21,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -58,8 +56,8 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem("Dashboard", Icons.Filled.Dashboard, "dashboard"),
     BottomNavItem("Inbox", Icons.Filled.Inbox, "inbox"),
-    BottomNavItem("Capture", Icons.Filled.Mic, "capture"),
-    BottomNavItem("Projects", Icons.Filled.Folder, "projects")
+    BottomNavItem("Projects", Icons.Filled.Folder, "projects"),
+    BottomNavItem("Settings", Icons.Filled.Settings, "settings")
 )
 
 @Composable
@@ -69,7 +67,8 @@ fun AppNavHost(
     openPlanMyDay: Boolean = false,
     openTaskTriage: Boolean = false,
     openCapture: Boolean = false,
-    openVoiceCommand: Boolean = false
+    openVoiceCommand: Boolean = false,
+    sharedMediaUri: android.net.Uri? = null
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -109,10 +108,17 @@ fun AppNavHost(
         }
     }
 
-    // Deep-link from widget/shortcut: swipe to Capture tab
+    // Deep-link from widget/shortcut: navigate to Capture screen
     LaunchedEffect(openCapture) {
         if (openCapture) {
-            pagerState.scrollToPage(2) // Capture is index 2
+            navController.navigate("capture_standalone")
+        }
+    }
+
+    // Share intent: navigate to Capture screen with shared media
+    LaunchedEffect(sharedMediaUri) {
+        if (sharedMediaUri != null) {
+            navController.navigate("capture_shared")
         }
     }
 
@@ -126,10 +132,9 @@ fun AppNavHost(
     Scaffold(
         bottomBar = {
             Column {
-                // Voice command bar — persistent across ALL screens except Capture
-                // Hide when pager is on Capture tab (index 2) AND we're on the main route
-                val onCaptureTab = currentRoute == "main" && pagerState.currentPage == 2
-                if (showVoiceBar && !onCaptureTab) {
+                // Voice command bar — persistent on main screens except Settings tab
+                val onSettingsTab = currentRoute == "main" && pagerState.currentPage == 3
+                if (showVoiceBar && !onSettingsTab) {
                     VoiceCommandBar(
                         viewModel = voiceCommandViewModel,
                         onNavigateToPlanMyDay = { _ ->
@@ -199,15 +204,15 @@ fun AppNavHost(
                                 }
                             },
                             onNavigateToCapture = {
-                                pagerScope.launch {
-                                    pagerState.animateScrollToPage(2)
-                                }
+                                navController.navigate("capture_standalone")
                             },
                             onNavigateToTrash = {
                                 navController.navigate("trash")
                             },
                             onNavigateToSettings = {
-                                navController.navigate("settings")
+                                pagerScope.launch {
+                                    pagerState.animateScrollToPage(3)
+                                }
                             },
                             onNavigateToPlanMyDay = {
                                 navController.navigate(NavRoutes.PlanMyDay.route)
@@ -225,20 +230,7 @@ fun AppNavHost(
                             },
                             viewModel = inboxViewModel
                         )
-                        2 -> CaptureScreen(
-                            projectId = null,
-                            onNavigateBack = {
-                                pagerScope.launch {
-                                    pagerState.animateScrollToPage(0)
-                                }
-                            },
-                            onDone = {
-                                pagerScope.launch {
-                                    pagerState.animateScrollToPage(0)
-                                }
-                            }
-                        )
-                        3 -> ProjectsScreen(
+                        2 -> ProjectsScreen(
                             onNavigateToProject = { id ->
                                 navController.navigate(NavRoutes.ProjectDetail.createRoute(id))
                             },
@@ -253,8 +245,40 @@ fun AppNavHost(
                             },
                             viewModel = projectsViewModel
                         )
+                        3 -> SettingsScreen(
+                            onNavigateBack = {
+                                pagerScope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            },
+                            onViewTranscript = { filePath ->
+                                navController.navigate(NavRoutes.TranscriptView.createRoute(filePath))
+                            },
+                            onNavigateToHelp = {
+                                navController.navigate(NavRoutes.Help.route)
+                            }
+                        )
                     }
                 }
+            }
+
+            // Standalone Capture screen (from Dashboard top bar)
+            composable("capture_standalone") {
+                CaptureScreen(
+                    projectId = null,
+                    onNavigateBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack() }
+                )
+            }
+
+            // Capture screen with shared media (from share intent)
+            composable("capture_shared") {
+                CaptureScreen(
+                    projectId = null,
+                    onNavigateBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack() },
+                    sharedMediaUri = sharedMediaUri
+                )
             }
 
             // Capture with projectId (from Project Detail → capture into project)
@@ -287,18 +311,6 @@ fun AppNavHost(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))
-                    }
-                )
-            }
-
-            composable("settings") {
-                SettingsScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onViewTranscript = { filePath ->
-                        navController.navigate(NavRoutes.TranscriptView.createRoute(filePath))
-                    },
-                    onNavigateToHelp = {
-                        navController.navigate(NavRoutes.Help.route)
                     }
                 )
             }

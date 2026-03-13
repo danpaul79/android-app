@@ -1,5 +1,8 @@
 package com.example.aicompanion
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,7 +10,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.example.aicompanion.ui.navigation.AppNavHost
-import com.example.aicompanion.ui.navigation.NavRoutes
 import com.example.aicompanion.ui.theme.AICompanionTheme
 import kotlinx.coroutines.launch
 
@@ -32,6 +34,15 @@ class MainActivity : ComponentActivity() {
             || intent?.getStringExtra(EXTRA_OPEN_CAPTURE) == "true"
         val openVoiceCommand = intent?.getBooleanExtra(EXTRA_OPEN_VOICE_COMMAND, false) ?: false
             || intent?.getStringExtra(EXTRA_OPEN_VOICE_COMMAND) == "true"
+        // Handle shared audio/video from other apps
+        val sharedMediaUri: Uri? = if (intent?.action == Intent.ACTION_SEND) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+            }
+        } else null
         setContent {
             AICompanionTheme {
                 val navController = rememberNavController()
@@ -41,7 +52,8 @@ class MainActivity : ComponentActivity() {
                     openPlanMyDay = openPlan,
                     openTaskTriage = openTriage,
                     openCapture = openCapture,
-                    openVoiceCommand = openVoiceCommand
+                    openVoiceCommand = openVoiceCommand,
+                    sharedMediaUri = sharedMediaUri
                 )
             }
         }

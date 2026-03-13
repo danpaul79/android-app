@@ -86,6 +86,7 @@ fun CaptureScreen(
     projectId: Long?,
     onNavigateBack: () -> Unit,
     onDone: () -> Unit,
+    sharedMediaUri: android.net.Uri? = null,
     viewModel: CaptureViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -96,6 +97,14 @@ fun CaptureScreen(
     // Set project context on first composition
     LaunchedEffect(projectId) {
         viewModel.setProjectContext(projectId)
+    }
+
+    // Handle shared media: enable transcript-only mode and process the file
+    LaunchedEffect(sharedMediaUri) {
+        if (sharedMediaUri != null) {
+            if (!uiState.transcriptOnly) viewModel.toggleTranscriptOnly()
+            viewModel.onAudioFilePicked(sharedMediaUri, context)
+        }
     }
 
     // Navigate when done

@@ -104,10 +104,10 @@ class MorningPlanStore(context: Context) {
     }
 
     /**
-     * Returns the capacity (in minutes) from the most recent morning check-in, regardless
-     * of date. Returns null if the user has never set a capacity.
+     * Returns the capacity (in minutes) from today's morning check-in only.
+     * Returns null if no capacity was set today.
      */
-    fun getLastCapacityMinutes(): Int? = loadHistory().firstOrNull()?.capacityMinutes
+    fun getLastCapacityMinutes(): Int? = getTodaysPlan()?.capacityMinutes
 
     /**
      * Removes a task from today's plan (the most recent history entry) if it's present.

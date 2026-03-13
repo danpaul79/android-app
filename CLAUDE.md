@@ -8,7 +8,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 
 ### What works now:
 - **App name**: Pocket Pilot
-- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); triage card when tasks need review; capacity indicator tappable to Plan My Day; Today's Plan card after morning check-in; priority color bars on task cards; search, trash, and settings icons in top bar
+- **Dashboard**: overdue, today, upcoming tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); triage card when tasks need review; capacity indicator (today only) tappable to Plan My Day; Today's Plan card after morning check-in; priority color bars on task cards; top bar: Capture (mic), Search, overflow menu (Plan My Day, Triage, Trash)
 - **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
 - **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); confirmation dialogs on all trash actions
 - **Projects**: create projects, view tasks per project; undated tasks filter (filter icon); navigation badge shows undated task count; trash icon navigates to Trash screen
@@ -21,7 +21,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Task Detail**: view/edit task name, change due date, set drop-dead date (hard deadline, warning color), lock due date (prevents voice command changes), effort estimate chips (10m/20m/30m/1h/90m/2h+), change project, add notes, see source info; confirmation dialog on trash
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
-- **Settings**: gear icon in Dashboard; export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker
+- **Settings**: bottom nav tab; export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
 - **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; also surfaces 2-3 stale/waiting-for tasks as review notifications with quick actions (Done, Trash/Unblock, Skip); "Review all" opens triage screen
 - **Effort estimates**: `estimatedMinutes` on every task; AI-guessed at extraction, user-editable in Task Detail; enrichment batch-backfills existing tasks; unestimated = 30m default for scheduling
@@ -36,7 +36,8 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Lock due date**: lock icon in Task Detail prevents voice commands from changing due date; `dueDateLocked` field in ActionItem
 - **Priority color bars**: left-edge color bar on task cards; red = URGENT, accent = HIGH, subtle = MEDIUM
 - **Help & Features guide**: Settings → Help & Features; comprehensive in-app documentation of all features
-- **Bottom nav**: Dashboard | Inbox | Capture | Projects
+- **Bottom nav**: Dashboard | Inbox | Projects | Settings
+- **Share intent**: accepts audio/* and video/* files shared from other apps; opens Capture screen in transcript-only mode (auto-transcribes, no task extraction by default)
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
 - CI/CD: push to main → GitHub Actions → Firebase App Distribution
@@ -174,18 +175,18 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
 
 ### Screen Flow
-- **Dashboard** — overdue, today, upcoming tasks; recently completed section; triage card; capacity indicator; Today's Plan card; long-press → multi-select mode; swipe gestures with undo; top bar: search, trash, settings
+- **Dashboard** — overdue, today, upcoming tasks; recently completed section; triage card; capacity indicator (today only); Today's Plan card; long-press → multi-select mode; swipe gestures with undo; top bar: Capture, Search, overflow (Plan My Day, Triage, Trash)
 - **Inbox** — unassigned tasks; long-press → multi-select mode; swipe gestures with undo
 - **Projects** — list of projects with task counts; undated filter; trash icon → Trash screen
 - **Project Detail** — tasks within a project; long-press → multi-select mode; swipe gestures with undo; (+) quick add; mic capture; confirmation on project/task trash
-- **Capture** — voice note recording/transcription/extraction; text input option
+- **Capture** — voice note recording/transcription/extraction; text input option; accessed via Dashboard top bar or share intent
 - **Task Detail** — view/edit a single task; lock due date; effort chips; confirmation on trash
 - **Plan My Day** — capacity selection + context filter → AI-picked task list
 - **Task Triage** — guided card-by-card review of tasks needing attention; AI breakdown
-- **Settings** — export/import data; Google Tasks sync; AI enrichment; voice history; morning check-in; Help & Features
+- **Settings** — bottom nav tab; export/import data; Google Tasks sync; AI enrichment; voice history; morning check-in; Help & Features
 - **Help & Features** — comprehensive in-app documentation of all features
 - **Trash** — trashed tasks and projects; restore or permanently delete
-- Bottom navigation: Dashboard | Inbox | Capture | Projects
+- Bottom navigation: Dashboard | Inbox | Projects | Settings
 
 ## Key Packages
 - `auth/` - Google Sign-In via Credential Manager (dormant, for future Gmail Phase 3)
