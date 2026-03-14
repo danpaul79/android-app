@@ -17,6 +17,8 @@ import com.example.aicompanion.reminder.MorningPlanStore
 import com.example.aicompanion.reminder.MorningPreferences
 import com.example.aicompanion.reminder.NudgePreferences
 import com.example.aicompanion.reminder.NudgeWorker
+import com.example.aicompanion.ui.theme.ThemeMode
+import com.example.aicompanion.ui.theme.ThemePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,6 +83,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val morningPrefs = MorningPreferences(application)
     private val morningPlanStore = MorningPlanStore(application)
     private val nudgePrefs = NudgePreferences(application)
+    val themePreferences: ThemePreferences = appContainer.themePreferences
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()

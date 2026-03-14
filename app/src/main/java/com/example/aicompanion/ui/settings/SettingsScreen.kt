@@ -72,6 +72,7 @@ import android.util.Log
 import com.example.aicompanion.data.sync.SyncStatus
 import com.example.aicompanion.reminder.MorningPlanStore
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.example.aicompanion.ui.theme.ThemeMode
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
@@ -128,6 +129,50 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Appearance section
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Appearance",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+            item {
+                val themeMode by viewModel.themePreferences.themeMode.collectAsState()
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Theme:", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.weight(1f))
+                        ThemeMode.entries.forEach { mode ->
+                            FilterChip(
+                                selected = themeMode == mode,
+                                onClick = { viewModel.themePreferences.setThemeMode(mode) },
+                                label = {
+                                    Text(
+                                        when (mode) {
+                                            ThemeMode.SYSTEM -> "System"
+                                            ThemeMode.LIGHT -> "Light"
+                                            ThemeMode.DARK -> "Dark"
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Data section
             item {
                 Spacer(Modifier.height(8.dp))

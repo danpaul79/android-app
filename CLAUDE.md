@@ -22,7 +22,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Recurring tasks**: set tasks to repeat on a schedule; on completion, next instance auto-created with advanced due date; repeat icon on task cards; voice command support; each instance syncs independently to Google Tasks
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
-- **Settings**: bottom nav tab; export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker; Send Feedback (GitHub issue submission)
+- **Settings**: bottom nav tab; appearance (theme mode: system/light/dark); export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker; Send Feedback (GitHub issue submission)
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
 - **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; also surfaces 2-3 stale/waiting-for tasks as review notifications with quick actions (Done, Trash/Unblock, Skip); "Review all" opens triage screen
 - **Effort estimates**: `estimatedMinutes` on every task; AI-guessed at extraction, user-editable in Task Detail; enrichment batch-backfills existing tasks; unestimated = 30m default for scheduling
@@ -36,7 +36,8 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Swipe undo**: swipe-to-complete and swipe-to-trash show snackbar with "Undo" button on Dashboard, Inbox, and Project Detail
 - **Lock due date**: lock icon in Task Detail prevents voice commands from changing due date; `dueDateLocked` field in ActionItem
 - **Priority color bars**: left-edge color bar on task cards; red = URGENT, accent = HIGH, subtle = MEDIUM
-- **Visual design**: Inter font, deep-blue/coral color palette (dynamic colors disabled), flat task rows with dividers (no card wrappers), checkboxes flush at left edge
+- **Visual design**: Inter font, deep-blue/coral color palette (dynamic colors disabled), flat task rows with dividers (no card wrappers), checkboxes flush at left edge, compact top bars (18sp title)
+- **Theme mode**: user-selectable light/dark/system theme in Settings → Appearance; persisted via SharedPreferences (ThemePreferences); default follows system
 - **Help & Features guide**: Settings → Help & Features; comprehensive in-app documentation of all features
 - **Bottom nav**: Dashboard | Inbox | Projects | Settings
 - **Share intent**: accepts audio/* and video/* files shared from other apps; opens Capture screen in transcript-only mode (auto-transcribes, no task extraction by default)
@@ -215,7 +216,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `reminder/` - NotificationHelper, ReminderWorker (hourly due-date reminders), MorningCheckInWorker, MorningActionReceiver, MorningPreferences, MorningNotificationHelper
 - `ui/plan/` - Plan My Day screen + ViewModel (capacity selection, context filter, AI task picking)
 - `ui/triage/` - Task Triage screen + ViewModel + models (guided review, AI breakdown)
-- `ui/theme/` - Custom theme: Inter font (res/font/), deep-blue/coral palette (Color.kt, Type.kt, Theme.kt); dynamic colors disabled so custom palette is always visible
+- `ui/theme/` - Custom theme: Inter font (res/font/), deep-blue/coral palette (Color.kt, Type.kt, Theme.kt); ThemePreferences (system/light/dark mode via SharedPreferences); dynamic colors disabled so custom palette is always visible
 - `ui/common/` - Shared composables (TagChips, DateTagsRow)
 - `ui/search/` - Search screen (task name + notes search)
 - `ui/feedback/` - FeedbackScreen + FeedbackViewModel (in-app feedback → GitHub Issues)

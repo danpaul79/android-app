@@ -106,7 +106,6 @@ class TaskTriageViewModel(application: Application) : AndroidViewModel(applicati
         val item = _uiState.value.currentItem ?: return
         viewModelScope.launch {
             repo.triageTask(item.task.id)
-            showSnackbar("Kept: ${item.task.text}")
             advance()
         }
     }

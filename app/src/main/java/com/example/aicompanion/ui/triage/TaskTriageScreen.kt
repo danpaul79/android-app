@@ -75,6 +75,15 @@ private fun utcPickerToLocalNoon(utcMillis: Long): Long {
     return localCal.timeInMillis
 }
 
+private fun localDateToUtcMidnight(localMillis: Long): Long {
+    val localCal = Calendar.getInstance()
+    localCal.timeInMillis = localMillis
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    utcCal.set(localCal.get(Calendar.YEAR), localCal.get(Calendar.MONTH), localCal.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
+    utcCal.set(Calendar.MILLISECOND, 0)
+    return utcCal.timeInMillis
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TaskTriageScreen(
@@ -94,7 +103,9 @@ fun TaskTriageScreen(
 
     // Date picker dialog
     if (uiState.showDatePicker) {
-        val datePickerState = rememberDatePickerState()
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.currentItem?.task?.dueDate?.let { localDateToUtcMidnight(it) }
+        )
         DatePickerDialog(
             onDismissRequest = { viewModel.dismissDatePicker() },
             confirmButton = {
@@ -397,13 +408,13 @@ private fun TriageActions(
             FilledTonalButton(onClick = onComplete) {
                 Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Done")
+                Text("Done", maxLines = 1, softWrap = false)
             }
             OutlinedButton(onClick = onKeep) {
-                Text("Keep")
+                Text("Keep", maxLines = 1, softWrap = false)
             }
             OutlinedButton(onClick = onSetDueDate) {
-                Text("Set due date")
+                Text("Set due date", maxLines = 1, softWrap = false)
             }
             FilledTonalButton(
                 onClick = onBreakDown,
@@ -412,16 +423,16 @@ private fun TriageActions(
                 if (isBreakingDown) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(4.dp))
-                    Text("Thinking...")
+                    Text("Thinking...", maxLines = 1, softWrap = false)
                 } else {
-                    Text("Break it down")
+                    Text("Break it down", maxLines = 1, softWrap = false)
                 }
             }
             OutlinedButton(onClick = onSnooze) {
-                Text("Snooze 2w")
+                Text("Snooze 2w", maxLines = 1, softWrap = false)
             }
             OutlinedButton(onClick = onToggleWaiting) {
-                Text(if (hasWaitingTag) "Unblock" else "Waiting on someone")
+                Text(if (hasWaitingTag) "Unblock" else "Waiting on someone", maxLines = 1, softWrap = false)
             }
             OutlinedButton(
                 onClick = onTrash,
@@ -431,7 +442,7 @@ private fun TriageActions(
             ) {
                 Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Trash")
+                Text("Trash", maxLines = 1, softWrap = false)
             }
         }
     }

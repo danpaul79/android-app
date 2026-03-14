@@ -74,6 +74,15 @@ private fun utcPickerToLocalNoon(utcMillis: Long): Long {
     return localCal.timeInMillis
 }
 
+private fun localDateToUtcMidnight(localMillis: Long): Long {
+    val localCal = Calendar.getInstance()
+    localCal.timeInMillis = localMillis
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    utcCal.set(localCal.get(Calendar.YEAR), localCal.get(Calendar.MONTH), localCal.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
+    utcCal.set(Calendar.MILLISECOND, 0)
+    return utcCal.timeInMillis
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDetailScreen(
@@ -92,7 +101,9 @@ fun TaskDetailScreen(
     val item = uiState.item
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState()
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = item?.dueDate?.let { localDateToUtcMidnight(it) }
+        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
@@ -111,7 +122,9 @@ fun TaskDetailScreen(
     }
 
     if (showDropDeadDatePicker) {
-        val dropDeadPickerState = rememberDatePickerState()
+        val dropDeadPickerState = rememberDatePickerState(
+            initialSelectedDateMillis = item?.dropDeadDate?.let { localDateToUtcMidnight(it) }
+        )
         DatePickerDialog(
             onDismissRequest = { showDropDeadDatePicker = false },
             confirmButton = {

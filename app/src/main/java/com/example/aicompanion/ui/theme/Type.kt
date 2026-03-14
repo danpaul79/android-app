@@ -24,12 +24,12 @@ val AppTypography = Typography(
         lineHeight = 36.sp,
         letterSpacing = (-0.5).sp
     ),
-    // Screen titles in top bars
+    // Screen titles in top bars (compact)
     titleLarge = TextStyle(
         fontFamily = InterFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
     // Section headers (Overdue, Today, Upcoming, project names)

@@ -8,10 +8,14 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.example.aicompanion.ui.navigation.AppNavHost
 import com.example.aicompanion.ui.theme.AICompanionTheme
+import com.example.aicompanion.ui.theme.ThemeMode
 import com.google.firebase.appdistribution.FirebaseAppDistribution
 import kotlinx.coroutines.launch
 
@@ -47,7 +51,14 @@ class MainActivity : ComponentActivity() {
             }
         } else null
         setContent {
-            AICompanionTheme {
+            val app = application as AICompanionApplication
+            val themeMode by app.container.themePreferences.themeMode.collectAsState()
+            val isDark = when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            AICompanionTheme(darkTheme = isDark) {
                 val navController = rememberNavController()
                 AppNavHost(
                     navController = navController,
