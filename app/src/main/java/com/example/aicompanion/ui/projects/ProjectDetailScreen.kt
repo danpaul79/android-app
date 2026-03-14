@@ -3,7 +3,6 @@ package com.example.aicompanion.ui.projects
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,9 +29,8 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -332,12 +330,9 @@ fun ProjectDetailScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            item { Spacer(Modifier.height(8.dp)) }
-
             if (uiState.items.isEmpty() && !uiState.isLoading) {
                 item {
                     Column(
@@ -462,29 +457,21 @@ private fun ProjectTaskCard(
         if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
     } else null
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .alpha(if (item.isCompleted) 0.6f else 1f),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                isSelected -> MaterialTheme.colorScheme.primaryContainer
-                item.isCompleted -> MaterialTheme.colorScheme.surfaceVariant
-                isOverdue -> MaterialTheme.colorScheme.errorContainer
-                else -> MaterialTheme.colorScheme.surface
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    val bgColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer
+        isOverdue -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.surface
+    }
+
+    Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .height(IntrinsicSize.Min)
+                .background(bgColor)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .alpha(if (item.isCompleted) 0.55f else 1f)
+                .padding(end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -494,20 +481,14 @@ private fun ProjectTaskCard(
                     .background(priorityColor)
             )
             if (isSelectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onClick() }
-                )
+                Checkbox(checked = isSelected, onCheckedChange = { onClick() })
             } else {
-                Checkbox(
-                    checked = item.isCompleted,
-                    onCheckedChange = { onToggle() }
-                )
+                Checkbox(checked = item.isCompleted, onCheckedChange = { onToggle() })
             }
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 0.dp, top = 6.dp, bottom = 6.dp)
+                    .padding(top = 10.dp, bottom = 10.dp)
             ) {
                 Text(
                     text = item.text,
@@ -528,20 +509,13 @@ private fun ProjectTaskCard(
                 Text(
                     text = effortLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 4.dp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (!isSelectionMode) {
-                IconButton(onClick = onTrash) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "Move to trash",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 52.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }

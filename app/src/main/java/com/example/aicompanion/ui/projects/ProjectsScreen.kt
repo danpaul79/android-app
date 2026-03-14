@@ -42,8 +42,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -194,16 +194,14 @@ fun ProjectsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            item { Spacer(Modifier.height(8.dp)) }
-
             // Filter label
             if (showUndatedOnly) {
                 item(key = "filter_label") {
                     AssistChip(
+                        modifier = Modifier.padding(horizontal = 16.dp),
                         onClick = { showUndatedOnly = false },
                         label = { Text("Undated tasks only") },
                         trailingIcon = {
@@ -231,7 +229,8 @@ fun ProjectsScreen(
                         taskCount = filteredInbox.size,
                         isExpanded = uiState.inboxExpanded,
                         onToggleExpand = { viewModel.toggleInboxExpanded() },
-                        onEdit = null
+                        onEdit = null,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
                 }
 
@@ -279,7 +278,8 @@ fun ProjectsScreen(
                         taskCount = tasks.size,
                         isExpanded = isExpanded,
                         onToggleExpand = { viewModel.toggleProjectExpanded(project.id) },
-                        onEdit = { onNavigateToProject(project.id) }
+                        onEdit = { onNavigateToProject(project.id) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
                 }
 
@@ -331,12 +331,12 @@ private fun ProjectHeader(
     taskCount: Int,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
-    onEdit: (() -> Unit)?
+    onEdit: (() -> Unit)?,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
@@ -410,26 +410,20 @@ private fun InlineTaskCard(
         if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
     } else null
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp)
-            .clickable { onClick() }
-            .alpha(if (item.isCompleted) 0.6f else 1f),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                item.isCompleted -> MaterialTheme.colorScheme.surfaceVariant
-                isOverdue -> MaterialTheme.colorScheme.errorContainer
-                else -> MaterialTheme.colorScheme.surface
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    val bgColor = when {
+        isOverdue -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.surface
+    }
+
+    Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .height(IntrinsicSize.Min)
+                .background(bgColor)
+                .clickable { onClick() }
+                .alpha(if (item.isCompleted) 0.55f else 1f)
+                .padding(end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -445,7 +439,7 @@ private fun InlineTaskCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 0.dp, top = 6.dp, bottom = 6.dp)
+                    .padding(top = 10.dp, bottom = 10.dp)
             ) {
                 Text(
                     text = item.text,
@@ -466,19 +460,14 @@ private fun InlineTaskCard(
                 Text(
                     text = effortLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 4.dp)
-                )
-            }
-            IconButton(onClick = onTrash) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = "Move to trash",
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 52.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }
 

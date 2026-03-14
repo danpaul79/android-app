@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -31,8 +31,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -260,11 +258,9 @@ fun InboxScreen(
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                item { Spacer(Modifier.height(8.dp)) }
                 items(uiState.items, key = { it.id }) { item ->
                     val isSelected = item.id in uiState.selectedIds
                     InboxItemCard(
@@ -421,27 +417,25 @@ private fun InboxItemCard(
     }.timeInMillis
     val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .alpha(if (item.isCompleted) 0.6f else 1f),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surface
-        )
-    ) {
+    val effortLabel = if (item.estimatedMinutes > 0) {
+        val m = item.estimatedMinutes
+        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
+    } else null
+
+    val bgColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surface
+    }
+
+    Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .height(IntrinsicSize.Min)
+                .background(bgColor)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .alpha(if (item.isCompleted) 0.55f else 1f)
+                .padding(end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -451,20 +445,14 @@ private fun InboxItemCard(
                     .background(priorityColor)
             )
             if (isSelectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onClick() }
-                )
+                Checkbox(checked = isSelected, onCheckedChange = { onClick() })
             } else {
-                Checkbox(
-                    checked = item.isCompleted,
-                    onCheckedChange = { onToggle() }
-                )
+                Checkbox(checked = item.isCompleted, onCheckedChange = { onToggle() })
             }
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 0.dp, top = 6.dp, bottom = 6.dp)
+                    .padding(top = 10.dp, bottom = 10.dp)
             ) {
                 Text(
                     text = item.text,
@@ -482,11 +470,19 @@ private fun InboxItemCard(
             }
 
             if (!isSelectionMode) {
+                if (effortLabel != null) {
+                    Text(
+                        text = effortLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Box {
                     IconButton(onClick = { showProjectMenu = true }) {
                         Icon(
                             Icons.Filled.Folder,
                             contentDescription = "Assign to project",
+                            modifier = Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -513,15 +509,11 @@ private fun InboxItemCard(
                         }
                     }
                 }
-
-                IconButton(onClick = onTrash) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "Move to trash",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 52.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }

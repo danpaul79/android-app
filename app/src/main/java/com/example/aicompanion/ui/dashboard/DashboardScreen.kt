@@ -53,6 +53,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -358,9 +359,8 @@ fun DashboardScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(innerPadding),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 // Today's plan card (dismissible)
                 val plan = uiState.todaysPlan
@@ -370,7 +370,7 @@ fun DashboardScreen(
                             plan = plan,
                             onDismiss = { viewModel.dismissTodaysPlan() },
                             onNavigateToTask = onNavigateToTask,
-                            modifier = Modifier.padding(top = 12.dp)
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)
                         )
                     }
                 }
@@ -383,7 +383,7 @@ fun DashboardScreen(
                             plannedMinutes = uiState.plannedMinutesToday,
                             capacityMinutes = capacity,
                             onClick = onNavigateToPlanMyDay,
-                            modifier = Modifier.padding(top = 4.dp)
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)
                         )
                     }
                 }
@@ -393,7 +393,7 @@ fun DashboardScreen(
                     item {
                         Card(
                             onClick = onNavigateToTriage,
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                         ) {
@@ -430,7 +430,7 @@ fun DashboardScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 12.dp)
+                                .padding(start = 16.dp, end = 16.dp, top = 12.dp)
                                 .combinedClickable(onClick = onNavigateToInbox),
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(
@@ -567,7 +567,7 @@ fun DashboardScreen(
                                 .combinedClickable(
                                     onClick = { viewModel.toggleShowCompleted() }
                                 )
-                                .padding(top = 16.dp, bottom = 4.dp),
+                                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -685,7 +685,7 @@ private fun SectionHeader(
     color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary
 ) {
     Row(
-        modifier = Modifier.padding(top = 20.dp, bottom = 6.dp),
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
@@ -784,23 +784,21 @@ private fun TaskRowCard(
         if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
     } else null
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .alpha(if (item.isCompleted) 0.6f else 1f),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                isSelected -> MaterialTheme.colorScheme.primaryContainer
-                isOverdue -> MaterialTheme.colorScheme.errorContainer
-                else -> MaterialTheme.colorScheme.surface
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    val bgColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer
+        isOverdue -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.surface
+    }
+
+    Column {
         Row(
-            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .background(bgColor)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .alpha(if (item.isCompleted) 0.55f else 1f)
+                .padding(end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -817,7 +815,7 @@ private fun TaskRowCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 4.dp, top = 6.dp, bottom = 6.dp)
+                    .padding(top = 10.dp, bottom = 10.dp)
             ) {
                 Text(
                     text = item.text,
@@ -838,11 +836,14 @@ private fun TaskRowCard(
                 Text(
                     text = effortLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 12.dp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 52.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }
 
