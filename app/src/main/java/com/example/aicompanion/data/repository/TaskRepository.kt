@@ -441,13 +441,23 @@ class TaskRepository(
         val result = mutableListOf<ActionItem>()
         var remaining = capacityMinutes
 
-        for (task in bucket1 + bucket2 + bucket3) {
+        // Always include overdue + today tasks — they're due now
+        for (task in bucket1) {
             val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
-            if (estimate <= remaining) {
-                result.add(task)
-                remaining -= estimate
+            result.add(task)
+            remaining -= estimate
+        }
+
+        // Only pull undated/future tasks if there's remaining capacity
+        if (remaining > 0) {
+            for (task in bucket2 + bucket3) {
+                val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
+                if (estimate <= remaining) {
+                    result.add(task)
+                    remaining -= estimate
+                }
+                if (remaining <= 0) break
             }
-            if (remaining <= 0) break
         }
         return result
     }
