@@ -199,42 +199,62 @@ fun InboxScreen(
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    if (uiState.isSelectionMode) {
+                        Text("${uiState.selectedIds.size} selected", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    } else {
+                        Text("Inbox", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                },
+                navigationIcon = {
+                    if (uiState.isSelectionMode) {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+                        }
+                    }
+                },
+                actions = {
+                    if (uiState.isSelectionMode) {
+                        TextButton(onClick = { viewModel.selectAll() }) {
+                            Text("All")
+                        }
+                    } else {
+                        IconButton(onClick = onNavigateToSearch) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search tasks")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = if (uiState.isSelectionMode)
+                        MaterialTheme.colorScheme.secondaryContainer
+                    else
+                        MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = if (uiState.isSelectionMode)
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    else
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        },
+        bottomBar = {
+            if (uiState.isSelectionMode) {
+                SelectionActionBar(
+                    selectedCount = uiState.selectedIds.size,
+                    isSingleSelection = uiState.selectedIds.size == 1,
+                    projects = uiState.projects,
+                    onAssignToProject = { projectId -> viewModel.assignSelectedToProject(projectId) },
+                    onSetDueDate = { showDatePicker = true },
+                    onComplete = { viewModel.completeSelected() },
+                    onRename = { showRenameDialog = true },
+                    onTrash = { showTrashSelectedConfirm = true }
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) } }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-        TopAppBar(
-            title = {
-                if (uiState.isSelectionMode) {
-                    Text("${uiState.selectedIds.size} selected")
-                } else {
-                    Text("Inbox")
-                }
-            },
-            actions = {
-                if (uiState.isSelectionMode) {
-                    TextButton(onClick = { viewModel.selectAll() }) {
-                        Text("All")
-                    }
-                    IconButton(onClick = { viewModel.clearSelection() }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
-                    }
-                } else {
-                    IconButton(onClick = onNavigateToSearch) {
-                        Icon(Icons.Filled.Search, contentDescription = "Search tasks")
-                    }
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = if (uiState.isSelectionMode)
-                    MaterialTheme.colorScheme.secondaryContainer
-                else
-                    MaterialTheme.colorScheme.primaryContainer,
-                titleContentColor = if (uiState.isSelectionMode)
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                else
-                    MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        )
 
         if (uiState.items.isEmpty() && !uiState.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -287,18 +307,6 @@ fun InboxScreen(
                 item { Spacer(Modifier.height(if (uiState.isSelectionMode) 96.dp else 80.dp)) }
             }
 
-            if (uiState.isSelectionMode) {
-                SelectionActionBar(
-                    selectedCount = uiState.selectedIds.size,
-                    isSingleSelection = uiState.selectedIds.size == 1,
-                    projects = uiState.projects,
-                    onAssignToProject = { projectId -> viewModel.assignSelectedToProject(projectId) },
-                    onSetDueDate = { showDatePicker = true },
-                    onComplete = { viewModel.completeSelected() },
-                    onRename = { showRenameDialog = true },
-                    onTrash = { showTrashSelectedConfirm = true }
-                )
-            }
         }
     }
 }  // Scaffold

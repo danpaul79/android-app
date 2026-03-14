@@ -164,7 +164,9 @@ fun SettingsScreen(
                                             ThemeMode.SYSTEM -> "System"
                                             ThemeMode.LIGHT -> "Light"
                                             ThemeMode.DARK -> "Dark"
-                                        }
+                                        },
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                 }
                             )
