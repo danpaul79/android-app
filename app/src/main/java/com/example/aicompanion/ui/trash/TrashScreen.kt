@@ -1,5 +1,6 @@
 package com.example.aicompanion.ui.trash
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,7 +88,8 @@ fun TrashScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     titleContentColor = MaterialTheme.colorScheme.onErrorContainer
-                )
+                ),
+                windowInsets = WindowInsets(0)
             )
         }
     ) { innerPadding ->
