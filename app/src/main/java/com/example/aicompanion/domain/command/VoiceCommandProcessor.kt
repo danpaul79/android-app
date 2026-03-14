@@ -8,6 +8,7 @@ import com.example.aicompanion.network.TranscriptionClient
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 data class CommandResult(
@@ -167,7 +168,7 @@ class VoiceCommandProcessor(
                 repo.createTask(
                     text = command.text,
                     projectId = projectId,
-                    dueDate = command.dueDate,
+                    dueDate = command.dueDate ?: todayNoon(),
                     priority = command.priority
                 )
                 val dest = command.projectName ?: "Inbox"
@@ -312,4 +313,9 @@ class VoiceCommandProcessor(
             else -> Priority.NONE
         }
     }
+
+    private fun todayNoon(): Long = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 12); set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
 }

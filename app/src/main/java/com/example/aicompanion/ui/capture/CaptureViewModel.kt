@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.Calendar
 
 data class CaptureUiState(
     val recorderState: RecorderState = RecorderState.Idle,
@@ -269,7 +270,7 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                     .joinToString("\n").ifBlank { null }
                 ActionItem(
                     text = extracted.text,
-                    dueDate = extracted.dueDate,
+                    dueDate = extracted.dueDate ?: todayNoon(),
                     dropDeadDate = extracted.dropDeadDate,
                     priority = extracted.priority,
                     estimatedMinutes = extracted.estimatedMinutes,
@@ -334,5 +335,10 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             val smaller = minOf(wordsA.size, wordsB.size)
             return smaller >= 3 && overlap.toFloat() / smaller >= 0.8f
         }
+
+        private fun todayNoon(): Long = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 12); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
     }
 }

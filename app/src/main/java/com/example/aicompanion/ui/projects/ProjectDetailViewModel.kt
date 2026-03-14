@@ -101,7 +101,7 @@ class ProjectDetailViewModel(application: Application) : AndroidViewModel(applic
     fun quickAddTask(text: String) {
         val projectId = _uiState.value.project?.id ?: return
         viewModelScope.launch {
-            repo.createTask(text = text, projectId = projectId)
+            repo.createTask(text = text, projectId = projectId, dueDate = System.currentTimeMillis())
         }
     }
 }
