@@ -188,7 +188,7 @@ fun FeedbackScreen(
                 if (uiState.screenshotUris.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Screenshots are for your reference only and won't be uploaded to GitHub.",
+                        "Screenshots will be uploaded with your feedback.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
