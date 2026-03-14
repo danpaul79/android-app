@@ -20,9 +20,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import com.example.aicompanion.BuildConfig
+import com.example.aicompanion.update.RELEASE_NOTES
+import com.example.aicompanion.update.WhatsNewDialog
+import com.example.aicompanion.update.WhatsNewPreferences
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -128,6 +136,29 @@ fun AppNavHost(
         if (openVoiceCommand) {
             voiceCommandViewModel.showTextInput()
         }
+    }
+
+    // What's New dialog — shown once after each update
+    val context = LocalContext.current
+    val whatsNewPrefs = remember { WhatsNewPreferences(context) }
+    val currentVersionCode = BuildConfig.VERSION_CODE
+    val lastSeenVersion = whatsNewPrefs.lastSeenVersionCode
+    val unseenNotes = RELEASE_NOTES.filter { it.versionCode > lastSeenVersion }
+    var showWhatsNew by remember { mutableStateOf(unseenNotes.isNotEmpty() && lastSeenVersion > 0) }
+    // If this is a fresh install (lastSeenVersion == 0), mark as seen without showing dialog
+    LaunchedEffect(Unit) {
+        if (lastSeenVersion == 0) {
+            whatsNewPrefs.lastSeenVersionCode = currentVersionCode
+        }
+    }
+    if (showWhatsNew) {
+        WhatsNewDialog(
+            notes = unseenNotes,
+            onDismiss = {
+                whatsNewPrefs.lastSeenVersionCode = currentVersionCode
+                showWhatsNew = false
+            }
+        )
     }
 
     Scaffold(

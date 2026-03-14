@@ -42,6 +42,8 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Share intent**: accepts audio/* and video/* files shared from other apps; opens Capture screen in transcript-only mode (auto-transcribes, no task extraction by default)
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
+- **In-app updates**: Firebase App Distribution SDK checks for new builds on launch; shows native dialog to download and install without leaving the app
+- **What's New dialog**: shown once after each update with release notes; version tracked via SharedPreferences; release notes maintained in `update/ReleaseNotes.kt`
 - CI/CD: push to main → GitHub Actions → Firebase App Distribution
 
 ### Next phases:
@@ -170,6 +172,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
+- App version: 1.1 (versionCode 2) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
 - DB version: 8 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - v6 adds: `task_events` table for lifecycle tracking
@@ -218,6 +221,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `ui/feedback/` - FeedbackScreen + FeedbackViewModel (in-app feedback → GitHub Issues)
 - `ui/settings/` - Settings screen (export/import, AI enrichment, voice history, Google Tasks sync, morning check-in); HelpScreen (feature guide)
 - `ui/trash/` - Trash screen (restore / permanent delete)
+- `update/` - In-app update check (Firebase App Distribution SDK), What's New dialog + preferences, release notes
 - `widget/` - TodayPlanWidget (Jetpack Glance home screen widget)
 
 ## Transcription

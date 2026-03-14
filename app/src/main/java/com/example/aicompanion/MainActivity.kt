@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.example.aicompanion.ui.navigation.AppNavHost
 import com.example.aicompanion.ui.theme.AICompanionTheme
+import com.google.firebase.appdistribution.FirebaseAppDistribution
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -26,6 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        checkForUpdate()
         val deepLinkTaskId = intent?.getLongExtra(EXTRA_TASK_ID, -1L)?.takeIf { it != -1L }
         val openPlan = intent?.getBooleanExtra(EXTRA_OPEN_PLAN, false) ?: false
         val openTriage = intent?.getBooleanExtra(EXTRA_OPEN_TRIAGE, false) ?: false
@@ -65,6 +68,25 @@ class MainActivity : ComponentActivity() {
         val app = application as? AICompanionApplication ?: return
         lifecycleScope.launch {
             app.container.syncEngine.sync()
+        }
+    }
+
+    /**
+     * Check Firebase App Distribution for a new release.
+     * If available, shows a native dialog offering to download and install.
+     * Fails silently if Firebase isn't configured.
+     */
+    private fun checkForUpdate() {
+        try {
+            val appDistribution = FirebaseAppDistribution.getInstance()
+            appDistribution.updateIfNewReleaseAvailable()
+                .addOnFailureListener { e ->
+                    // Expected to fail on non-tester devices or when no update available
+                    Log.d("PocketPilot", "App Distribution update check: ${e.message}")
+                }
+        } catch (e: Exception) {
+            // Firebase not configured — skip silently
+            Log.d("PocketPilot", "App Distribution not available: ${e.message}")
         }
     }
 }
