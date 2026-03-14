@@ -16,6 +16,16 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 3,
+        versionName = "1.2",
+        highlights = listOf(
+            "In-app update check now works with Firebase App Testers API",
+            "Date picker fixes for triage and task detail screens",
+            "Theme toggle: switch between light, dark, and system modes",
+            "Compact top bar titles for more screen space"
+        )
+    ),
+    ReleaseNote(
         versionCode = 2,
         versionName = "1.1",
         highlights = listOf(
