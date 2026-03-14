@@ -432,7 +432,8 @@ private fun HistorySection(
                     onClick = { selectedTab = 0 },
                     label = {
                         Text(
-                            "Daily Plans" + if (planHistory.isNotEmpty()) " (${planHistory.size})" else ""
+                            "Daily Plans" + if (planHistory.isNotEmpty()) " (${planHistory.size})" else "",
+                            maxLines = 1
                         )
                     }
                 )
@@ -441,7 +442,8 @@ private fun HistorySection(
                     onClick = { selectedTab = 1 },
                     label = {
                         Text(
-                            "Voice Notes" + if (voiceNotes.isNotEmpty()) " (${voiceNotes.size})" else ""
+                            "Voice Notes" + if (voiceNotes.isNotEmpty()) " (${voiceNotes.size})" else "",
+                            maxLines = 1
                         )
                     }
                 )
@@ -666,12 +668,12 @@ private fun GoogleTasksSyncCard(
                     ) {
                         if (syncState.syncStatus is SyncStatus.Syncing) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(4.dp))
                         } else {
                             Icon(Icons.Filled.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(4.dp))
                         }
-                        Text("Sync Now")
+                        Text("Sync", maxLines = 1)
                     }
 
                     OutlinedButton(
@@ -680,7 +682,7 @@ private fun GoogleTasksSyncCard(
                             contentColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Disconnect")
+                        Text("Disconnect", maxLines = 1)
                     }
                 }
             } else {
