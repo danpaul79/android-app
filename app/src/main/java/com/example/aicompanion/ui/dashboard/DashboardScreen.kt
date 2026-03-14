@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
@@ -392,12 +394,20 @@ fun DashboardScreen(
                         Card(
                             onClick = onNavigateToTriage,
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Icon(
+                                    Icons.Filled.Checklist,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
                                 Text(
                                     text = "${uiState.triageCount} task${if (uiState.triageCount != 1) "s" else ""} need review",
                                     style = MaterialTheme.typography.bodyMedium,
@@ -422,6 +432,7 @@ fun DashboardScreen(
                                 .fillMaxWidth()
                                 .padding(top = 12.dp)
                                 .combinedClickable(onClick = onNavigateToInbox),
+                            shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer
                             )
@@ -429,7 +440,7 @@ fun DashboardScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -674,14 +685,14 @@ private fun SectionHeader(
     color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary
 ) {
     Row(
-        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+        modifier = Modifier.padding(top = 20.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
         }
-        Text(text = title, style = MaterialTheme.typography.titleSmall, color = color)
+        Text(text = title, style = MaterialTheme.typography.titleMedium, color = color)
     }
 }
 
@@ -768,10 +779,17 @@ private fun TaskRowCard(
         Priority.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         else            -> androidx.compose.ui.graphics.Color.Transparent
     }
+    val effortLabel = if (item.estimatedMinutes > 0) {
+        val m = item.estimatedMinutes
+        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
+    } else null
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .alpha(if (item.isCompleted) 0.6f else 1f),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
                 isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -787,7 +805,7 @@ private fun TaskRowCard(
         ) {
             Box(
                 Modifier
-                    .width(3.dp)
+                    .width(4.dp)
                     .fillMaxHeight()
                     .background(priorityColor)
             )
@@ -799,7 +817,7 @@ private fun TaskRowCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 8.dp, top = 4.dp, bottom = 4.dp)
+                    .padding(end = 4.dp, top = 6.dp, bottom = 6.dp)
             ) {
                 Text(
                     text = item.text,
@@ -816,6 +834,14 @@ private fun TaskRowCard(
                     isRecurring = item.recurrenceRule != null
                 )
             }
+            if (effortLabel != null && !isSelectionMode) {
+                Text(
+                    text = effortLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+            }
         }
     }
 }
@@ -830,11 +856,12 @@ private fun TodaysPlanCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -922,6 +949,7 @@ private fun CapacityIndicatorRow(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (overloaded)
                 MaterialTheme.colorScheme.errorContainer
@@ -930,26 +958,26 @@ private fun CapacityIndicatorRow(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Today: ${minutesToLabel(plannedMinutes)} planned",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = if (overloaded) MaterialTheme.colorScheme.onErrorContainer
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = "${minutesToLabel(capacityMinutes)} capacity",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = if (overloaded) MaterialTheme.colorScheme.error
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth(),

@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
@@ -425,7 +427,9 @@ private fun InboxItemCard(
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
+            )
+            .alpha(if (item.isCompleted) 0.6f else 1f),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
@@ -442,7 +446,7 @@ private fun InboxItemCard(
         ) {
             Box(
                 Modifier
-                    .width(3.dp)
+                    .width(4.dp)
                     .fillMaxHeight()
                     .background(priorityColor)
             )
@@ -460,7 +464,7 @@ private fun InboxItemCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 0.dp, top = 4.dp, bottom = 4.dp)
+                    .padding(end = 0.dp, top = 6.dp, bottom = 6.dp)
             ) {
                 Text(
                     text = item.text,

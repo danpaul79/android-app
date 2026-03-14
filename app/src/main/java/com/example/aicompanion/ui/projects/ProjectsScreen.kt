@@ -5,6 +5,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -333,21 +335,29 @@ private fun ProjectHeader(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onToggleExpand() }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .height(IntrinsicSize.Min)
+                .clickable { onToggleExpand() },
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Spacer(Modifier.width(12.dp))
             icon()
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f).padding(vertical = 12.dp)) {
                 Text(
                     text = name,
-                    style = MaterialTheme.typography.titleSmall
+                    style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = "$taskCount active task${if (taskCount != 1) "s" else ""}",
@@ -370,6 +380,7 @@ private fun ProjectHeader(
                 contentDescription = if (isExpanded) "Collapse" else "Expand",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.width(8.dp))
         }
     }
 }
@@ -394,11 +405,18 @@ private fun InlineTaskCard(
         else            -> androidx.compose.ui.graphics.Color.Transparent
     }
 
+    val effortLabel = if (item.estimatedMinutes > 0) {
+        val m = item.estimatedMinutes
+        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
+    } else null
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 24.dp)
-            .clickable { onClick() },
+            .clickable { onClick() }
+            .alpha(if (item.isCompleted) 0.6f else 1f),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
                 item.isCompleted -> MaterialTheme.colorScheme.surfaceVariant
@@ -416,7 +434,7 @@ private fun InlineTaskCard(
         ) {
             Box(
                 Modifier
-                    .width(3.dp)
+                    .width(4.dp)
                     .fillMaxHeight()
                     .background(priorityColor)
             )
@@ -427,7 +445,7 @@ private fun InlineTaskCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 0.dp, top = 4.dp, bottom = 4.dp)
+                    .padding(end = 0.dp, top = 6.dp, bottom = 6.dp)
             ) {
                 Text(
                     text = item.text,
@@ -442,6 +460,14 @@ private fun InlineTaskCard(
                     isOverdue = isOverdue,
                     tags = item.parsedTags(),
                     isRecurring = item.recurrenceRule != null
+                )
+            }
+            if (effortLabel != null) {
+                Text(
+                    text = effortLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 4.dp)
                 )
             }
             IconButton(onClick = onTrash) {

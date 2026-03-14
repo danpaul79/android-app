@@ -89,7 +89,7 @@ fun DateTagsRow(
             else
                 MaterialTheme.colorScheme.onSecondaryContainer
             Surface(
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(8.dp),
                 color = containerColor
             ) {
                 Text(

@@ -3,6 +3,8 @@ package com.example.aicompanion.ui.projects
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -455,13 +457,20 @@ private fun ProjectTaskCard(
         else            -> androidx.compose.ui.graphics.Color.Transparent
     }
 
+    val effortLabel = if (item.estimatedMinutes > 0) {
+        val m = item.estimatedMinutes
+        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
+    } else null
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
+            )
+            .alpha(if (item.isCompleted) 0.6f else 1f),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
                 isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -480,7 +489,7 @@ private fun ProjectTaskCard(
         ) {
             Box(
                 Modifier
-                    .width(3.dp)
+                    .width(4.dp)
                     .fillMaxHeight()
                     .background(priorityColor)
             )
@@ -498,7 +507,7 @@ private fun ProjectTaskCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 0.dp, top = 4.dp, bottom = 4.dp)
+                    .padding(end = 0.dp, top = 6.dp, bottom = 6.dp)
             ) {
                 Text(
                     text = item.text,
@@ -513,6 +522,14 @@ private fun ProjectTaskCard(
                     isOverdue = isOverdue,
                     tags = item.parsedTags(),
                     isRecurring = item.recurrenceRule != null
+                )
+            }
+            if (effortLabel != null && !isSelectionMode) {
+                Text(
+                    text = effortLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 4.dp)
                 )
             }
             if (!isSelectionMode) {
