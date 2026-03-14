@@ -91,6 +91,9 @@ class MainActivity : ComponentActivity() {
         try {
             val appDistribution = FirebaseAppDistribution.getInstance()
             appDistribution.updateIfNewReleaseAvailable()
+                .addOnSuccessListener {
+                    Log.d("PocketPilot", "App Distribution update check completed (release: $it)")
+                }
                 .addOnFailureListener { e ->
                     // Expected to fail on non-tester devices or when no update available
                     Log.d("PocketPilot", "App Distribution update check: ${e.message}")
