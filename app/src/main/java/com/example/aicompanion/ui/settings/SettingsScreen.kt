@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -109,7 +110,7 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text("Settings", maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -118,7 +119,8 @@ fun SettingsScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                windowInsets = WindowInsets(0)
             )
         }
     ) { innerPadding ->
@@ -145,31 +147,32 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(16.dp)
                     ) {
-                        Text("Theme:", style = MaterialTheme.typography.bodyLarge)
-                        Spacer(Modifier.weight(1f))
-                        ThemeMode.entries.forEach { mode ->
-                            FilterChip(
-                                selected = themeMode == mode,
-                                onClick = { viewModel.themePreferences.setThemeMode(mode) },
-                                label = {
-                                    Text(
-                                        when (mode) {
-                                            ThemeMode.SYSTEM -> "System"
-                                            ThemeMode.LIGHT -> "Light"
-                                            ThemeMode.DARK -> "Dark"
-                                        },
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
-                            )
+                        Text("Theme", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ThemeMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = themeMode == mode,
+                                    onClick = { viewModel.themePreferences.setThemeMode(mode) },
+                                    label = {
+                                        Text(
+                                            when (mode) {
+                                                ThemeMode.SYSTEM -> "System"
+                                                ThemeMode.LIGHT -> "Light"
+                                                ThemeMode.DARK -> "Dark"
+                                            },
+                                            maxLines = 1
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
                 }

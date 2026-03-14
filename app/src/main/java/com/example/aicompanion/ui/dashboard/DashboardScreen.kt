@@ -3,6 +3,7 @@ package com.example.aicompanion.ui.dashboard
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -275,7 +276,8 @@ fun DashboardScreen(
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    ),
+                    windowInsets = WindowInsets(0)
                 )
             } else {
                 var showOverflow by remember { mutableStateOf(false) }
@@ -322,7 +324,8 @@ fun DashboardScreen(
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    ),
+                    windowInsets = WindowInsets(0)
                 )
             }
         },

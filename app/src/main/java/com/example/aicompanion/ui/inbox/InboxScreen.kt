@@ -3,6 +3,7 @@ package com.example.aicompanion.ui.inbox
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -235,7 +236,8 @@ fun InboxScreen(
                         MaterialTheme.colorScheme.onSecondaryContainer
                     else
                         MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                windowInsets = WindowInsets(0)
             )
         },
         bottomBar = {

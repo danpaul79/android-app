@@ -125,6 +125,7 @@ fun FeedbackScreen(
                 SuccessContent(
                     issueNumber = uiState.successIssueNumber ?: 0,
                     issueUrl = uiState.successIssueUrl!!,
+                    warning = uiState.warning,
                     onSendAnother = { viewModel.resetForAnother() },
                     onDone = onNavigateBack
                 )
@@ -241,6 +242,7 @@ fun FeedbackScreen(
 private fun SuccessContent(
     issueNumber: Int,
     issueUrl: String,
+    warning: String? = null,
     onSendAnother: () -> Unit,
     onDone: () -> Unit
 ) {
@@ -272,6 +274,21 @@ private fun SuccessContent(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (warning != null) {
+            Spacer(Modifier.height(12.dp))
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Text(
+                    warning,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+        }
         Spacer(Modifier.height(32.dp))
         Button(onClick = onSendAnother, modifier = Modifier.fillMaxWidth()) {
             Text("Send Another")

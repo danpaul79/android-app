@@ -26,6 +26,7 @@ data class FeedbackUiState(
     val successIssueUrl: String? = null,
     val successIssueNumber: Int? = null,
     val error: String? = null,
+    val warning: String? = null,
     val isConfigured: Boolean = true
 )
 
@@ -84,6 +85,12 @@ class FeedbackViewModel(application: Application) : AndroidViewModel(application
                     }
                 }
 
+                val screenshotWarning = if (state.screenshotUris.isNotEmpty() && screenshotUrls.isEmpty()) {
+                    "Screenshots could not be uploaded (check GitHub token permissions)"
+                } else if (screenshotUrls.size < state.screenshotUris.size) {
+                    "${state.screenshotUris.size - screenshotUrls.size} screenshot(s) could not be uploaded"
+                } else null
+
                 val title = generateTitle(state.description)
                 val body = buildIssueBody(state.description, screenshotUrls)
 
@@ -92,7 +99,8 @@ class FeedbackViewModel(application: Application) : AndroidViewModel(application
                         _uiState.value = _uiState.value.copy(
                             isSubmitting = false,
                             successIssueUrl = issue.htmlUrl,
-                            successIssueNumber = issue.number
+                            successIssueNumber = issue.number,
+                            warning = screenshotWarning
                         )
                     },
                     onFailure = { e ->
