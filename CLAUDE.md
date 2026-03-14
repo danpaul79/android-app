@@ -8,7 +8,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 
 ### What works now:
 - **App name**: Pocket Pilot
-- **Dashboard**: overdue, today, upcoming, undated tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); triage card when tasks need review; capacity indicator (today only) tappable to Plan My Day; Today's Plan card after morning check-in; priority color bars on task cards; repeat icon on recurring tasks; top bar: Capture (mic), Search, overflow menu (Plan My Day, Triage, Trash)
+- **Dashboard**: overdue, today, upcoming, undated tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); triage card when tasks need review; capacity indicator (today only) tappable to Plan My Day; Today's Plan card after morning check-in; priority color bars on task cards; repeat icon on recurring tasks; compact voice command bar (Type / Voice command); top bar: Capture (mic), Search, overflow menu (Plan My Day, Triage, Trash)
 - **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
 - **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); confirmation dialogs on all trash actions
 - **Projects**: create projects, view tasks per project; undated tasks filter (filter icon); navigation badge shows undated task count; trash icon navigates to Trash screen
@@ -22,7 +22,8 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Recurring tasks**: set tasks to repeat on a schedule; on completion, next instance auto-created with advanced due date; repeat icon on task cards; voice command support; each instance syncs independently to Google Tasks
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
-- **Settings**: bottom nav tab; appearance (theme mode: system/light/dark); export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker; Send Feedback (GitHub issue submission)
+- **Settings**: bottom nav tab; appearance (theme mode: system/light/dark); export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker; Task nudge notifications (configurable times); Send Feedback (GitHub issue submission)
+- **Task nudge notifications**: configurable nudge times in Settings; fires notifications for due-today tasks not yet completed; NudgeWorker + NudgePreferences in `reminder/`
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
 - **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; also surfaces 2-3 stale/waiting-for tasks as review notifications with quick actions (Done, Trash/Unblock, Skip); "Review all" opens triage screen
 - **Effort estimates**: `estimatedMinutes` on every task; AI-guessed at extraction, user-editable in Task Detail; enrichment batch-backfills existing tasks; unestimated = 30m default for scheduling
@@ -183,7 +184,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
 
 ### Screen Flow
-- **Dashboard** — overdue, today, upcoming, undated tasks; recently completed section; triage card; capacity indicator (today only); Today's Plan card; long-press → multi-select mode; swipe gestures with undo; top bar: Capture, Search, overflow (Plan My Day, Triage, Trash)
+- **Dashboard** — overdue, today, upcoming, undated tasks; recently completed section; triage card; capacity indicator (today only); Today's Plan card; long-press → multi-select mode; swipe gestures with undo; compact voice command bar; top bar: Capture, Search, overflow (Plan My Day, Triage, Trash)
 - **Inbox** — unassigned tasks; long-press → multi-select mode; swipe gestures with undo
 - **Projects** — list of projects with task counts; undated filter; trash icon → Trash screen
 - **Project Detail** — tasks within a project; long-press → multi-select mode; swipe gestures with undo; (+) quick add; mic capture; confirmation on project/task trash
@@ -213,7 +214,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `ui/task/` - Task detail/edit screen
 - `ui/voicecommand/` - Persistent voice command bar + ViewModel (record → transcribe → parse → execute); text input mode
 - `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution, multi-command support; supports set_drop_dead_date)
-- `reminder/` - NotificationHelper, ReminderWorker (hourly due-date reminders), MorningCheckInWorker, MorningActionReceiver, MorningPreferences, MorningNotificationHelper
+- `reminder/` - NotificationHelper, ReminderWorker (hourly due-date reminders), MorningCheckInWorker, MorningActionReceiver, MorningPreferences, MorningNotificationHelper, NudgeWorker, NudgePreferences
 - `ui/plan/` - Plan My Day screen + ViewModel (capacity selection, context filter, AI task picking)
 - `ui/triage/` - Task Triage screen + ViewModel + models (guided review, AI breakdown)
 - `ui/theme/` - Custom theme: Inter font (res/font/), deep-blue/coral palette (Color.kt, Type.kt, Theme.kt); ThemePreferences (system/light/dark mode via SharedPreferences); dynamic colors disabled so custom palette is always visible
@@ -277,6 +278,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - **GitHub Actions** workflow at `.github/workflows/build-and-distribute.yml`
 - Triggers on push to `main`, builds release APK, uploads to **Firebase App Distribution**
 - Signing config in `app/build.gradle.kts` reads from env vars (CI) or `local.properties` (local)
+- **Feedback processor** workflow at `.github/workflows/feedback-processor.yml` — triggers on new issues labeled as feedback; uses Claude to analyze and auto-implement fixes
 - Required GitHub Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY`, `GH_ISSUES_PAT` (GitHub PAT for feedback issues; mapped to `GITHUB_PAT` in local.properties), `FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID`, `GOOGLE_SERVICES_JSON` (optional, enables Crashlytics), `ANTHROPIC_API_KEY` (for feedback processor)
 
 ## Cloud Functions (legacy, no longer used by mobile app)
