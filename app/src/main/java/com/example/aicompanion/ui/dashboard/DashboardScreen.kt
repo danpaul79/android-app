@@ -427,40 +427,6 @@ fun DashboardScreen(
                     }
                 }
 
-                // Inbox banner
-                if (uiState.inboxCount > 0 && !uiState.isSelectionMode) {
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp, end = 16.dp, top = 12.dp)
-                                .combinedClickable(onClick = onNavigateToInbox),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Filled.Inbox,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text = "${uiState.inboxCount} task${if (uiState.inboxCount != 1) "s" else ""} in Inbox",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            }
-                        }
-                    }
-                }
 
                 if (uiState.overdueItems.isNotEmpty()) {
                     item {

@@ -14,6 +14,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -166,20 +167,20 @@ private fun IdleBar(onRecord: () -> Unit, onTextInput: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TextButton(onClick = onTextInput) {
-            Icon(Icons.Filled.Edit, null, Modifier.size(18.dp))
+        TextButton(onClick = onTextInput, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+            Icon(Icons.Filled.Edit, null, Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Type")
+            Text("Type", style = MaterialTheme.typography.labelMedium)
         }
         Spacer(Modifier.width(16.dp))
-        TextButton(onClick = onRecord) {
-            Icon(Icons.Filled.Mic, null, Modifier.size(18.dp))
+        TextButton(onClick = onRecord, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+            Icon(Icons.Filled.Mic, null, Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Voice command")
+            Text("Voice command", style = MaterialTheme.typography.labelMedium)
         }
     }
 }
