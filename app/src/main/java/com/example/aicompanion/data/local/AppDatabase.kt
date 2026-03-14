@@ -21,7 +21,7 @@ import com.example.aicompanion.data.local.entity.TaskEvent
 
 @Database(
     entities = [Project::class, ActionItem::class, Source::class, SyncState::class, TaskEvent::class],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -37,6 +37,10 @@ abstract class AppDatabase : RoomDatabase() {
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        val MIGRATION_8_9 = migration(8, 9) {
+            it.execSQL("ALTER TABLE action_items ADD COLUMN todaySortOrder INTEGER")
+        }
 
         val MIGRATION_7_8 = migration(7, 8) {
             it.execSQL("ALTER TABLE action_items ADD COLUMN recurrenceRule TEXT")
@@ -102,7 +106,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ai_companion.db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build()
                     .also { INSTANCE = it }
             }

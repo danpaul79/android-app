@@ -2,6 +2,7 @@ package com.example.aicompanion.ui.dashboard
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -72,15 +74,21 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -460,23 +468,23 @@ fun DashboardScreen(
 
                 if (uiState.todayItems.isNotEmpty()) {
                     item { SectionHeader(title = "Today") }
-                    items(uiState.todayItems, key = { "today_${it.id}" }) { item ->
-                        val isSelected = item.id in uiState.selectedIds
-                        TaskRow(
-                            item = item,
+                    item {
+                        ReorderableTodaySection(
+                            items = uiState.todayItems,
                             isSelectionMode = uiState.isSelectionMode,
-                            isSelected = isSelected,
-                            onToggle = {
+                            selectedIds = uiState.selectedIds,
+                            onToggle = { item ->
                                 if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
                                 else viewModel.toggleCompleted(item.id, false)
                             },
-                            onClick = {
+                            onClick = { item ->
                                 if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
                                 else onNavigateToTask(item.id)
                             },
-                            onLongClick = { viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
-                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
+                            onLongClick = { item -> viewModel.toggleSelection(item.id) },
+                            onSwipeComplete = { item -> swipeCompleteWithUndo(item.id, item.text) },
+                            onSwipeTrash = { item -> swipeTrashWithUndo(item.id, item.text) },
+                            onReorder = { reordered -> viewModel.reorderTodayTasks(reordered) }
                         )
                     }
                 }
@@ -663,6 +671,113 @@ private fun SectionHeader(
         }
         Text(text = title, style = MaterialTheme.typography.titleMedium, color = color)
     }
+}
+
+@Composable
+private fun ReorderableTodaySection(
+    items: List<ActionItem>,
+    isSelectionMode: Boolean,
+    selectedIds: Set<Long>,
+    onToggle: (ActionItem) -> Unit,
+    onClick: (ActionItem) -> Unit,
+    onLongClick: (ActionItem) -> Unit,
+    onSwipeComplete: (ActionItem) -> Unit,
+    onSwipeTrash: (ActionItem) -> Unit,
+    onReorder: (List<ActionItem>) -> Unit
+) {
+    val localItems = remember(items) { items.toMutableStateList() }
+
+    var draggedIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val itemHeights = remember { mutableMapOf<Int, Float>() }
+
+    Column {
+        localItems.forEachIndexed { index, item ->
+            val isSelected = item.id in selectedIds
+            val isDragged = draggedIndex == index
+
+            Box(
+                modifier = Modifier
+                    .onGloballyPositioned { coords ->
+                        itemHeights[index] = coords.size.height.toFloat()
+                    }
+                    .zIndex(if (isDragged) 1f else 0f)
+                    .graphicsLayer {
+                        if (isDragged) {
+                            translationY = dragOffset
+                            scaleX = 1.02f
+                            scaleY = 1.02f
+                            alpha = 0.9f
+                            shadowElevation = 8f
+                        }
+                    }
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        TaskRow(
+                            item = item,
+                            isSelectionMode = isSelectionMode,
+                            isSelected = isSelected,
+                            onToggle = { onToggle(item) },
+                            onClick = { onClick(item) },
+                            onLongClick = { onLongClick(item) },
+                            onSwipeComplete = { onSwipeComplete(item) },
+                            onSwipeTrash = { onSwipeTrash(item) }
+                        )
+                    }
+                    if (!isSelectionMode) {
+                        Icon(
+                            Icons.Filled.DragHandle,
+                            contentDescription = "Reorder",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .size(24.dp)
+                                .pointerInput(Unit) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            draggedIndex = index
+                                            dragOffset = 0f
+                                        },
+                                        onDrag = { change, offset ->
+                                            change.consume()
+                                            dragOffset += offset.y
+                                            val currentIdx = draggedIndex ?: return@detectDragGesturesAfterLongPress
+
+                                            // Calculate if we've crossed into another item's territory
+                                            val avgHeight = itemHeights.values.average().toFloat()
+                                            val targetIdx = (currentIdx + (dragOffset / avgHeight).toInt())
+                                                .coerceIn(0, localItems.lastIndex)
+
+                                            if (targetIdx != currentIdx) {
+                                                localItems.move(currentIdx, targetIdx)
+                                                draggedIndex = targetIdx
+                                                dragOffset = 0f
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            draggedIndex = null
+                                            dragOffset = 0f
+                                            onReorder(localItems.toList())
+                                        },
+                                        onDragCancel = {
+                                            draggedIndex = null
+                                            dragOffset = 0f
+                                        }
+                                    )
+                                }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun <T> MutableList<T>.move(fromIndex: Int, toIndex: Int) {
+    if (fromIndex == toIndex) return
+    val item = removeAt(fromIndex)
+    add(toIndex, item)
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)

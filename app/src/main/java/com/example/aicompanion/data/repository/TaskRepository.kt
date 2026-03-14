@@ -218,10 +218,17 @@ class TaskRepository(
         markTaskDirty(id)
     }
 
+    suspend fun reorderTodayTasks(orderedIds: List<Long>) {
+        orderedIds.forEachIndexed { index, id ->
+            actionItemDao.setTodaySortOrder(id, index)
+        }
+    }
+
     suspend fun setDueDate(id: Long, dueDate: Long?, force: Boolean = false) {
         val item = actionItemDao.getByIdSync(id)
         if (!force && item?.dueDateLocked == true) return
         actionItemDao.setDueDate(id, dueDate)
+        actionItemDao.setTodaySortOrder(id, null) // clear manual sort when date changes
         markTaskDirty(id)
         if (item != null) {
             recordEvent(item, TaskEvent.TYPE_DUE_DATE_CHANGED,

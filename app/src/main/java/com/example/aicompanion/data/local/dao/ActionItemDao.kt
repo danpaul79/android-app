@@ -72,7 +72,10 @@ interface ActionItemDao {
             (dueDate IS NOT NULL AND dueDate >= :dayStart AND dueDate < :dayEnd)
             OR (dropDeadDate IS NOT NULL AND dropDeadDate >= :dayStart AND dropDeadDate < :dayEnd AND dueDate IS NULL)
         )
-        ORDER BY COALESCE(dueDate, dropDeadDate) ASC
+        ORDER BY
+            CASE WHEN todaySortOrder IS NULL THEN 1 ELSE 0 END ASC,
+            todaySortOrder ASC,
+            COALESCE(dueDate, dropDeadDate) ASC
     """)
     fun getTodayItems(dayStart: Long, dayEnd: Long): Flow<List<ActionItem>>
 
@@ -235,6 +238,9 @@ interface ActionItemDao {
         ORDER BY updatedAt ASC
     """)
     suspend fun getUndatedItems(): List<ActionItem>
+
+    @Query("UPDATE action_items SET todaySortOrder = :sortOrder, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setTodaySortOrder(id: Long, sortOrder: Int?, updatedAt: Long = System.currentTimeMillis())
 
     @Query("UPDATE action_items SET recurrenceRule = :rule, recurrenceInterval = :interval, updatedAt = :updatedAt WHERE id = :id")
     suspend fun setRecurrence(id: Long, rule: String?, interval: Int, updatedAt: Long = System.currentTimeMillis())

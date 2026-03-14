@@ -8,7 +8,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 
 ### What works now:
 - **App name**: Pocket Pilot
-- **Dashboard**: overdue, today, upcoming, undated tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); triage card when tasks need review; capacity indicator (today only) tappable to Plan My Day; Today's Plan card after morning check-in; priority color bars on task cards; repeat icon on recurring tasks; compact voice command bar (Type / Voice command); top bar: Capture (mic), Search, overflow menu (Plan My Day, Triage, Trash)
+- **Dashboard**: overdue, today, upcoming, undated tasks at a glance; long-press for multi-select with batch due date/complete/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); drag-and-drop reorder for today's tasks (long-press drag handle); triage card when tasks need review; capacity indicator (today only) tappable to Plan My Day; Today's Plan card after morning check-in; priority color bars on task cards; repeat icon on recurring tasks; compact voice command bar (Type / Voice command); top bar: Capture (mic), Search, overflow menu (Plan My Day, Triage, Trash)
 - **Search**: search icon in Dashboard opens search screen; searches task names and notes with debounced input
 - **Inbox**: unassigned tasks with project assignment; multi-select with batch assign/due date/rename/trash; swipe right to complete, swipe left to trash (both with undo snackbar); confirmation dialogs on all trash actions
 - **Projects**: create projects, view tasks per project; undated tasks filter (filter icon); navigation badge shows undated task count; trash icon navigates to Trash screen
@@ -165,7 +165,7 @@ ActionItem gains:
 ### Data Model
 ```
 Project (id, name, color, icon, sortOrder, isArchived, isTrashed, createdAt, googleTaskListId, syncVersion)
-ActionItem (id, projectId, sourceId, text, notes, dueDate, dropDeadDate, dueDateLocked, priority, estimatedMinutes, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt, googleTaskId, googleTaskListId, syncVersion, recurrenceRule, recurrenceInterval)
+ActionItem (id, projectId, sourceId, text, notes, dueDate, dropDeadDate, dueDateLocked, priority, estimatedMinutes, isCompleted, completedAt, reminderFired, isTrashed, createdAt, updatedAt, googleTaskId, googleTaskListId, syncVersion, recurrenceRule, recurrenceInterval, todaySortOrder)
 TaskEvent (id, taskId, eventType, timestamp, projectId, tags, estimatedMinutes, metadata)
 Source (id, type[VOICE_NOTE|EMAIL|CHAT|SMS|MANUAL], rawContent, sourceRef, processedAt, createdAt)
 SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnabled, googleAccountEmail)
@@ -175,10 +175,11 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
 - App version: 1.2 (versionCode 3) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
-- DB version: 8 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
+- DB version: 9 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - v6 adds: `task_events` table for lifecycle tracking
 - v8 adds: `recurrenceRule TEXT`, `recurrenceInterval INTEGER NOT NULL DEFAULT 1` to action_items
+- v9 adds: `todaySortOrder INTEGER` to action_items (manual drag-and-drop sort for today section)
 - v7 adds: `dueDateLocked INTEGER NOT NULL DEFAULT 0` to action_items
 - Sync fields: `googleTaskId`/`googleTaskListId` link to Google Tasks API; `syncVersion` tracks dirty items for incremental sync
 - Firebase Crashlytics: enabled when `google-services.json` present (conditional plugin apply)
@@ -262,7 +263,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - Dirty tracking: `syncVersion` on ActionItem/Project incremented on every local mutation
 - Conflict resolution: last-writer-wins by timestamp; ties → remote wins
 - Initial sync merges by name (projects) and title (tasks); no data deleted
-- Fields NOT synced: priority, color, icon, recurrenceRule, recurrenceInterval, dropDeadDate, estimatedMinutes, dueDateLocked (app-only); Google Tasks position, parent (ignored)
+- Fields NOT synced: priority, color, icon, recurrenceRule, recurrenceInterval, dropDeadDate, estimatedMinutes, dueDateLocked, todaySortOrder (app-only); Google Tasks position, parent (ignored)
 - Recurring task instances sync independently (Google Tasks API has no recurrence support)
 - Moving a task between projects = delete from old Google Tasks list + create in new (API limitation)
 - `SyncState` table tracks: last sync time, version watermark, inbox list ID, enabled flag, account email

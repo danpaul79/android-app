@@ -153,6 +153,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun reorderTodayTasks(reorderedItems: List<ActionItem>) {
+        viewModelScope.launch {
+            repo.reorderTodayTasks(reorderedItems.map { it.id })
+        }
+    }
+
     fun completeSelected() {
         val ids = _uiState.value.selectedIds.toList()
         viewModelScope.launch {
