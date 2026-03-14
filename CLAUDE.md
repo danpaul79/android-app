@@ -36,6 +36,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Swipe undo**: swipe-to-complete and swipe-to-trash show snackbar with "Undo" button on Dashboard, Inbox, and Project Detail
 - **Lock due date**: lock icon in Task Detail prevents voice commands from changing due date; `dueDateLocked` field in ActionItem
 - **Priority color bars**: left-edge color bar on task cards; red = URGENT, accent = HIGH, subtle = MEDIUM
+- **Visual design**: Inter font, deep-blue/coral color palette (dynamic colors disabled), flat task rows with dividers (no card wrappers), checkboxes flush at left edge
 - **Help & Features guide**: Settings → Help & Features; comprehensive in-app documentation of all features
 - **Bottom nav**: Dashboard | Inbox | Projects | Settings
 - **Share intent**: accepts audio/* and video/* files shared from other apps; opens Capture screen in transcript-only mode (auto-transcribes, no task extraction by default)
@@ -211,7 +212,8 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `reminder/` - NotificationHelper, ReminderWorker (hourly due-date reminders), MorningCheckInWorker, MorningActionReceiver, MorningPreferences, MorningNotificationHelper
 - `ui/plan/` - Plan My Day screen + ViewModel (capacity selection, context filter, AI task picking)
 - `ui/triage/` - Task Triage screen + ViewModel + models (guided review, AI breakdown)
-- `ui/common/` - Shared composables (TagChips)
+- `ui/theme/` - Custom theme: Inter font (res/font/), deep-blue/coral palette (Color.kt, Type.kt, Theme.kt); dynamic colors disabled so custom palette is always visible
+- `ui/common/` - Shared composables (TagChips, DateTagsRow)
 - `ui/search/` - Search screen (task name + notes search)
 - `ui/feedback/` - FeedbackScreen + FeedbackViewModel (in-app feedback → GitHub Issues)
 - `ui/settings/` - Settings screen (export/import, AI enrichment, voice history, Google Tasks sync, morning check-in); HelpScreen (feature guide)

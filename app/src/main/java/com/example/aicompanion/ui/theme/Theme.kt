@@ -1,42 +1,58 @@
 package com.example.aicompanion.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Teal80,
-    secondary = TealGrey80,
-    tertiary = Amber80
+    primary = PilotBlueDark,
+    onPrimary = Color(0xFF002F68),
+    primaryContainer = PilotBlueContainerDark,
+    onPrimaryContainer = PilotBlueDark,
+    secondary = PilotSlateDark,
+    onSecondary = Color(0xFF283041),
+    secondaryContainer = PilotSlateContainerDark,
+    onSecondaryContainer = PilotSlateDark,
+    tertiary = PilotCoralDark,
+    onTertiary = Color(0xFF5F1600),
+    tertiaryContainer = PilotCoralContainerDark,
+    onTertiaryContainer = PilotCoralDark,
+    surface = PilotSurfaceDark,
+    surfaceVariant = PilotSurfaceVariantDark,
+    background = PilotBackgroundDark,
+    error = PilotErrorDark
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Teal40,
-    secondary = TealGrey40,
-    tertiary = Amber40
+    primary = PilotBlue,
+    onPrimary = Color.White,
+    primaryContainer = PilotBlueContainer,
+    onPrimaryContainer = Color(0xFF001A42),
+    secondary = PilotSlate,
+    onSecondary = Color.White,
+    secondaryContainer = PilotSlateContainer,
+    onSecondaryContainer = Color(0xFF131C2B),
+    tertiary = PilotCoral,
+    onTertiary = Color.White,
+    tertiaryContainer = PilotCoralContainer,
+    onTertiaryContainer = Color(0xFF3B0800),
+    surface = PilotSurface,
+    surfaceVariant = PilotSurfaceVariant,
+    background = PilotBackground,
+    error = PilotError
 )
 
 @Composable
 fun AICompanionTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    // Dynamic color disabled — always use Pocket Pilot's custom palette
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context)
-            else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,
