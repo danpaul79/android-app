@@ -808,6 +808,7 @@ private fun TaskRow(
         )
         SwipeToDismissBox(
             state = dismissState,
+            enableDismissFromEndToStart = false,
             backgroundContent = {
                 val direction = dismissState.dismissDirection
                 Box(
