@@ -318,11 +318,14 @@ class TaskRepository(
             val result = geminiClient.enrichTasks(pairs)
             result.onSuccess { enrichments ->
                 enrichments.forEach { enrichment ->
-                    val task = batch.find { it.id == enrichment.id } ?: return@forEach
+                    // Re-read from DB to get latest state (avoids stale data)
+                    val task = actionItemDao.getByIdSync(enrichment.id) ?: return@forEach
+                    if (task.isCompleted || task.isTrashed) return@forEach
                     val changes = mutableListOf<String>()
-                    // Set effort if unestimated
+                    // Set effort ONLY if unestimated (never overwrite existing)
                     if (task.estimatedMinutes == 0 && enrichment.estimatedMinutes > 0) {
                         actionItemDao.setEstimatedMinutes(task.id, enrichment.estimatedMinutes)
+                        markTaskDirty(task.id)
                         val mins = enrichment.estimatedMinutes
                         changes.add(if (mins >= 60) "${mins / 60}h${if (mins % 60 > 0) "${mins % 60}m" else ""}" else "${mins}m")
                     }
@@ -344,7 +347,7 @@ class TaskRepository(
                             changes.add(tagStr)
                         }
                     }
-                    val taskTitle = task.text.take(40) + if (task.text.length > 40) "…" else ""
+                    val taskTitle = task.text.take(40) + if (task.text.length > 40) "..." else ""
                     log.add("$taskTitle: ${if (changes.isEmpty()) "no changes" else changes.joinToString(", ")}")
                     if (changes.isNotEmpty()) enriched++
                 }
@@ -452,16 +455,24 @@ class TaskRepository(
         val result = mutableListOf<ActionItem>()
         var remaining = capacityMinutes
 
-        // Always include overdue + today tasks — they're due now
+        // Prioritize today/overdue tasks by priority, fitting within capacity
+        // Tasks that don't fit still appear at the end so user sees them
+        val prioritized = mutableListOf<ActionItem>()
+        val overflow = mutableListOf<ActionItem>()
         for (task in bucket1) {
             val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
-            result.add(task)
-            remaining -= estimate
+            if (estimate <= remaining) {
+                prioritized.add(task)
+                remaining -= estimate
+            } else {
+                overflow.add(task)
+            }
         }
+        result.addAll(prioritized)
 
         // Only pull undated/future tasks if there's remaining capacity
         if (remaining > 0) {
-            for (task in bucket2 + bucket3) {
+            for (task in bucket2) {
                 val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
                 if (estimate <= remaining) {
                     result.add(task)
@@ -470,6 +481,9 @@ class TaskRepository(
                 if (remaining <= 0) break
             }
         }
+        // Never pull future tasks — they have their own due dates
+        // Add today's overflow tasks at the end (beyond capacity but still due today)
+        result.addAll(overflow)
         return result
     }
 
