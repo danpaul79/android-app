@@ -85,12 +85,15 @@ fun AppNavHost(
     val showBottomBar = currentRoute == "main"
     val showVoiceBar = currentRoute == "main" || (currentRoute != null && !currentRoute.startsWith("capture"))
 
+    val dashboardViewModel: com.example.aicompanion.ui.dashboard.DashboardViewModel = viewModel()
+    val dashboardState by dashboardViewModel.uiState.collectAsState()
     val inboxViewModel: com.example.aicompanion.ui.inbox.InboxViewModel = viewModel()
     val inboxState by inboxViewModel.uiState.collectAsState()
     val projectsViewModel: com.example.aicompanion.ui.projects.ProjectsViewModel = viewModel()
     val projectsState by projectsViewModel.uiState.collectAsState()
 
     val voiceCommandViewModel: VoiceCommandViewModel = viewModel()
+    val anySelectionMode = dashboardState.isSelectionMode || inboxState.isSelectionMode
 
     // Pager state for swipeable tabs
     val pagerState = rememberPagerState(initialPage = 0) { bottomNavItems.size }
@@ -166,7 +169,7 @@ fun AppNavHost(
             Column {
                 // Voice command bar — persistent on main screens except Settings tab
                 val onSettingsTab = currentRoute == "main" && pagerState.currentPage == 3
-                if (showVoiceBar && !onSettingsTab) {
+                if (showVoiceBar && !onSettingsTab && !anySelectionMode) {
                     VoiceCommandBar(
                         viewModel = voiceCommandViewModel,
                         onNavigateToPlanMyDay = { _ ->
@@ -224,6 +227,7 @@ fun AppNavHost(
                 ) { page ->
                     when (page) {
                         0 -> DashboardScreen(
+                            viewModel = dashboardViewModel,
                             onNavigateToTask = { id ->
                                 navController.navigate(NavRoutes.TaskDetail.createRoute(id))
                             },

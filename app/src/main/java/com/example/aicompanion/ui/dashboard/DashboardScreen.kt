@@ -619,7 +619,7 @@ private fun DashboardSelectionActionBar(
 ) {
     BottomAppBar(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -627,28 +627,21 @@ private fun DashboardSelectionActionBar(
                 "$selectedCount task${if (selectedCount != 1) "s" else ""} selected",
                 style = MaterialTheme.typography.bodyMedium
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedButton(onClick = onSetDueDate) {
-                    Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Due")
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                IconButton(onClick = onSetDueDate) {
+                    Icon(Icons.Filled.CalendarMonth, contentDescription = "Set due date")
                 }
-                OutlinedButton(onClick = onComplete) {
-                    Icon(Icons.Filled.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Done")
+                IconButton(onClick = onComplete) {
+                    Icon(Icons.Filled.DoneAll, contentDescription = "Mark done")
                 }
                 if (isSingleSelection) {
-                    OutlinedButton(onClick = onRename) {
-                        Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Rename")
+                    IconButton(onClick = onRename) {
+                        Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = "Rename")
                     }
                 }
-                OutlinedButton(onClick = onTrash) {
-                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Trash")
+                IconButton(onClick = onTrash) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Trash",
+                        tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
