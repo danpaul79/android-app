@@ -17,8 +17,8 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Fires every 30 minutes. If the current hour matches a configured nudge time
- * and we haven't already nudged this hour, posts a notification with the count
- * of tasks due today (including overdue).
+ * and we haven't already nudged this hour, posts an expandable notification
+ * showing all tasks due today (including overdue).
  */
 class NudgeWorker(
     private val context: Context,
@@ -65,7 +65,7 @@ class NudgeWorker(
                 lastNudge.get(Calendar.YEAR) == now.get(Calendar.YEAR)
         if (sameHour) return Result.success()
 
-        // Count tasks due today + overdue
+        // Fetch tasks due today + overdue
         val app = context.applicationContext as? AICompanionApplication ?: return Result.success()
         val repo = app.container.taskRepository
 
@@ -76,10 +76,10 @@ class NudgeWorker(
             set(Calendar.MILLISECOND, 999)
         }.timeInMillis
 
-        val count = repo.countDueTodayAndOverdue(dayEnd)
-        if (count == 0) return Result.success()
+        val tasks = repo.getDueTodayAndOverdue(dayEnd)
+        if (tasks.isEmpty()) return Result.success()
 
-        // Post notification
+        // Post expandable notification with task list
         val channel = MorningNotificationHelper.ensureChannel(context)
 
         val tapIntent = Intent(context, MainActivity::class.java).apply {
@@ -90,13 +90,27 @@ class NudgeWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val count = tasks.size
         val title = if (count == 1) "1 task still due today" else "$count tasks still due today"
-        val text = "Tap to see your dashboard"
+
+        val inboxStyle = NotificationCompat.InboxStyle()
+            .setBigContentTitle(title)
+        for (task in tasks) {
+            val effort = if (task.estimatedMinutes > 0) {
+                val m = task.estimatedMinutes
+                if (m < 60) " (${m}m)" else " (${m / 60}h)"
+            } else ""
+            inboxStyle.addLine(task.text + effort)
+        }
+        if (count > 7) {
+            inboxStyle.setSummaryText("+${count - 7} more")
+        }
 
         val notification = NotificationCompat.Builder(context, channel)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle(title)
-            .setContentText(text)
+            .setContentText(tasks.first().text + if (count > 1) " +${count - 1} more" else "")
+            .setStyle(inboxStyle)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .setContentIntent(tapPi)

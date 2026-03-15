@@ -255,6 +255,17 @@ interface ActionItemDao {
     """)
     suspend fun countDueTodayAndOverdue(dayEnd: Long): Int
 
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0 AND isTrashed = 0
+        AND (
+            (dueDate IS NOT NULL AND dueDate < :dayEnd)
+            OR (dropDeadDate IS NOT NULL AND dropDeadDate < :dayEnd AND dueDate IS NULL)
+        )
+        ORDER BY COALESCE(dueDate, dropDeadDate) ASC
+    """)
+    suspend fun getDueTodayAndOverdue(dayEnd: Long): List<ActionItem>
+
     // --- Sync queries ---
 
     @Query("SELECT * FROM action_items WHERE syncVersion > :sinceVersion")
