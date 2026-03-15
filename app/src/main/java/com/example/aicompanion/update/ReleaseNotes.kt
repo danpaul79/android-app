@@ -16,6 +16,22 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 4,
+        versionName = "1.3",
+        highlights = listOf(
+            "Drag-and-drop reorder for today's tasks on Dashboard",
+            "New tasks default to today's date so they appear immediately",
+            "Expandable nudge notifications show all due tasks",
+            "Selection mode: voice bar hides, icon-only action buttons",
+            "Disabled accidental swipe-left-to-trash on Dashboard",
+            "Fixed double-height top bars on all screens (Android 16)",
+            "Fixed button text wrapping in Settings",
+            "Plan My Day no longer pulls future tasks when today is full",
+            "Screenshot upload warning in feedback form",
+            "Version number and release history in Settings"
+        )
+    ),
+    ReleaseNote(
         versionCode = 3,
         versionName = "1.2",
         highlights = listOf(

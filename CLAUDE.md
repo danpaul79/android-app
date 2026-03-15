@@ -174,7 +174,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- App version: 1.2 (versionCode 3) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
+- App version: 1.3 (versionCode 4) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
 - DB version: 9 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - v6 adds: `task_events` table for lifecycle tracking

@@ -70,10 +70,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.util.Log
+import com.example.aicompanion.BuildConfig
 import com.example.aicompanion.data.sync.SyncStatus
 import com.example.aicompanion.reminder.MorningPlanStore
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.example.aicompanion.ui.theme.ThemeMode
+import com.example.aicompanion.update.RELEASE_NOTES
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
@@ -110,7 +112,16 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Settings", maxLines = 1) },
+                title = {
+                    Column {
+                        Text("Settings", maxLines = 1)
+                        Text(
+                            "v${BuildConfig.VERSION_NAME}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -412,7 +423,7 @@ private fun HistorySection(
     voiceNotes: List<VoiceNoteFile>,
     onViewTranscript: (String) -> Unit
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Plans, 1 = Voice
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Plans, 1 = Notes, 2 = Releases
     var showAllPlans by remember { mutableStateOf(false) }
     var showAllVoice by remember { mutableStateOf(false) }
     val previewLimit = 3
@@ -432,7 +443,7 @@ private fun HistorySection(
                     onClick = { selectedTab = 0 },
                     label = {
                         Text(
-                            "Daily Plans" + if (planHistory.isNotEmpty()) " (${planHistory.size})" else "",
+                            "Plans" + if (planHistory.isNotEmpty()) " (${planHistory.size})" else "",
                             maxLines = 1
                         )
                     }
@@ -442,16 +453,55 @@ private fun HistorySection(
                     onClick = { selectedTab = 1 },
                     label = {
                         Text(
-                            "Voice Notes" + if (voiceNotes.isNotEmpty()) " (${voiceNotes.size})" else "",
+                            "Notes" + if (voiceNotes.isNotEmpty()) " (${voiceNotes.size})" else "",
                             maxLines = 1
                         )
+                    }
+                )
+                FilterChip(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    label = {
+                        Text("Releases", maxLines = 1)
                     }
                 )
             }
 
             Spacer(Modifier.height(8.dp))
 
-            if (selectedTab == 0) {
+            if (selectedTab == 2) {
+                // Releases tab
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RELEASE_NOTES.forEach { release ->
+                        Column {
+                            Text(
+                                "v${release.versionName}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            release.highlights.forEach { highlight ->
+                                Row(modifier = Modifier.padding(start = 8.dp, bottom = 2.dp)) {
+                                    Text(
+                                        "\u2022 ",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        highlight,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            if (release !== RELEASE_NOTES.last()) {
+                                Spacer(Modifier.height(4.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            }
+                        }
+                    }
+                }
+            } else if (selectedTab == 0) {
                 // Plans tab
                 if (planHistory.isEmpty()) {
                     Row(
