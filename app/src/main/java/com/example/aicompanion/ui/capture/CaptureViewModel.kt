@@ -7,7 +7,7 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
-import com.example.aicompanion.audio.AudioRecorder
+import com.example.aicompanion.audio.RecordingService
 import com.example.aicompanion.audio.RecorderState
 import com.example.aicompanion.audio.TranscriptFileHelper
 import com.example.aicompanion.data.local.entity.ActionItem
@@ -49,8 +49,6 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
     private val extractor = container.extractor
     private val transcriptionClient = container.transcriptionClient
 
-    val audioRecorder = AudioRecorder(application)
-
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
 
@@ -65,8 +63,9 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             }
         }
 
+        // Observe recording service state
         viewModelScope.launch {
-            audioRecorder.state.collect { recorderState ->
+            RecordingService.serviceState.collect { recorderState ->
                 _uiState.value = _uiState.value.copy(recorderState = recorderState)
                 if (recorderState is RecorderState.Completed) {
                     _uiState.value = _uiState.value.copy(
@@ -74,6 +73,19 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
                     )
                     // Auto-transcribe when recording completes
                     transcribe()
+                }
+            }
+        }
+
+        // Observe amplitude from service
+        viewModelScope.launch {
+            RecordingService.amplitude.collect { amp ->
+                if (amp > 0) {
+                    val normalized = (amp / 32767f).coerceIn(0f, 1f)
+                    val current = _uiState.value.amplitudes.toMutableList()
+                    current.add(normalized)
+                    if (current.size > 50) current.removeAt(0)
+                    _uiState.value = _uiState.value.copy(amplitudes = current)
                 }
             }
         }
@@ -106,20 +118,11 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun startRecording() { audioRecorder.startRecording() }
-    fun stopRecording() { audioRecorder.stopRecording() }
-    fun pauseRecording() { audioRecorder.pauseRecording() }
-    fun resumeRecording() { audioRecorder.resumeRecording() }
-    fun cancelRecording() { audioRecorder.cancelRecording() }
-
-    fun recordAmplitude() {
-        val amp = audioRecorder.getMaxAmplitude()
-        val normalized = (amp / 32767f).coerceIn(0f, 1f)
-        val current = _uiState.value.amplitudes.toMutableList()
-        current.add(normalized)
-        if (current.size > 50) current.removeAt(0)
-        _uiState.value = _uiState.value.copy(amplitudes = current)
-    }
+    fun startRecording() { RecordingService.start(getApplication()) }
+    fun stopRecording() { RecordingService.stop(getApplication()) }
+    fun pauseRecording() { RecordingService.pause(getApplication()) }
+    fun resumeRecording() { RecordingService.resume(getApplication()) }
+    fun cancelRecording() { RecordingService.cancel(getApplication()) }
 
     fun onAudioFilePicked(uri: Uri, context: Context) {
         viewModelScope.launch {
@@ -293,7 +296,10 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun reset() {
-        audioRecorder.reset()
+        // Cancel any running recording service
+        if (RecordingService.isRunning) {
+            RecordingService.cancel(getApplication())
+        }
         _uiState.value = CaptureUiState(
             projectId = _uiState.value.projectId,
             projectName = _uiState.value.projectName,

@@ -121,16 +121,6 @@ fun CaptureScreen(
         onDispose { view.keepScreenOn = false }
     }
 
-    // Poll amplitude while recording
-    LaunchedEffect(uiState.recorderState) {
-        if (uiState.recorderState is RecorderState.Recording) {
-            while (true) {
-                viewModel.recordAmplitude()
-                delay(100L)
-            }
-        }
-    }
-
     var hasAudioPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(

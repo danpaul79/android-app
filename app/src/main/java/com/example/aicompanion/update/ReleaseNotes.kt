@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 6,
+        versionName = "1.4",
+        highlights = listOf(
+            "Background recording: continue voice notes while using other apps",
+            "Persistent notification with timer, pause/stop controls during recording",
+            "Recording survives app switching and returns to Capture screen on tap"
+        )
+    ),
+    ReleaseNote(
         versionCode = 5,
         versionName = "1.3.1",
         highlights = listOf(
