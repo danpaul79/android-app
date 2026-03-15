@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 5,
+        versionName = "1.3.1",
+        highlights = listOf(
+            "Plan My Day no longer pulls in future-dated tasks (only today + overdue)",
+            "Plan My Day prioritizes tasks by priority within capacity budget",
+            "AI enrichment: fixed effort not saving and overwriting existing estimates"
+        )
+    ),
+    ReleaseNote(
         versionCode = 4,
         versionName = "1.3",
         highlights = listOf(

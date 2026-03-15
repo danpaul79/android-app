@@ -430,27 +430,18 @@ class TaskRepository(
             return true
         }
 
-        // Bucket 1: overdue + today tasks (dueDate < dayEnd), or tasks with a
-        //   drop-dead date within 7 days regardless of due date
-        // Bucket 2: undated tasks (dueDate == null)
-        // Bucket 3: future tasks (due after today) — only pulled in if capacity remains
+        // Bucket 1: overdue + today tasks only (dueDate < dayEnd)
+        // Bucket 2: undated tasks (dueDate == null) — fill remaining capacity
+        // Future tasks are never pulled in — they have their own due dates
         val bucket1 = allTasks.filter { isEligible(it) &&
-            ((it.dueDate != null && it.dueDate < dayEnd) ||
-             (it.dropDeadDate != null && it.dropDeadDate < now + 7L * 24 * 60 * 60 * 1000))
+            it.dueDate != null && it.dueDate < dayEnd
         }.sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
             .thenBy { it.dropDeadDate ?: Long.MAX_VALUE }
             .thenBy { it.dueDate ?: Long.MAX_VALUE })
 
-        val bucket2 = allTasks.filter { isEligible(it) && it.dueDate == null && it.dropDeadDate == null }
+        val bucket2 = allTasks.filter { isEligible(it) && it.dueDate == null }
             .sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
                 .thenBy { if (it.estimatedMinutes > 0) it.estimatedMinutes else 30 })
-
-        val bucket3 = allTasks.filter { isEligible(it) &&
-            it.dueDate != null && it.dueDate >= dayEnd &&
-            !it.dueDateLocked &&  // Don't pull in locked future-date tasks
-            (it.dropDeadDate == null || it.dropDeadDate >= now + 7L * 24 * 60 * 60 * 1000)
-        }.sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
-            .thenBy { it.dueDate ?: Long.MAX_VALUE })
 
         val result = mutableListOf<ActionItem>()
         var remaining = capacityMinutes
