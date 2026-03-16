@@ -3,8 +3,10 @@ package com.example.aicompanion.ui.projects
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Arrangement
@@ -93,6 +95,7 @@ fun ProjectsScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
     var trashTaskId by remember { mutableStateOf<Long?>(null) }
+    var trashProjectId by remember { mutableStateOf<Long?>(null) }
     var showUndatedOnly by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -123,6 +126,24 @@ fun ProjectsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { trashTaskId = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (trashProjectId != null) {
+        val projectName = uiState.projects.find { it.id == trashProjectId }?.name ?: "this project"
+        AlertDialog(
+            onDismissRequest = { trashProjectId = null },
+            title = { Text("Move project to trash?") },
+            text = { Text("\"$projectName\" and all its tasks will be moved to trash.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.trashProject(trashProjectId!!)
+                    trashProjectId = null
+                }) { Text("Trash", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { trashProjectId = null }) { Text("Cancel") }
             }
         )
     }
@@ -280,6 +301,7 @@ fun ProjectsScreen(
                         taskCount = tasks.size,
                         isExpanded = isExpanded,
                         onToggleExpand = { viewModel.toggleProjectExpanded(project.id) },
+                        onLongClick = { trashProjectId = project.id },
                         onEdit = { onNavigateToProject(project.id) },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
@@ -326,6 +348,7 @@ fun ProjectsScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ProjectHeader(
     icon: @Composable () -> Unit,
@@ -333,6 +356,7 @@ private fun ProjectHeader(
     taskCount: Int,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
+    onLongClick: () -> Unit = {},
     onEdit: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
@@ -344,7 +368,10 @@ private fun ProjectHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .clickable { onToggleExpand() },
+                .combinedClickable(
+                    onClick = { onToggleExpand() },
+                    onLongClick = onLongClick
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(

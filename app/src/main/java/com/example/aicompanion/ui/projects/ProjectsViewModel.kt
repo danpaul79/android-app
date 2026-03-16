@@ -121,4 +121,8 @@ class ProjectsViewModel(application: Application) : AndroidViewModel(application
     fun trashTask(id: Long) {
         viewModelScope.launch { repo.trashTask(id) }
     }
+
+    fun trashProject(id: Long) {
+        viewModelScope.launch { repo.trashProject(id) }
+    }
 }

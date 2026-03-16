@@ -16,6 +16,14 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 8,
+        versionName = "1.4.2",
+        highlights = listOf(
+            "Long-press projects to trash them from the Projects page",
+            "Effort estimate: renamed '?' to 'None' for tasks with no time needed"
+        )
+    ),
+    ReleaseNote(
         versionCode = 7,
         versionName = "1.4.1",
         highlights = listOf(
