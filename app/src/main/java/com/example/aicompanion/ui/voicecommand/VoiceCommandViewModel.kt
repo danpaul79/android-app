@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
-import com.example.aicompanion.audio.AudioRecorder
 import com.example.aicompanion.audio.RecorderState
+import com.example.aicompanion.audio.RecordingService
 import com.example.aicompanion.domain.command.VoiceCommand
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,14 +38,13 @@ data class VoiceCommandUiState(
 class VoiceCommandViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as AICompanionApplication).container
     private val processor = container.voiceCommandProcessor
-    val audioRecorder = AudioRecorder(application)
 
     private val _uiState = MutableStateFlow(VoiceCommandUiState())
     val uiState: StateFlow<VoiceCommandUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            audioRecorder.state.collect { recorderState ->
+            RecordingService.serviceState.collect { recorderState ->
                 when (recorderState) {
                     is RecorderState.Recording -> {
                         if (_uiState.value.commandState != CommandState.Recording) {
@@ -61,29 +60,48 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                 }
             }
         }
-    }
-
-    fun startRecording() {
-        _uiState.value = VoiceCommandUiState(commandState = CommandState.Recording)
-        audioRecorder.startRecording()
+        // Collect amplitude from service
         viewModelScope.launch {
-            while (_uiState.value.commandState == CommandState.Recording) {
-                val amp = audioRecorder.getMaxAmplitude() / 32767f
-                val current = _uiState.value.amplitudes.takeLast(29) + amp
-                _uiState.value = _uiState.value.copy(amplitudes = current)
-                delay(100)
+            RecordingService.amplitude.collect { amp ->
+                if (amp > 0 && _uiState.value.commandState == CommandState.Recording) {
+                    val normalized = amp / 32767f
+                    val current = _uiState.value.amplitudes.takeLast(29) + normalized
+                    _uiState.value = _uiState.value.copy(amplitudes = current)
+                }
             }
         }
     }
 
+    fun startRecording() {
+        _uiState.value = VoiceCommandUiState(commandState = CommandState.Recording)
+        RecordingService.start(getApplication())
+    }
+
     fun stopAndProcess() {
-        val filePath = audioRecorder.stopRecording() ?: return
         _uiState.value = _uiState.value.copy(
             commandState = CommandState.Processing,
             message = "Transcribing & processing..."
         )
+        RecordingService.stop(getApplication())
 
         viewModelScope.launch {
+            // Wait for service to deliver the completed file path
+            var filePath: String? = null
+            for (i in 1..50) { // wait up to 5 seconds
+                val state = RecordingService.serviceState.value
+                if (state is RecorderState.Completed) {
+                    filePath = state.filePath
+                    break
+                }
+                delay(100)
+            }
+            if (filePath == null) {
+                _uiState.value = _uiState.value.copy(
+                    commandState = CommandState.Error,
+                    message = "Recording failed"
+                )
+                return@launch
+            }
             val audioFile = File(filePath)
             val result = processor.processAudioFile(audioFile)
 
@@ -112,7 +130,7 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
     fun showTextInput() {
         // If recording, cancel it first
         if (_uiState.value.commandState == CommandState.Recording) {
-            audioRecorder.cancelRecording()
+            RecordingService.cancel(getApplication())
         }
         _uiState.value = VoiceCommandUiState(commandState = CommandState.TextInput)
     }
@@ -183,7 +201,7 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun cancel() {
-        audioRecorder.cancelRecording()
+        RecordingService.cancel(getApplication())
         _uiState.value = VoiceCommandUiState()
     }
 

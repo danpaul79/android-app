@@ -73,6 +73,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // Handle notification taps when activity already exists
+        val openCapture = intent.getBooleanExtra(EXTRA_OPEN_CAPTURE, false)
+        if (openCapture) {
+            pendingNavigation = "capture"
+        }
+    }
+
+    // Pending navigation from onNewIntent — consumed by AppNavHost
+    var pendingNavigation: String? = null
+        private set
+
+    fun consumePendingNavigation(): String? {
+        val nav = pendingNavigation
+        pendingNavigation = null
+        return nav
+    }
+
     override fun onResume() {
         super.onResume()
         // Trigger Google Tasks sync on app resume (debounced inside SyncEngine)

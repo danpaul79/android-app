@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 7,
+        versionName = "1.4.1",
+        highlights = listOf(
+            "Voice command bar now uses background recording service",
+            "Fixed notification tap to return to Capture screen",
+            "All recording (Capture + voice commands) goes through foreground service"
+        )
+    ),
+    ReleaseNote(
         versionCode = 6,
         versionName = "1.4",
         highlights = listOf(
