@@ -315,7 +315,7 @@ fun TaskDetailScreen(
             }
 
             // Effort estimate
-            val effortOptions = listOf(0 to "None", 10 to "10m", 20 to "20m", 30 to "30m", 60 to "1h", 90 to "90m", 120 to "2h+")
+            val effortOptions = listOf(0 to "?", 10 to "10m", 20 to "20m", 30 to "30m", 60 to "1h", 90 to "90m", 120 to "2h+")
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Filled.Timer,

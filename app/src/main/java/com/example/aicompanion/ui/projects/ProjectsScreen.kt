@@ -27,8 +27,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -42,6 +44,10 @@ import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
@@ -82,6 +88,16 @@ import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
 import com.example.aicompanion.ui.common.DateTagsRow
 import java.util.Calendar
+import java.util.TimeZone
+
+private fun utcPickerToLocalNoon(utcMillis: Long): Long {
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    utcCal.timeInMillis = utcMillis
+    val localCal = Calendar.getInstance()
+    localCal.set(utcCal.get(Calendar.YEAR), utcCal.get(Calendar.MONTH), utcCal.get(Calendar.DAY_OF_MONTH), 12, 0, 0)
+    localCal.set(Calendar.MILLISECOND, 0)
+    return localCal.timeInMillis
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,11 +164,76 @@ fun ProjectsScreen(
         )
     }
 
+    // Date picker for batch due date
+    var showDatePicker by remember { mutableStateOf(false) }
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { utcMillis ->
+                        viewModel.setDueDateForSelected(utcPickerToLocalNoon(utcMillis))
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
         },
+        bottomBar = {
+            if (uiState.isSelectionMode) {
+                BottomAppBar(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "${uiState.selectedTaskIds.size} selected",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Icon(Icons.Filled.CalendarMonth, contentDescription = "Set due date")
+                            }
+                            IconButton(onClick = { viewModel.completeSelected() }) {
+                                Icon(Icons.Filled.DoneAll, contentDescription = "Mark done")
+                            }
+                            IconButton(onClick = { viewModel.trashSelected() }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Trash",
+                                    tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        },
         topBar = {
+            if (uiState.isSelectionMode) {
+                TopAppBar(
+                    title = { Text("${uiState.selectedTaskIds.size} selected") },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearTaskSelection() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Cancel selection")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    windowInsets = WindowInsets(0)
+                )
+            } else {
             TopAppBar(
                 title = { Text("Projects") },
                 actions = {
@@ -212,6 +293,7 @@ fun ProjectsScreen(
                 ),
                 windowInsets = WindowInsets(0)
             )
+            }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -271,11 +353,17 @@ fun ProjectsScreen(
                         items(filteredInbox, key = { "inbox_${it.id}" }) { item ->
                             InlineTaskCard(
                                 item = item,
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = item.id in uiState.selectedTaskIds,
                                 onToggle = {
                                     if (!item.isCompleted) completeWithUndo(item.id, item.text)
                                     else viewModel.toggleCompleted(item.id, false)
                                 },
-                                onClick = { onNavigateToTask(item.id) },
+                                onClick = {
+                                    if (uiState.isSelectionMode) viewModel.toggleTaskSelection(item.id)
+                                    else onNavigateToTask(item.id)
+                                },
+                                onLongClick = { viewModel.toggleTaskSelection(item.id) },
                                 onTrash = { trashTaskId = item.id }
                             )
                         }
@@ -321,11 +409,17 @@ fun ProjectsScreen(
                         items(tasks, key = { "task_${project.id}_${it.id}" }) { item ->
                             InlineTaskCard(
                                 item = item,
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = item.id in uiState.selectedTaskIds,
                                 onToggle = {
                                     if (!item.isCompleted) completeWithUndo(item.id, item.text)
                                     else viewModel.toggleCompleted(item.id, false)
                                 },
-                                onClick = { onNavigateToTask(item.id) },
+                                onClick = {
+                                    if (uiState.isSelectionMode) viewModel.toggleTaskSelection(item.id)
+                                    else onNavigateToTask(item.id)
+                                },
+                                onLongClick = { viewModel.toggleTaskSelection(item.id) },
                                 onTrash = { trashTaskId = item.id }
                             )
                         }
@@ -414,11 +508,15 @@ private fun ProjectHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun InlineTaskCard(
     item: ActionItem,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     onToggle: () -> Unit,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     onTrash: () -> Unit
 ) {
     val dayStart = Calendar.getInstance().apply {
@@ -440,6 +538,7 @@ private fun InlineTaskCard(
     } else null
 
     val bgColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer
         isOverdue -> MaterialTheme.colorScheme.errorContainer
         else -> MaterialTheme.colorScheme.surface
     }
@@ -450,7 +549,7 @@ private fun InlineTaskCard(
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
                 .background(bgColor)
-                .clickable { onClick() }
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                 .alpha(if (item.isCompleted) 0.55f else 1f)
                 .padding(end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -461,10 +560,14 @@ private fun InlineTaskCard(
                     .fillMaxHeight()
                     .background(priorityColor)
             )
-            Checkbox(
-                checked = item.isCompleted,
-                onCheckedChange = { onToggle() }
-            )
+            if (isSelectionMode) {
+                Checkbox(checked = isSelected, onCheckedChange = { onClick() })
+            } else {
+                Checkbox(
+                    checked = item.isCompleted,
+                    onCheckedChange = { onToggle() }
+                )
+            }
             Column(
                 modifier = Modifier
                     .weight(1f)

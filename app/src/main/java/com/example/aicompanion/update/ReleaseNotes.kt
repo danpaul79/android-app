@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 9,
+        versionName = "1.4.3",
+        highlights = listOf(
+            "Projects page: long-press tasks for multi-select with batch due date, complete, and trash",
+            "Selection mode shows count in top bar with cancel button",
+            "Reverted effort chip label back to '?' (was 'None')"
+        )
+    ),
+    ReleaseNote(
         versionCode = 8,
         versionName = "1.4.2",
         highlights = listOf(

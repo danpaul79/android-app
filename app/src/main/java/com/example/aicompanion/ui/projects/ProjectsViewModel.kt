@@ -20,8 +20,11 @@ data class ProjectsUiState(
     val expandedProjectIds: Set<Long> = emptySet(),
     val inboxExpanded: Boolean = false,
     val isLoading: Boolean = true,
-    val undatedCount: Int = 0
+    val undatedCount: Int = 0,
+    val selectedTaskIds: Set<Long> = emptySet()
 ) {
+    val isSelectionMode: Boolean get() = selectedTaskIds.isNotEmpty()
+
     val allExpanded: Boolean
         get() {
             val allProjectIds = projects.map { it.id }.toSet()
@@ -124,5 +127,39 @@ class ProjectsViewModel(application: Application) : AndroidViewModel(application
 
     fun trashProject(id: Long) {
         viewModelScope.launch { repo.trashProject(id) }
+    }
+
+    fun toggleTaskSelection(id: Long) {
+        val current = _uiState.value.selectedTaskIds.toMutableSet()
+        if (id in current) current.remove(id) else current.add(id)
+        _uiState.value = _uiState.value.copy(selectedTaskIds = current)
+    }
+
+    fun clearTaskSelection() {
+        _uiState.value = _uiState.value.copy(selectedTaskIds = emptySet())
+    }
+
+    fun setDueDateForSelected(dueDate: Long?) {
+        val ids = _uiState.value.selectedTaskIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.setDueDate(it, dueDate) }
+            clearTaskSelection()
+        }
+    }
+
+    fun trashSelected() {
+        val ids = _uiState.value.selectedTaskIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.trashTask(it) }
+            clearTaskSelection()
+        }
+    }
+
+    fun completeSelected() {
+        val ids = _uiState.value.selectedTaskIds.toList()
+        viewModelScope.launch {
+            ids.forEach { repo.toggleCompleted(it, true) }
+            clearTaskSelection()
+        }
     }
 }
