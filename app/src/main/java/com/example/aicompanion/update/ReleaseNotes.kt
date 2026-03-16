@@ -16,6 +16,13 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 10,
+        versionName = "1.4.4",
+        highlights = listOf(
+            "Added '0m' effort chip for planning tasks that don't need time"
+        )
+    ),
+    ReleaseNote(
         versionCode = 9,
         versionName = "1.4.3",
         highlights = listOf(
