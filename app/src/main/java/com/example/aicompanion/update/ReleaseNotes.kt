@@ -16,6 +16,14 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 13,
+        versionName = "1.4.7",
+        highlights = listOf(
+            "Capture mode selector: clear segmented button replaces confusing toggle switch",
+            "Notification Stop button now brings you back to the app automatically"
+        )
+    ),
+    ReleaseNote(
         versionCode = 12,
         versionName = "1.4.6",
         highlights = listOf(
