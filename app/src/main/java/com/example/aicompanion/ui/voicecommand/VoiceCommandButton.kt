@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -34,7 +33,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -224,18 +224,19 @@ private fun IdleBar(
         TextButton(onClick = onRecord, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
             Icon(Icons.Filled.Mic, null, Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text(if (isTranscriptMode) "Record" else "Voice command", style = MaterialTheme.typography.labelMedium)
+            Text(if (isTranscriptMode) "Transcribe" else "Voice command", style = MaterialTheme.typography.labelMedium)
         }
         Spacer(Modifier.width(4.dp))
-        FilterChip(
-            selected = isTranscriptMode,
-            onClick = onToggleTranscriptMode,
-            label = {
-                Icon(Icons.Filled.Article, null, Modifier.size(14.dp))
-                Spacer(Modifier.width(2.dp))
-                Text("Transcript", style = MaterialTheme.typography.labelSmall)
-            }
+        Checkbox(
+            checked = isTranscriptMode,
+            onCheckedChange = { onToggleTranscriptMode() },
+            modifier = Modifier.size(24.dp),
+            colors = CheckboxDefaults.colors(
+                checkedColor = MaterialTheme.colorScheme.primary
+            )
         )
+        Spacer(Modifier.width(2.dp))
+        Text("Transcript only", style = MaterialTheme.typography.labelSmall)
     }
 }
 

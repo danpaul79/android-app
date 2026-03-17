@@ -19,8 +19,9 @@ val RELEASE_NOTES: List<ReleaseNote> = listOf(
         versionCode = 13,
         versionName = "1.4.7",
         highlights = listOf(
-            "Capture mode selector: clear segmented button replaces confusing toggle switch",
-            "Notification Stop button now brings you back to the app automatically"
+            "Voice bar: checkbox + 'Transcript only' label replaces confusing chip toggle",
+            "Voice bar: button says 'Transcribe' when transcript mode is on",
+            "Notification Stop button brings you back to the app and respects transcript mode"
         )
     ),
     ReleaseNote(

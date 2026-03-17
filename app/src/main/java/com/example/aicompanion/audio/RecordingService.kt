@@ -152,10 +152,9 @@ class RecordingService : Service() {
         }
         audioRecorder = null
         stopForeground(STOP_FOREGROUND_REMOVE)
-        // Bring the user back to the Capture screen
+        // Bring the user back to the app (just foreground it, don't force-navigate to Capture)
         val bringBackIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_OPEN_CAPTURE, true)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         startActivity(bringBackIntent)
         stopSelf()

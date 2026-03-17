@@ -55,6 +55,12 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                             _uiState.value = _uiState.value.copy(commandState = CommandState.Recording)
                         }
                     }
+                    is RecorderState.Completed -> {
+                        // Handle stop from notification: process the recording
+                        if (_uiState.value.commandState == CommandState.Recording) {
+                            processCompletedRecording(recorderState.filePath)
+                        }
+                    }
                     is RecorderState.Idle -> {
                         if (_uiState.value.commandState == CommandState.Recording) {
                             _uiState.value = _uiState.value.copy(commandState = CommandState.Idle)
@@ -89,10 +95,9 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun stopAndProcess() {
-        val isTranscriptMode = _uiState.value.transcriptMode
         _uiState.value = _uiState.value.copy(
             commandState = CommandState.Processing,
-            message = if (isTranscriptMode) "Transcribing..." else "Transcribing & processing..."
+            message = if (_uiState.value.transcriptMode) "Transcribing..." else "Transcribing & processing..."
         )
         RecordingService.stop(getApplication())
 
@@ -114,6 +119,18 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                 )
                 return@launch
             }
+            processCompletedRecording(filePath)
+        }
+    }
+
+    private fun processCompletedRecording(filePath: String) {
+        val isTranscriptMode = _uiState.value.transcriptMode
+        _uiState.value = _uiState.value.copy(
+            commandState = CommandState.Processing,
+            message = if (isTranscriptMode) "Transcribing..." else "Transcribing & processing..."
+        )
+
+        viewModelScope.launch {
             val audioFile = File(filePath)
 
             if (isTranscriptMode) {

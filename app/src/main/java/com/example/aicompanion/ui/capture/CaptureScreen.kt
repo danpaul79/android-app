@@ -36,8 +36,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Card
@@ -50,9 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -188,22 +184,23 @@ fun CaptureScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Mode toggle: Transcript only vs Extract tasks (segmented button)
+            // Mode toggle: Transcript only vs Extract tasks
             if (!hasAudio && !uiState.isTranscribing) {
                 item {
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = uiState.transcriptOnly,
-                            onClick = { if (!uiState.transcriptOnly) viewModel.toggleTranscriptOnly() },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                            icon = { Icon(Icons.Filled.Description, null, Modifier.size(18.dp)) }
-                        ) { Text("Transcript") }
-                        SegmentedButton(
-                            selected = !uiState.transcriptOnly,
-                            onClick = { if (uiState.transcriptOnly) viewModel.toggleTranscriptOnly() },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                            icon = { Icon(Icons.Filled.AutoAwesome, null, Modifier.size(18.dp)) }
-                        ) { Text("Extract Tasks") }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            if (uiState.transcriptOnly) "Transcript only" else "Extract tasks",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Switch(
+                            checked = !uiState.transcriptOnly,
+                            onCheckedChange = { viewModel.toggleTranscriptOnly() }
+                        )
                     }
                 }
             }
