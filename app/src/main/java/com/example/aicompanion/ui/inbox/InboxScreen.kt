@@ -427,10 +427,11 @@ private fun InboxItemCard(
     }.timeInMillis
     val isOverdue = item.dueDate != null && item.dueDate < dayStart && !item.isCompleted
 
-    val effortLabel = if (item.estimatedMinutes > 0) {
-        val m = item.estimatedMinutes
-        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
-    } else null
+    val effortLabel = when {
+        item.estimatedMinutes == 1 -> "0m"
+        item.estimatedMinutes > 1 -> { val m = item.estimatedMinutes; if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}" }
+        else -> null
+    }
 
     val bgColor = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer

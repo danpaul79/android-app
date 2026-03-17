@@ -33,7 +33,11 @@ data class DashboardUiState(
 
     /** Sum of estimated minutes for overdue + today tasks (the "load" for today). */
     val plannedMinutesToday: Int get() = (overdueItems + todayItems).sumOf {
-        if (it.estimatedMinutes > 0) it.estimatedMinutes else 30
+        when {
+            it.estimatedMinutes == 1 -> 0  // 0m / planning task
+            it.estimatedMinutes > 1 -> it.estimatedMinutes
+            else -> 30  // unestimated → default 30m
+        }
     }
 }
 

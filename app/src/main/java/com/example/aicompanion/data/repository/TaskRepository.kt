@@ -419,6 +419,13 @@ class TaskRepository(
         val urgentThreshold = now + 14L * 24 * 60 * 60 * 1000
         val allTasks = actionItemDao.getActiveItemsForScheduling(urgentThreshold)
 
+        // estimatedMinutes == 1 means "0m / planning task"; 0 means unestimated (default 30m)
+        fun effectiveMinutes(task: ActionItem): Int = when {
+            task.estimatedMinutes == 1 -> 0
+            task.estimatedMinutes > 1 -> task.estimatedMinutes
+            else -> 30
+        }
+
         fun isEligible(task: ActionItem): Boolean {
             val notes = task.notes ?: ""
             if (notes.contains("#waiting-for", ignoreCase = true)) return false
@@ -441,7 +448,7 @@ class TaskRepository(
 
         val bucket2 = allTasks.filter { isEligible(it) && it.dueDate == null }
             .sortedWith(compareByDescending<ActionItem> { it.effectivePriority().ordinal }
-                .thenBy { if (it.estimatedMinutes > 0) it.estimatedMinutes else 30 })
+                .thenBy { effectiveMinutes(it) })
 
         val result = mutableListOf<ActionItem>()
         var remaining = capacityMinutes
@@ -451,7 +458,7 @@ class TaskRepository(
         val prioritized = mutableListOf<ActionItem>()
         val overflow = mutableListOf<ActionItem>()
         for (task in bucket1) {
-            val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
+            val estimate = effectiveMinutes(task)
             if (estimate <= remaining) {
                 prioritized.add(task)
                 remaining -= estimate
@@ -464,7 +471,7 @@ class TaskRepository(
         // Only pull undated/future tasks if there's remaining capacity
         if (remaining > 0) {
             for (task in bucket2) {
-                val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
+                val estimate = effectiveMinutes(task)
                 if (estimate <= remaining) {
                     result.add(task)
                     remaining -= estimate

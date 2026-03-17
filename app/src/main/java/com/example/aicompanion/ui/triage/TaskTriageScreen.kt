@@ -289,7 +289,7 @@ private fun TaskTriageCard(
 ) {
     val task = item.task
     val tags = task.parsedTags()
-    val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 0
+    val estimate = when { task.estimatedMinutes == 1 -> 0; task.estimatedMinutes > 1 -> task.estimatedMinutes; else -> 0 }
     val dateFmt = SimpleDateFormat("MMM d", Locale.getDefault())
 
     Card(

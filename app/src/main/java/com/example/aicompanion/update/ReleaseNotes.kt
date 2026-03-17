@@ -16,6 +16,14 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 11,
+        versionName = "1.4.5",
+        highlights = listOf(
+            "'0m' effort chip now correctly counts as 0 minutes in capacity planning",
+            "Planning tasks (0m) no longer consume capacity in Plan My Day or dashboard load"
+        )
+    ),
+    ReleaseNote(
         versionCode = 10,
         versionName = "1.4.4",
         highlights = listOf(

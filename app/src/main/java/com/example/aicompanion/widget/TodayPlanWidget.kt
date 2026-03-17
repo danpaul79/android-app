@@ -162,9 +162,9 @@ private fun WidgetContent(
                         modifier = GlanceModifier.defaultWeight(),
                         maxLines = 1
                     )
-                    if (task.estimatedMinutes > 0) {
+                    if (task.estimatedMinutes >= 1) {
                         Spacer(modifier = GlanceModifier.width(4.dp))
-                        val mins = task.estimatedMinutes
+                        val mins = if (task.estimatedMinutes == 1) 0 else task.estimatedMinutes
                         val timeStr = if (mins < 60) "${mins}m" else "${mins / 60}h"
                         Text(
                             text = timeStr,

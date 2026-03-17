@@ -857,10 +857,11 @@ private fun TaskRowCard(
         Priority.MEDIUM -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         else            -> androidx.compose.ui.graphics.Color.Transparent
     }
-    val effortLabel = if (item.estimatedMinutes > 0) {
-        val m = item.estimatedMinutes
-        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
-    } else null
+    val effortLabel = when {
+        item.estimatedMinutes == 1 -> "0m"
+        item.estimatedMinutes > 1 -> { val m = item.estimatedMinutes; if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}" }
+        else -> null
+    }
 
     val bgColor = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -969,10 +970,11 @@ private fun TodaysPlanCard(
                 )
             } else {
                 plan.tasks.forEach { task ->
-                    val timeLabel = if (task.estimatedMinutes > 0) {
-                        val m = task.estimatedMinutes
-                        if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}"
-                    } else "~30m"
+                    val timeLabel = when {
+                        task.estimatedMinutes == 1 -> "0m"
+                        task.estimatedMinutes > 1 -> { val m = task.estimatedMinutes; if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) "${m % 60}m" else ""}" }
+                        else -> "~30m"
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

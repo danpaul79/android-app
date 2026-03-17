@@ -126,7 +126,7 @@ fun PlanMyDayScreen(
             // Results
             if (uiState.hasPlan && !uiState.isLoading) {
                 val tasks = uiState.pickedTasks
-                val totalMinutes = tasks.sumOf { if (it.estimatedMinutes > 0) it.estimatedMinutes else 30 }
+                val totalMinutes = tasks.sumOf { when { it.estimatedMinutes == 1 -> 0; it.estimatedMinutes > 1 -> it.estimatedMinutes; else -> 30 } }
 
                 item {
                     Row(
@@ -227,7 +227,7 @@ private fun PlannedTaskCard(
     onClick: () -> Unit,
     onRemove: () -> Unit
 ) {
-    val estimate = if (task.estimatedMinutes > 0) task.estimatedMinutes else 30
+    val estimate = when { task.estimatedMinutes == 1 -> 0; task.estimatedMinutes > 1 -> task.estimatedMinutes; else -> 30 }
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
