@@ -24,6 +24,13 @@ class VoiceCommandProcessor(
     private val repo: TaskRepository
 ) {
 
+    /** Transcribe audio and return raw transcript text, or null on failure. */
+    suspend fun transcribeOnly(audioFile: File): String? {
+        val result = transcriptionClient.transcribe(audioFile)
+        val transcript = result.getOrNull()?.transcript ?: return null
+        return transcript.ifBlank { null }
+    }
+
     suspend fun processAudioFile(audioFile: File): CommandResult {
         // Step 1: Transcribe
         val transcriptionResult = transcriptionClient.transcribe(audioFile)

@@ -8,8 +8,39 @@
       "Glob",
       "Grep",
       "LS",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:issuetracker.google.com)",
+      "WebFetch(domain:developer.android.com)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:mvnrepository.com)",
+      "WebFetch(domain:firebase.google.com)",
+      "WebFetch(domain:*.google.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/compile-kotlin.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/auto-push.sh"
+          }
+        ]
+      }
+    ]
   }
 }

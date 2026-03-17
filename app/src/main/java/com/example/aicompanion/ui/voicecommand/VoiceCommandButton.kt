@@ -24,13 +24,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +50,10 @@ import androidx.compose.ui.Alignment
 import com.example.aicompanion.domain.command.VoiceCommand
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 
@@ -65,6 +72,35 @@ fun VoiceCommandBar(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val clipboardManager: ClipboardManager = LocalClipboardManager.current
+
+    // Show transcript result dialog
+    val transcriptResult = uiState.transcriptResult
+    if (transcriptResult != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissTranscriptResult() },
+            title = { Text("Transcript") },
+            text = {
+                Text(
+                    text = transcriptResult,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    clipboardManager.setText(AnnotatedString(transcriptResult))
+                    viewModel.dismissTranscriptResult()
+                }) {
+                    Icon(Icons.Filled.ContentCopy, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Copy")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissTranscriptResult() }) { Text("Close") }
+            }
+        )
+    }
 
     // Handle navigation commands emitted by the processor
     val navCmd = uiState.navigationCommand
@@ -99,6 +135,7 @@ fun VoiceCommandBar(
         when (uiState.commandState) {
             CommandState.Idle -> {
                 IdleBar(
+                    isTranscriptMode = uiState.transcriptMode,
                     onRecord = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                             == PackageManager.PERMISSION_GRANTED
@@ -108,13 +145,15 @@ fun VoiceCommandBar(
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
-                    onTextInput = { viewModel.showTextInput() }
+                    onTextInput = { viewModel.showTextInput() },
+                    onToggleTranscriptMode = { viewModel.toggleTranscriptMode() }
                 )
             }
 
             CommandState.Recording -> {
                 RecordingBar(
                     amplitudes = uiState.amplitudes,
+                    isTranscriptMode = uiState.transcriptMode,
                     onStop = { viewModel.stopAndProcess() },
                     onCancel = { viewModel.cancel() },
                     onSwitchToText = { viewModel.showTextInput() }
@@ -163,11 +202,16 @@ fun VoiceCommandBar(
 }
 
 @Composable
-private fun IdleBar(onRecord: () -> Unit, onTextInput: () -> Unit) {
+private fun IdleBar(
+    isTranscriptMode: Boolean,
+    onRecord: () -> Unit,
+    onTextInput: () -> Unit,
+    onToggleTranscriptMode: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp),
+            .padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -176,18 +220,29 @@ private fun IdleBar(onRecord: () -> Unit, onTextInput: () -> Unit) {
             Spacer(Modifier.width(4.dp))
             Text("Type", style = MaterialTheme.typography.labelMedium)
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(8.dp))
         TextButton(onClick = onRecord, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
             Icon(Icons.Filled.Mic, null, Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Voice command", style = MaterialTheme.typography.labelMedium)
+            Text(if (isTranscriptMode) "Record" else "Voice command", style = MaterialTheme.typography.labelMedium)
         }
+        Spacer(Modifier.width(4.dp))
+        FilterChip(
+            selected = isTranscriptMode,
+            onClick = onToggleTranscriptMode,
+            label = {
+                Icon(Icons.Filled.Article, null, Modifier.size(14.dp))
+                Spacer(Modifier.width(2.dp))
+                Text("Transcript", style = MaterialTheme.typography.labelSmall)
+            }
+        )
     }
 }
 
 @Composable
 private fun RecordingBar(
     amplitudes: List<Float>,
+    isTranscriptMode: Boolean,
     onStop: () -> Unit,
     onCancel: () -> Unit,
     onSwitchToText: () -> Unit
@@ -210,7 +265,7 @@ private fun RecordingBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Recording...",
+                if (isTranscriptMode) "Recording transcript..." else "Recording...",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.error.copy(alpha = pulseAlpha),
                 modifier = Modifier.weight(1f)

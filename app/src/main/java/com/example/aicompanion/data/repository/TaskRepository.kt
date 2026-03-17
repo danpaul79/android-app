@@ -157,6 +157,17 @@ class TaskRepository(
         return actionItemDao.getUpcomingItems(start, end)
     }
 
+    fun getFutureItems(): Flow<List<ActionItem>> {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 8)
+        }
+        return actionItemDao.getFutureItems(cal.timeInMillis)
+    }
+
     fun getTrashedTasks(): Flow<List<ActionItem>> = actionItemDao.getTrashedItems()
 
     suspend fun toggleCompleted(id: Long, completed: Boolean) {

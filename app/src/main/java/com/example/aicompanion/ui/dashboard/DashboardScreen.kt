@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
@@ -133,6 +135,13 @@ fun DashboardScreen(
     var showTrashSelectedConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Collapsible section state — future starts collapsed, rest start expanded
+    var overdueExpanded by remember { mutableStateOf(true) }
+    var todayExpanded by remember { mutableStateOf(true) }
+    var nextWeekExpanded by remember { mutableStateOf(true) }
+    var futureExpanded by remember { mutableStateOf(false) }
+    var undatedExpanded by remember { mutableStateOf(true) }
 
     fun swipeTrashWithUndo(id: Long, text: String) {
         viewModel.trashTask(id)
@@ -360,7 +369,7 @@ fun DashboardScreen(
                 Text("Loading...", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else if (uiState.overdueItems.isEmpty() && uiState.todayItems.isEmpty() &&
-            uiState.upcomingItems.isEmpty() && uiState.inboxCount == 0
+            uiState.nextWeekItems.isEmpty() && uiState.inboxCount == 0
         ) {
             EmptyDashboard(
                 onNavigateToCapture = onNavigateToCapture,
@@ -441,97 +450,156 @@ fun DashboardScreen(
                         SectionHeader(
                             title = "Overdue",
                             icon = Icons.Filled.Warning,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
+                            expanded = overdueExpanded,
+                            onToggle = { overdueExpanded = !overdueExpanded }
                         )
                     }
-                    items(uiState.overdueItems, key = { "overdue_${it.id}" }) { item ->
-                        val isSelected = item.id in uiState.selectedIds
-                        TaskRow(
-                            item = item,
-                            isSelectionMode = uiState.isSelectionMode,
-                            isSelected = isSelected,
-                            onToggle = {
-                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
-                                else viewModel.toggleCompleted(item.id, false)
-                            },
-                            onClick = {
-                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
-                                else onNavigateToTask(item.id)
-                            },
-                            onLongClick = { viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
-                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) },
-                            isOverdue = true
-                        )
+                    if (overdueExpanded) {
+                        items(uiState.overdueItems, key = { "overdue_${it.id}" }) { item ->
+                            val isSelected = item.id in uiState.selectedIds
+                            TaskRow(
+                                item = item,
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = isSelected,
+                                onToggle = {
+                                    if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                    else viewModel.toggleCompleted(item.id, false)
+                                },
+                                onClick = {
+                                    if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                    else onNavigateToTask(item.id)
+                                },
+                                onLongClick = { viewModel.toggleSelection(item.id) },
+                                onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
+                                onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) },
+                                isOverdue = true
+                            )
+                        }
                     }
                 }
 
                 if (uiState.todayItems.isNotEmpty()) {
-                    item { SectionHeader(title = "Today") }
                     item {
-                        ReorderableTodaySection(
-                            items = uiState.todayItems,
-                            isSelectionMode = uiState.isSelectionMode,
-                            selectedIds = uiState.selectedIds,
-                            onToggle = { item ->
-                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
-                                else viewModel.toggleCompleted(item.id, false)
-                            },
-                            onClick = { item ->
-                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
-                                else onNavigateToTask(item.id)
-                            },
-                            onLongClick = { item -> viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { item -> swipeCompleteWithUndo(item.id, item.text) },
-                            onSwipeTrash = { item -> swipeTrashWithUndo(item.id, item.text) },
-                            onReorder = { reordered -> viewModel.reorderTodayTasks(reordered) }
+                        SectionHeader(
+                            title = "Today",
+                            expanded = todayExpanded,
+                            onToggle = { todayExpanded = !todayExpanded }
                         )
+                    }
+                    if (todayExpanded) {
+                        item {
+                            ReorderableTodaySection(
+                                items = uiState.todayItems,
+                                isSelectionMode = uiState.isSelectionMode,
+                                selectedIds = uiState.selectedIds,
+                                onToggle = { item ->
+                                    if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                    else viewModel.toggleCompleted(item.id, false)
+                                },
+                                onClick = { item ->
+                                    if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                    else onNavigateToTask(item.id)
+                                },
+                                onLongClick = { item -> viewModel.toggleSelection(item.id) },
+                                onSwipeComplete = { item -> swipeCompleteWithUndo(item.id, item.text) },
+                                onSwipeTrash = { item -> swipeTrashWithUndo(item.id, item.text) },
+                                onReorder = { reordered -> viewModel.reorderTodayTasks(reordered) }
+                            )
+                        }
                     }
                 }
 
-                if (uiState.upcomingItems.isNotEmpty()) {
-                    item { SectionHeader(title = "Upcoming (7 days)") }
-                    items(uiState.upcomingItems, key = { "upcoming_${it.id}" }) { item ->
-                        val isSelected = item.id in uiState.selectedIds
-                        TaskRow(
-                            item = item,
-                            isSelectionMode = uiState.isSelectionMode,
-                            isSelected = isSelected,
-                            onToggle = {
-                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
-                                else viewModel.toggleCompleted(item.id, false)
-                            },
-                            onClick = {
-                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
-                                else onNavigateToTask(item.id)
-                            },
-                            onLongClick = { viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
-                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
+                if (uiState.nextWeekItems.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "Next 7 days",
+                            expanded = nextWeekExpanded,
+                            onToggle = { nextWeekExpanded = !nextWeekExpanded }
                         )
+                    }
+                    if (nextWeekExpanded) {
+                        items(uiState.nextWeekItems, key = { "nextweek_${it.id}" }) { item ->
+                            val isSelected = item.id in uiState.selectedIds
+                            TaskRow(
+                                item = item,
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = isSelected,
+                                onToggle = {
+                                    if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                    else viewModel.toggleCompleted(item.id, false)
+                                },
+                                onClick = {
+                                    if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                    else onNavigateToTask(item.id)
+                                },
+                                onLongClick = { viewModel.toggleSelection(item.id) },
+                                onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
+                                onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
+                            )
+                        }
+                    }
+                }
+
+                if (uiState.futureItems.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "Future (8+ days)",
+                            expanded = futureExpanded,
+                            onToggle = { futureExpanded = !futureExpanded }
+                        )
+                    }
+                    if (futureExpanded) {
+                        items(uiState.futureItems, key = { "future_${it.id}" }) { item ->
+                            val isSelected = item.id in uiState.selectedIds
+                            TaskRow(
+                                item = item,
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = isSelected,
+                                onToggle = {
+                                    if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                    else viewModel.toggleCompleted(item.id, false)
+                                },
+                                onClick = {
+                                    if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                    else onNavigateToTask(item.id)
+                                },
+                                onLongClick = { viewModel.toggleSelection(item.id) },
+                                onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
+                                onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
+                            )
+                        }
                     }
                 }
 
                 if (uiState.undatedItems.isNotEmpty()) {
-                    item { SectionHeader(title = "No date") }
-                    items(uiState.undatedItems, key = { "undated_${it.id}" }) { item ->
-                        val isSelected = item.id in uiState.selectedIds
-                        TaskRow(
-                            item = item,
-                            isSelectionMode = uiState.isSelectionMode,
-                            isSelected = isSelected,
-                            onToggle = {
-                                if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
-                                else viewModel.toggleCompleted(item.id, false)
-                            },
-                            onClick = {
-                                if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
-                                else onNavigateToTask(item.id)
-                            },
-                            onLongClick = { viewModel.toggleSelection(item.id) },
-                            onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
-                            onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
+                    item {
+                        SectionHeader(
+                            title = "No date",
+                            expanded = undatedExpanded,
+                            onToggle = { undatedExpanded = !undatedExpanded }
                         )
+                    }
+                    if (undatedExpanded) {
+                        items(uiState.undatedItems, key = { "undated_${it.id}" }) { item ->
+                            val isSelected = item.id in uiState.selectedIds
+                            TaskRow(
+                                item = item,
+                                isSelectionMode = uiState.isSelectionMode,
+                                isSelected = isSelected,
+                                onToggle = {
+                                    if (!item.isCompleted) swipeCompleteWithUndo(item.id, item.text)
+                                    else viewModel.toggleCompleted(item.id, false)
+                                },
+                                onClick = {
+                                    if (uiState.isSelectionMode) viewModel.toggleSelection(item.id)
+                                    else onNavigateToTask(item.id)
+                                },
+                                onLongClick = { viewModel.toggleSelection(item.id) },
+                                onSwipeComplete = { swipeCompleteWithUndo(item.id, item.text) },
+                                onSwipeTrash = { swipeTrashWithUndo(item.id, item.text) }
+                            )
+                        }
                     }
                 }
 
@@ -648,21 +716,44 @@ private fun DashboardSelectionActionBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SectionHeader(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+    expanded: Boolean = true,
+    onToggle: (() -> Unit)? = null
 ) {
     Row(
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 6.dp),
+        modifier = if (onToggle != null) {
+            Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onToggle)
+                .padding(start = 16.dp, end = 8.dp, top = 20.dp, bottom = 6.dp)
+        } else {
+            Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 6.dp)
+        },
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(text = title, style = MaterialTheme.typography.titleMedium, color = color)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = color,
+            modifier = Modifier.weight(1f)
+        )
+        if (onToggle != null) {
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = color.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 

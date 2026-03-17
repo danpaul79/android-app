@@ -16,7 +16,8 @@ import kotlinx.coroutines.launch
 data class DashboardUiState(
     val overdueItems: List<ActionItem> = emptyList(),
     val todayItems: List<ActionItem> = emptyList(),
-    val upcomingItems: List<ActionItem> = emptyList(),
+    val nextWeekItems: List<ActionItem> = emptyList(),   // tomorrow through +7 days
+    val futureItems: List<ActionItem> = emptyList(),     // 8+ days out
     val undatedItems: List<ActionItem> = emptyList(),
     val recentlyCompleted: List<ActionItem> = emptyList(),
     val inboxCount: Int = 0,
@@ -29,7 +30,7 @@ data class DashboardUiState(
     val triageCount: Int = 0
 ) {
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
-    val allItems: List<ActionItem> get() = overdueItems + todayItems + upcomingItems + undatedItems
+    val allItems: List<ActionItem> get() = overdueItems + todayItems + nextWeekItems + futureItems + undatedItems
 
     /** Sum of estimated minutes for overdue + today tasks (the "load" for today). */
     val plannedMinutesToday: Int get() = (overdueItems + todayItems).sumOf {
@@ -56,16 +57,21 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 repo.getUpcomingItems(),
                 repo.getInboxCount(),
                 repo.getAllProjects()
-            ) { overdue, today, upcoming, inboxCount, projects ->
+            ) { overdue, today, nextWeek, inboxCount, projects ->
                 _uiState.value.copy(
                     overdueItems = overdue,
                     todayItems = today,
-                    upcomingItems = upcoming,
+                    nextWeekItems = nextWeek,
                     inboxCount = inboxCount,
                     projects = projects,
                     isLoading = false
                 )
             }.collect { _uiState.value = it }
+        }
+        viewModelScope.launch {
+            repo.getFutureItems().collect { future ->
+                _uiState.value = _uiState.value.copy(futureItems = future)
+            }
         }
         viewModelScope.launch {
             repo.getRecentlyCompleted().collect { completed ->

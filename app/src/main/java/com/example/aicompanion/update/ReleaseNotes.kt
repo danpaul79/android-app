@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 12,
+        versionName = "1.4.6",
+        highlights = listOf(
+            "Dashboard sections are now collapsible — tap headers to expand/collapse",
+            "New 'Future (8+ days)' section on Dashboard, collapsed by default",
+            "Voice command bar: 'Transcript' chip records and shows transcript for copy/paste (no command executed)"
+        )
+    ),
+    ReleaseNote(
         versionCode = 11,
         versionName = "1.4.5",
         highlights = listOf(

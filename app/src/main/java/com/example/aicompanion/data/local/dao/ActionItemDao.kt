@@ -91,6 +91,18 @@ interface ActionItemDao {
     """)
     fun getUpcomingItems(start: Long, end: Long): Flow<List<ActionItem>>
 
+    @Query("""
+        SELECT * FROM action_items
+        WHERE isCompleted = 0
+        AND isTrashed = 0
+        AND (
+            (dueDate IS NOT NULL AND dueDate >= :start)
+            OR (dropDeadDate IS NOT NULL AND dropDeadDate >= :start AND dueDate IS NULL)
+        )
+        ORDER BY COALESCE(dueDate, dropDeadDate) ASC
+    """)
+    fun getFutureItems(start: Long): Flow<List<ActionItem>>
+
     @Query("SELECT * FROM action_items WHERE isTrashed = 1 ORDER BY updatedAt DESC")
     fun getTrashedItems(): Flow<List<ActionItem>>
 

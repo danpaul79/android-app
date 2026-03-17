@@ -32,7 +32,11 @@ data class VoiceCommandUiState(
     val amplitudes: List<Float> = emptyList(),
     val textDraft: String = "",
     /** Set when a navigation action is required; consumer must clear after handling. */
-    val navigationCommand: VoiceCommand? = null
+    val navigationCommand: VoiceCommand? = null,
+    /** When true, stop recording shows transcript in a dialog instead of executing commands. */
+    val transcriptMode: Boolean = false,
+    /** Set when transcript mode produces a transcript to display. */
+    val transcriptResult: String? = null
 )
 
 class VoiceCommandViewModel(application: Application) : AndroidViewModel(application) {
@@ -72,15 +76,23 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    fun toggleTranscriptMode() {
+        _uiState.value = _uiState.value.copy(transcriptMode = !_uiState.value.transcriptMode)
+    }
+
     fun startRecording() {
-        _uiState.value = VoiceCommandUiState(commandState = CommandState.Recording)
+        _uiState.value = VoiceCommandUiState(
+            commandState = CommandState.Recording,
+            transcriptMode = _uiState.value.transcriptMode
+        )
         RecordingService.start(getApplication())
     }
 
     fun stopAndProcess() {
+        val isTranscriptMode = _uiState.value.transcriptMode
         _uiState.value = _uiState.value.copy(
             commandState = CommandState.Processing,
-            message = "Transcribing & processing..."
+            message = if (isTranscriptMode) "Transcribing..." else "Transcribing & processing..."
         )
         RecordingService.stop(getApplication())
 
@@ -103,6 +115,27 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
                 return@launch
             }
             val audioFile = File(filePath)
+
+            if (isTranscriptMode) {
+                // Transcript-only: transcribe and show result without executing commands
+                val transcript = processor.transcribeOnly(audioFile)
+                audioFile.delete()
+                if (transcript != null) {
+                    _uiState.value = _uiState.value.copy(
+                        commandState = CommandState.Idle,
+                        transcriptResult = transcript
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        commandState = CommandState.Error,
+                        message = "Transcription failed"
+                    )
+                    delay(3000)
+                    _uiState.value = VoiceCommandUiState(transcriptMode = true)
+                }
+                return@launch
+            }
+
             val result = processor.processAudioFile(audioFile)
 
             val navCmd = when (result.command) {
@@ -176,6 +209,10 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
         _uiState.value = _uiState.value.copy(navigationCommand = null)
     }
 
+    fun dismissTranscriptResult() {
+        _uiState.value = _uiState.value.copy(transcriptResult = null, commandState = CommandState.Idle)
+    }
+
     private fun saveCommandLog(transcript: String?, actionsMessage: String?, success: Boolean) {
         if (transcript.isNullOrBlank()) return
         val context = getApplication<Application>()
@@ -202,10 +239,10 @@ class VoiceCommandViewModel(application: Application) : AndroidViewModel(applica
 
     fun cancel() {
         RecordingService.cancel(getApplication())
-        _uiState.value = VoiceCommandUiState()
+        _uiState.value = VoiceCommandUiState(transcriptMode = _uiState.value.transcriptMode)
     }
 
     fun dismiss() {
-        _uiState.value = VoiceCommandUiState()
+        _uiState.value = VoiceCommandUiState(transcriptMode = _uiState.value.transcriptMode)
     }
 }
