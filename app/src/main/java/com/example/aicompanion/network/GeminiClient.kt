@@ -34,7 +34,7 @@ class GeminiClient {
 
     companion object {
         private const val BASE_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
         private const val COMMAND_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
     }
@@ -378,11 +378,10 @@ Rules:
         val candidates = json.getJSONArray("candidates")
         if (candidates.length() == 0) return emptyList()
 
-        val content = candidates.getJSONObject(0)
+        val parts = candidates.getJSONObject(0)
             .getJSONObject("content")
             .getJSONArray("parts")
-            .getJSONObject(0)
-            .getString("text")
+        val content = (extractTextFromParts(parts) ?: return emptyList())
             .replace(Regex("```json\\s*"), "")
             .replace(Regex("```\\s*"), "")
             .trim()
@@ -458,12 +457,12 @@ Rules:
                     ?: return@withContext Result.failure(Exception("Empty response"))
 
                 val json = JSONObject(responseBody)
-                val content = json.getJSONArray("candidates")
+                val parts = json.getJSONArray("candidates")
                     .getJSONObject(0)
                     .getJSONObject("content")
                     .getJSONArray("parts")
-                    .getJSONObject(0)
-                    .getString("text")
+                val content = (extractTextFromParts(parts)
+                    ?: return@withContext Result.failure(Exception("No text in response")))
                     .replace(Regex("```json\\s*"), "")
                     .replace(Regex("```\\s*"), "")
                     .trim()
@@ -484,6 +483,26 @@ Rules:
                 Result.failure(e)
             }
         }
+    }
+
+    /**
+     * Extract the last text part from a Gemini response parts array.
+     * With thinking models (Gemini 3), the response may contain thought parts
+     * before the actual text part. This iterates to find the last text part.
+     */
+    private fun extractTextFromParts(parts: JSONArray): String? {
+        var lastText: String? = null
+        for (i in 0 until parts.length()) {
+            val part = parts.getJSONObject(i)
+            if (part.has("text")) {
+                val raw = part.get("text")
+                lastText = when (raw) {
+                    is String -> raw
+                    else -> raw.toString()
+                }
+            }
+        }
+        return lastText
     }
 
     private fun buildTopicPrompt(transcript: String): String {
@@ -507,6 +526,9 @@ $transcript"""
             put("generationConfig", JSONObject().apply {
                 put("temperature", 0.1)
                 put("maxOutputTokens", 2048)
+                put("thinkingConfig", JSONObject().apply {
+                    put("thinkingBudget", 0)
+                })
             })
         }
         return json.toString()
@@ -542,11 +564,11 @@ $transcript"""
             return GeminiExtractionResult(emptyList(), null)
         }
 
-        val content = candidates.getJSONObject(0)
+        val parts = candidates.getJSONObject(0)
             .getJSONObject("content")
             .getJSONArray("parts")
-            .getJSONObject(0)
-            .getString("text")
+        val content = extractTextFromParts(parts)
+            ?: return GeminiExtractionResult(emptyList(), null)
 
         // Strip markdown code fences if present
         val cleanJson = content
@@ -657,13 +679,11 @@ $question
         val candidates = json.getJSONArray("candidates")
         if (candidates.length() == 0) return null
 
-        val text = candidates.getJSONObject(0)
+        val parts = candidates.getJSONObject(0)
             .getJSONObject("content")
             .getJSONArray("parts")
-            .getJSONObject(0)
-            .getString("text")
-            .trim()
+        val text = extractTextFromParts(parts)?.trim()
 
-        return text.ifBlank { null }
+        return text?.ifBlank { null }
     }
 }

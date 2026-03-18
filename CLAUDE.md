@@ -23,7 +23,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
 - **Settings**: bottom nav tab; appearance (theme mode: system/light/dark); export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker; Task nudge notifications (configurable times); Send Feedback (GitHub issue submission)
-- **AI Insights**: chat-style screen (5th bottom nav tab); ask Gemini questions about task patterns and productivity; suggestion chips for common questions; analyzes active tasks, completed tasks, completion time patterns, rescheduling frequency, project health; powered by Gemini 2.0 Flash with full task context
+- **AI Insights**: chat-style screen (5th bottom nav tab); ask Gemini questions about task patterns and productivity; suggestion chips for common questions; analyzes active tasks, completed tasks, completion time patterns, rescheduling frequency, project health; powered by Gemini 3 Flash with full task context
 - **Task nudge notifications**: configurable nudge times in Settings; fires notifications for due-today tasks not yet completed; NudgeWorker + NudgePreferences in `reminder/`
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
 - **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; also surfaces 2-3 stale/waiting-for tasks as review notifications with quick actions (Done, Trash/Unblock, Skip); "Review all" opens triage screen
@@ -175,7 +175,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- App version: 1.5.0 (versionCode 14) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
+- App version: 1.5.1 (versionCode 15) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
 - DB version: 9 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - v6 adds: `task_events` table for lifecycle tracking
@@ -239,7 +239,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - Audio is streamed to Deepgram without buffering entirely in memory
 
 ## Action Item Extraction
-- Uses **Gemini 2.0 Flash** via REST API (`generativelanguage.googleapis.com`), temperature 0.1
+- Uses **Gemini 3 Flash Preview** via REST API (`generativelanguage.googleapis.com`), thinking disabled (thinkingBudget: 0) for structured extraction
 - API key stored in `local.properties` as `GEMINI_API_KEY` (gitignored)
 - Exposed via `BuildConfig.GEMINI_API_KEY` at build time
 - `GeminiExtractor` is the primary implementation; `HeuristicExtractor` is a fallback

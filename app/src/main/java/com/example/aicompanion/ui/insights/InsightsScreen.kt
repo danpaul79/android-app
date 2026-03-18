@@ -137,28 +137,6 @@ fun InsightsScreen(
             }
         }
 
-        // Suggestion chips row (when conversation is ongoing)
-        if (uiState.messages.isNotEmpty() && !uiState.isLoading) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            ) {
-                for (suggestion in SUGGESTION_CHIPS.take(4)) {
-                    AssistChip(
-                        onClick = { viewModel.askQuestion(suggestion) },
-                        label = {
-                            Text(
-                                suggestion,
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1
-                            )
-                        }
-                    )
-                }
-            }
-        }
-
         // Input bar
         Row(
             modifier = Modifier
@@ -203,14 +181,16 @@ fun InsightsScreen(
 private fun ChatBubble(message: ChatMessage) {
     val isUser = message.isUser
     val alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
+
+    // User bubbles: coral/tertiary; AI bubbles: blue/primary container
     val bgColor = if (isUser)
-        MaterialTheme.colorScheme.primary
+        MaterialTheme.colorScheme.tertiary
     else
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.colorScheme.primaryContainer
     val textColor = if (isUser)
-        MaterialTheme.colorScheme.onPrimary
+        MaterialTheme.colorScheme.onTertiary
     else
-        MaterialTheme.colorScheme.onSurfaceVariant
+        MaterialTheme.colorScheme.onPrimaryContainer
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -228,7 +208,8 @@ private fun ChatBubble(message: ChatMessage) {
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.dp,
+                        color = textColor
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -248,7 +229,7 @@ private fun ChatBubble(message: ChatMessage) {
                     bottomEnd = if (isUser) 4.dp else 16.dp
                 ),
                 tonalElevation = 1.dp,
-                modifier = Modifier.widthIn(max = 300.dp)
+                modifier = if (isUser) Modifier.widthIn(max = 280.dp) else Modifier.fillMaxWidth(0.9f)
             ) {
                 Text(
                     text = message.text,

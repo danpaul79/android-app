@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 15,
+        versionName = "1.5.1",
+        highlights = listOf(
+            "Migrated all AI from Gemini 2.0 Flash to Gemini 3 Flash (faster, smarter, future-proof)",
+            "Insights chat: better bubble colors (coral for you, blue for AI), AI responses use full width",
+            "Insights chat: removed persistent suggestion chips that crowded the conversation"
+        )
+    ),
+    ReleaseNote(
         versionCode = 14,
         versionName = "1.5.0",
         highlights = listOf(
