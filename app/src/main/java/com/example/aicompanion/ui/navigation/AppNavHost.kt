@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -52,6 +53,8 @@ import com.example.aicompanion.ui.settings.TranscriptViewScreen
 import com.example.aicompanion.ui.plan.PlanMyDayScreen
 import com.example.aicompanion.ui.triage.TaskTriageScreen
 import com.example.aicompanion.ui.trash.TrashScreen
+import com.example.aicompanion.ui.insights.InsightsScreen
+import com.example.aicompanion.ui.insights.InsightsViewModel
 import com.example.aicompanion.ui.voicecommand.VoiceCommandBar
 import com.example.aicompanion.ui.voicecommand.VoiceCommandViewModel
 import kotlinx.coroutines.launch
@@ -66,7 +69,8 @@ val bottomNavItems = listOf(
     BottomNavItem("Dashboard", Icons.Filled.Dashboard, "dashboard"),
     BottomNavItem("Inbox", Icons.Filled.Inbox, "inbox"),
     BottomNavItem("Projects", Icons.Filled.Folder, "projects"),
-    BottomNavItem("Settings", Icons.Filled.Settings, "settings")
+    BottomNavItem("Settings", Icons.Filled.Settings, "settings"),
+    BottomNavItem("Insights", Icons.Filled.Insights, "insights")
 )
 
 @Composable
@@ -92,6 +96,7 @@ fun AppNavHost(
     val projectsViewModel: com.example.aicompanion.ui.projects.ProjectsViewModel = viewModel()
     val projectsState by projectsViewModel.uiState.collectAsState()
 
+    val insightsViewModel: InsightsViewModel = viewModel()
     val voiceCommandViewModel: VoiceCommandViewModel = viewModel()
     val anySelectionMode = dashboardState.isSelectionMode || inboxState.isSelectionMode
 
@@ -168,8 +173,8 @@ fun AppNavHost(
         bottomBar = {
             Column {
                 // Voice command bar — persistent on main screens except Settings tab
-                val onSettingsTab = currentRoute == "main" && pagerState.currentPage == 3
-                if (showVoiceBar && !onSettingsTab && !anySelectionMode) {
+                val onNonTaskTab = currentRoute == "main" && pagerState.currentPage >= 3
+                if (showVoiceBar && !onNonTaskTab && !anySelectionMode) {
                     VoiceCommandBar(
                         viewModel = voiceCommandViewModel,
                         onNavigateToPlanMyDay = { _ ->
@@ -296,6 +301,9 @@ fun AppNavHost(
                             onNavigateToFeedback = {
                                 navController.navigate(NavRoutes.Feedback.route)
                             }
+                        )
+                        4 -> InsightsScreen(
+                            viewModel = insightsViewModel
                         )
                     }
                 }

@@ -4,7 +4,7 @@
 A "second brain" that ingests tasks from multiple sources (voice notes, email, texts, chat), extracts action items using AI, and organizes them into projects. The user interacts primarily with **tasks organized by project**, not with individual voice notes or messages. Sources are just how items arrive.
 
 ## Current Status
-**Phases 1–3c + recurring tasks complete.** Full capacity-aware scheduling, task triage, home screen widget, living task list, and recurring tasks.
+**Phases 1–3c + recurring tasks + AI Insights complete.** Full capacity-aware scheduling, task triage, home screen widget, living task list, recurring tasks, and AI-powered task insights.
 
 ### What works now:
 - **App name**: Pocket Pilot
@@ -23,6 +23,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Quick add**: manual task creation from Dashboard (+) and Project Detail (+) without voice
 - **Trash**: tasks and projects moved to trash instead of deleted; trashing a project cascades to its tasks; restore or permanently delete; "Empty trash" button; accessible from Dashboard top bar and Projects screen
 - **Settings**: bottom nav tab; appearance (theme mode: system/light/dark); export/import data (JSON backup); AI enrichment (bulk backfill effort estimates + tags for existing tasks); voice history with transcript viewer; Google Tasks sync toggle; Morning check-in toggle + time picker; Task nudge notifications (configurable times); Send Feedback (GitHub issue submission)
+- **AI Insights**: chat-style screen (5th bottom nav tab); ask Gemini questions about task patterns and productivity; suggestion chips for common questions; analyzes active tasks, completed tasks, completion time patterns, rescheduling frequency, project health; powered by Gemini 2.0 Flash with full task context
 - **Task nudge notifications**: configurable nudge times in Settings; fires notifications for due-today tasks not yet completed; NudgeWorker + NudgePreferences in `reminder/`
 - **Google Tasks Sync**: bi-directional sync with Google Tasks; Projects ↔ Task Lists, ActionItems ↔ Tasks; Inbox tasks sync to "AI Companion Inbox" list; on-resume + 30min WorkManager periodic sync; conflict resolution (last-writer-wins by timestamp)
 - **Morning check-in notification**: Settings → Morning Check-In; toggle + hour picker; fires daily at configured time; capacity buttons (30m/1h/90m/2h/3h); tap → follow-up notification with task plan; also surfaces 2-3 stale/waiting-for tasks as review notifications with quick actions (Done, Trash/Unblock, Skip); "Review all" opens triage screen
@@ -40,7 +41,7 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Visual design**: Inter font, deep-blue/coral color palette (dynamic colors disabled), flat task rows with dividers (no card wrappers), checkboxes flush at left edge, compact top bars (18sp title)
 - **Theme mode**: user-selectable light/dark/system theme in Settings → Appearance; persisted via SharedPreferences (ThemePreferences); default follows system
 - **Help & Features guide**: Settings → Help & Features; comprehensive in-app documentation of all features
-- **Bottom nav**: Dashboard | Inbox | Projects | Settings
+- **Bottom nav**: Dashboard | Inbox | Projects | Settings | Insights
 - **Share intent**: accepts audio/* and video/* files shared from other apps; opens Capture screen in transcript-only mode (auto-transcribes, no task extraction by default)
 - Voice notes recorded within a project auto-assign extracted items to that project
 - Screen stays on during recording
@@ -174,7 +175,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- App version: 1.4.7 (versionCode 13) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
+- App version: 1.5.0 (versionCode 14) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
 - DB version: 9 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - v6 adds: `task_events` table for lifecycle tracking
@@ -197,7 +198,8 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - **Feedback** — submit bugs/feature requests as GitHub Issues; optional screenshot attachment; auto-populated device info
 - **Help & Features** — comprehensive in-app documentation of all features
 - **Trash** — trashed tasks and projects; restore or permanently delete
-- Bottom navigation: Dashboard | Inbox | Projects | Settings
+- **AI Insights** — chat-style Gemini Q&A about task data; suggestion chips; analyzes patterns, completion trends, project health
+- Bottom navigation: Dashboard | Inbox | Projects | Settings | Insights
 
 ## Key Packages
 - `auth/` - Google Sign-In via Credential Manager (dormant, for future Gmail Phase 3)
@@ -220,6 +222,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `ui/triage/` - Task Triage screen + ViewModel + models (guided review, AI breakdown)
 - `ui/theme/` - Custom theme: Inter font (res/font/), deep-blue/coral palette (Color.kt, Type.kt, Theme.kt); ThemePreferences (system/light/dark mode via SharedPreferences); dynamic colors disabled so custom palette is always visible
 - `ui/common/` - Shared composables (TagChips, DateTagsRow)
+- `ui/insights/` - AI Insights chat screen + ViewModel (Gemini-powered Q&A about task patterns)
 - `ui/search/` - Search screen (task name + notes search)
 - `ui/feedback/` - FeedbackScreen + FeedbackViewModel (in-app feedback → GitHub Issues)
 - `ui/settings/` - Settings screen (export/import, AI enrichment, voice history, Google Tasks sync, morning check-in); HelpScreen (feature guide)

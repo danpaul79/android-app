@@ -669,6 +669,106 @@ class TaskRepository(
 
     suspend fun getAllNonTrashedTasks(): List<ActionItem> = actionItemDao.getAllNonTrashed()
 
+    // --- Insights ---
+
+    suspend fun getInsightContext(): String {
+        val now = System.currentTimeMillis()
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val dateFmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+
+        val allTasks = actionItemDao.getAllNonTrashed()
+        val projects = projectDao.getAllNonTrashed()
+        val projectMap = projects.associate { it.id to it.name }
+
+        val activeTasks = allTasks.filter { !it.isCompleted }
+        val completedTasks = allTasks.filter { it.isCompleted }
+        val overdueTasks = activeTasks.filter { it.dueDate != null && it.dueDate < dayStart }
+
+        val sb = StringBuilder()
+
+        // Summary stats
+        sb.appendLine("### Summary")
+        sb.appendLine("- Total active tasks: ${activeTasks.size}")
+        sb.appendLine("- Completed tasks (all time): ${completedTasks.size}")
+        sb.appendLine("- Overdue tasks: ${overdueTasks.size}")
+        sb.appendLine("- Tasks with no due date: ${activeTasks.count { it.dueDate == null }}")
+        sb.appendLine("- Projects: ${projects.size} (${projects.joinToString(", ") { it.name }})")
+        sb.appendLine()
+
+        // Active tasks
+        sb.appendLine("### Active Tasks")
+        for (task in activeTasks.take(50)) {
+            val proj = task.projectId?.let { projectMap[it] } ?: "Inbox"
+            val due = task.dueDate?.let { dateFmt.format(java.util.Date(it)) } ?: "no date"
+            val effort = if (task.estimatedMinutes > 0) "${task.estimatedMinutes}m" else "unestimated"
+            val tags = task.parsedTags().joinToString(", ").ifEmpty { "none" }
+            val daysOld = ((now - task.createdAt) / (1000L * 60 * 60 * 24)).toInt()
+            sb.appendLine("- \"${task.text}\" | project: $proj | due: $due | effort: $effort | priority: ${task.priority.name} | tags: $tags | created ${daysOld}d ago")
+        }
+        if (activeTasks.size > 50) sb.appendLine("- ... and ${activeTasks.size - 50} more")
+        sb.appendLine()
+
+        // Completed tasks (recent 30)
+        sb.appendLine("### Recently Completed Tasks (last 30)")
+        val recentCompleted = completedTasks
+            .filter { it.completedAt != null }
+            .sortedByDescending { it.completedAt }
+            .take(30)
+        for (task in recentCompleted) {
+            val completedDate = task.completedAt?.let { dateFmt.format(java.util.Date(it)) } ?: "?"
+            val createdDate = dateFmt.format(java.util.Date(task.createdAt))
+            val proj = task.projectId?.let { projectMap[it] } ?: "Inbox"
+            val effort = if (task.estimatedMinutes > 0) "${task.estimatedMinutes}m" else "?"
+            sb.appendLine("- \"${task.text}\" | completed: $completedDate | created: $createdDate | project: $proj | effort: $effort")
+        }
+        sb.appendLine()
+
+        // Completion events for pattern analysis
+        val completionEvents = taskEventDao?.getEventsByType(TaskEvent.TYPE_COMPLETED, 100) ?: emptyList()
+        if (completionEvents.isNotEmpty()) {
+            sb.appendLine("### Completion Events (timestamps)")
+            val hourCounts = IntArray(24)
+            val dayOfWeekCounts = IntArray(7)
+            for (event in completionEvents) {
+                val cal = Calendar.getInstance().apply { timeInMillis = event.timestamp }
+                hourCounts[cal.get(Calendar.HOUR_OF_DAY)]++
+                dayOfWeekCounts[cal.get(Calendar.DAY_OF_WEEK) - 1]++
+            }
+            val days = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            sb.appendLine("- Completions by hour: ${hourCounts.mapIndexed { i, c -> if (c > 0) "${i}:00=$c" else null }.filterNotNull().joinToString(", ")}")
+            sb.appendLine("- Completions by day: ${dayOfWeekCounts.mapIndexed { i, c -> "${days[i]}=$c" }.joinToString(", ")}")
+            sb.appendLine()
+        }
+
+        // Rescheduled tasks
+        val rescheduledIds = taskEventDao?.getFrequentlyRescheduledTaskIds(2) ?: emptyList()
+        if (rescheduledIds.isNotEmpty()) {
+            sb.appendLine("### Frequently Rescheduled Tasks")
+            val rescheduledTasks = actionItemDao.getByIds(rescheduledIds.map { it.taskId })
+            for (r in rescheduledIds) {
+                val task = rescheduledTasks.find { it.id == r.taskId }
+                if (task != null) {
+                    sb.appendLine("- \"${task.text}\" rescheduled ${r.cnt} times (${if (task.isCompleted) "completed" else "still active"})")
+                }
+            }
+            sb.appendLine()
+        }
+
+        // Project breakdown
+        sb.appendLine("### Tasks by Project")
+        val inboxActive = activeTasks.count { it.projectId == null }
+        sb.appendLine("- Inbox: $inboxActive active")
+        for (project in projects) {
+            val active = activeTasks.count { it.projectId == project.id }
+            val completed = completedTasks.count { it.projectId == project.id }
+            sb.appendLine("- ${project.name}: $active active, $completed completed")
+        }
+
+        return sb.toString()
+    }
+
     // --- AI helpers ---
 
     suspend fun getAllActiveItemTexts(): List<ActionItem> = actionItemDao.getAllActiveItemTexts()

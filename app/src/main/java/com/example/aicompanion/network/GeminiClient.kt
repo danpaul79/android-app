@@ -578,6 +578,80 @@ $transcript"""
         return GeminiExtractionResult(actionItems = items, newProject = newProject)
     }
 
+    /**
+     * Ask Gemini an insight question about the user's tasks.
+     * @param question The user's question
+     * @param taskDataContext A summary of all task data (active tasks, events, projects, etc.)
+     * @return The AI's response as a plain text string
+     */
+    suspend fun askInsight(question: String, taskDataContext: String): Result<String> {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isBlank()) return Result.failure(Exception("Gemini API key not configured."))
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val today = SimpleDateFormat("yyyy-MM-dd, EEEE", Locale.US).format(Date())
+                val prompt = """You are an AI productivity coach analyzing a user's task data in their personal task management app called Pocket Pilot. Answer their question thoughtfully and concisely using the data provided.
+
+Today's date: $today
+
+## Task Data
+$taskDataContext
+
+## User's Question
+$question
+
+## Instructions
+- Answer based ONLY on the data provided. If you don't have enough data, say so.
+- Be concise but insightful. Use bullet points or short paragraphs.
+- Include specific task names and numbers when relevant.
+- If you spot patterns or actionable suggestions, mention them.
+- Keep your response under 300 words.
+- Use plain text only (no markdown headers or code blocks)."""
+
+                val requestJson = buildInsightRequestJson(prompt)
+                val request = Request.Builder()
+                    .url("$BASE_URL?key=$apiKey")
+                    .post(requestJson.toRequestBody("application/json".toMediaType()))
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Unknown error"
+                    return@withContext Result.failure(Exception("Gemini API failed (${response.code}): $errorBody"))
+                }
+
+                val responseBody = response.body?.string()
+                    ?: return@withContext Result.failure(Exception("Empty response"))
+
+                val text = parseTopicResponse(responseBody)
+                    ?: return@withContext Result.failure(Exception("No response text"))
+                Result.success(text)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun buildInsightRequestJson(prompt: String): String {
+        val json = JSONObject().apply {
+            put("contents", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("parts", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("text", prompt)
+                        })
+                    })
+                })
+            })
+            put("generationConfig", JSONObject().apply {
+                put("temperature", 0.7)
+                put("maxOutputTokens", 2048)
+            })
+        }
+        return json.toString()
+    }
+
     private fun parseTopicResponse(responseBody: String): String? {
         val json = JSONObject(responseBody)
         val candidates = json.getJSONArray("candidates")

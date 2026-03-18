@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 14,
+        versionName = "1.5.0",
+        highlights = listOf(
+            "New AI Insights tab: chat with Gemini about your task patterns and productivity",
+            "Suggestion chips for quick questions like 'What tasks have been put off the most?'",
+            "Analyzes completion trends, effort estimates, project health, and rescheduling patterns"
+        )
+    ),
+    ReleaseNote(
         versionCode = 13,
         versionName = "1.4.7",
         highlights = listOf(
