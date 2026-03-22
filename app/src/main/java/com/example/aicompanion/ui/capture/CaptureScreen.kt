@@ -356,11 +356,38 @@ fun CaptureScreen(
                 }
             }
 
+            // Save transcript button (transcript-only mode, before extraction)
+            if (hasTranscript && uiState.transcriptOnly && uiState.extractedItems.isEmpty() && !uiState.isExtracting) {
+                item {
+                    if (uiState.transcriptSaved) {
+                        OutlinedButton(
+                            onClick = {},
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.Save, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Transcript Saved")
+                        }
+                    } else {
+                        Button(
+                            onClick = { viewModel.saveTranscriptOnly() },
+                            enabled = !uiState.isSaving,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.Save, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Save Transcript")
+                        }
+                    }
+                }
+            }
+
             // Extract / Re-extract button
             if (hasTranscript && !uiState.isExtracting) {
                 if (uiState.transcriptOnly && uiState.extractedItems.isEmpty()) {
                     item {
-                        Button(
+                        OutlinedButton(
                             onClick = { viewModel.extractActionItems() },
                             modifier = Modifier.fillMaxWidth()
                         ) {

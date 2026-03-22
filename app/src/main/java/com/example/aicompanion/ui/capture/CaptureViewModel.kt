@@ -40,7 +40,8 @@ data class CaptureUiState(
     val isDone: Boolean = false,
     val amplitudes: List<Float> = emptyList(),
     val transcriptOnly: Boolean = false,
-    val newProjectName: String? = null
+    val newProjectName: String? = null,
+    val transcriptSaved: Boolean = false
 )
 
 class CaptureViewModel(application: Application) : AndroidViewModel(application) {
@@ -287,6 +288,25 @@ class CaptureViewModel(application: Application) : AndroidViewModel(application)
             _uiState.value = _uiState.value.copy(
                 isSaving = false,
                 isDone = true
+            )
+        }
+    }
+
+    fun saveTranscriptOnly() {
+        val state = _uiState.value
+        if (state.transcript.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSaving = true)
+            val source = Source(
+                type = SourceType.VOICE_NOTE,
+                rawContent = state.transcript,
+                sourceRef = state.audioFilePath
+            )
+            repo.saveFromSource(source, emptyList())
+            _uiState.value = _uiState.value.copy(
+                isSaving = false,
+                transcriptSaved = true
             )
         }
     }

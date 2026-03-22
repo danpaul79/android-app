@@ -110,6 +110,11 @@ class TaskTriageViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    /** Skip to next card without recording any action — task stays in triage queue next time. */
+    fun skip() {
+        advance()
+    }
+
     fun complete() {
         val item = _uiState.value.currentItem ?: return
         viewModelScope.launch {

@@ -262,7 +262,7 @@ fun TaskTriageScreen(
                                     Text("Previous")
                                 }
                                 TextButton(
-                                    onClick = { viewModel.keep() },
+                                    onClick = { viewModel.skip() },
                                     enabled = uiState.hasNext
                                 ) {
                                     Text("Skip")
@@ -413,7 +413,7 @@ private fun TriageActions(
                 Text("Done", maxLines = 1, softWrap = false)
             }
             OutlinedButton(onClick = onKeep) {
-                Text("Keep", maxLines = 1, softWrap = false)
+                Text("Keep (reviewed)", maxLines = 1, softWrap = false)
             }
             OutlinedButton(onClick = onSetDueDate) {
                 Text("Set due date", maxLines = 1, softWrap = false)

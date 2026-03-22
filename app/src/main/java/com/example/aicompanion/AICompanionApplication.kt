@@ -49,7 +49,7 @@ class AICompanionApplication : Application() {
             .build()
 
         val workRequest = PeriodicWorkRequestBuilder<SyncWorker>(
-            30, TimeUnit.MINUTES
+            2, TimeUnit.HOURS
         ).setConstraints(constraints).build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(

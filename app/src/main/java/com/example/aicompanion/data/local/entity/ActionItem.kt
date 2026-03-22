@@ -6,24 +6,45 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Returns the effective priority, auto-escalating based on drop-dead date proximity:
+ * Returns the effective priority, auto-escalating based on deadlines and overdue status:
  * - Drop-dead within 1 day → URGENT (regardless of effort)
  * - Drop-dead within 3 days AND effort >= 60 min → URGENT
  * - Drop-dead within 7 days → at least HIGH
+ * - Overdue by 3+ days (past due date) → URGENT
+ * - Overdue (past due date) → at least HIGH
  * The stored priority is the floor; dynamic priority can only raise it, never lower.
  */
 fun ActionItem.effectivePriority(): Priority {
-    val ddd = dropDeadDate ?: return priority
     val now = System.currentTimeMillis()
-    val daysUntil = (ddd - now) / (1000L * 60 * 60 * 24)
-    val effort = if (estimatedMinutes > 0) estimatedMinutes else 30
-    val dynamic = when {
-        daysUntil <= 1 -> Priority.URGENT
-        daysUntil <= 3 && effort >= 60 -> Priority.URGENT
-        daysUntil <= 7 -> Priority.HIGH
-        else -> priority
+    var dynamic = priority
+
+    // Escalate based on drop-dead date proximity
+    val ddd = dropDeadDate
+    if (ddd != null) {
+        val daysUntilDdd = (ddd - now) / (1000L * 60 * 60 * 24)
+        val effort = if (estimatedMinutes > 0) estimatedMinutes else 30
+        val dddPriority = when {
+            daysUntilDdd <= 1 -> Priority.URGENT
+            daysUntilDdd <= 3 && effort >= 60 -> Priority.URGENT
+            daysUntilDdd <= 7 -> Priority.HIGH
+            else -> priority
+        }
+        if (dddPriority.ordinal > dynamic.ordinal) dynamic = dddPriority
     }
-    return if (dynamic.ordinal > priority.ordinal) dynamic else priority
+
+    // Escalate overdue tasks (past soft due date)
+    val due = dueDate
+    if (due != null && !isCompleted) {
+        val daysOverdue = (now - due) / (1000L * 60 * 60 * 24)
+        val overduePriority = when {
+            daysOverdue >= 3 -> Priority.URGENT
+            daysOverdue >= 1 -> Priority.HIGH
+            else -> priority
+        }
+        if (overduePriority.ordinal > dynamic.ordinal) dynamic = overduePriority
+    }
+
+    return dynamic
 }
 
 /**

@@ -16,6 +16,16 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 16,
+        versionName = "1.5.2",
+        highlights = listOf(
+            "Google Tasks sync now runs every 2 hours (was 30 min) to save battery",
+            "Overdue tasks auto-escalate priority: 1+ day overdue → HIGH, 3+ days → URGENT",
+            "Transcript-only mode: Save Transcript button persists voice notes in-app",
+            "Triage: Skip moves to next card without marking reviewed (task stays in queue)"
+        )
+    ),
+    ReleaseNote(
         versionCode = 15,
         versionName = "1.5.1",
         highlights = listOf(
