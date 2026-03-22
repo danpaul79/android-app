@@ -52,9 +52,11 @@ class AICompanionApplication : Application() {
             2, TimeUnit.HOURS
         ).setConstraints(constraints).build()
 
+        // UPDATE re-registers the worker on each app launch so Samsung battery optimization
+        // doesn't leave a stale/deferred worker sitting indefinitely.
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "google_tasks_sync",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
     }
