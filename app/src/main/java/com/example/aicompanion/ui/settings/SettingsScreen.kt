@@ -101,6 +101,9 @@ fun SettingsScreen(
         uri?.let { viewModel.importData(it) }
     }
 
+    // Refresh sync timestamp from DB each time Settings becomes visible
+    LaunchedEffect(Unit) { viewModel.loadSyncState() }
+
     LaunchedEffect(uiState.message) {
         uiState.message?.let {
             snackbarHostState.showSnackbar(it)

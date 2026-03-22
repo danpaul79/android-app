@@ -150,11 +150,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         NudgeWorker.schedule(getApplication())
     }
 
-    private fun loadSyncState() {
+    /** Reload sync state from DB. Called on init and can be called to refresh. */
+    fun loadSyncState() {
         viewModelScope.launch {
             val state = syncStateDao.get()
             _uiState.value = _uiState.value.copy(
-                sync = SyncUiState(
+                sync = _uiState.value.sync.copy(
                     syncEnabled = state?.syncEnabled == true,
                     accountEmail = state?.googleAccountEmail,
                     lastSyncTime = state?.lastSyncTimestamp
@@ -172,9 +173,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     sync = _uiState.value.sync.copy(syncStatus = status)
                 )
                 if (status is SyncStatus.Success) {
-                    _uiState.value = _uiState.value.copy(
-                        sync = _uiState.value.sync.copy(lastSyncTime = status.timestamp)
-                    )
+                    // Refresh from DB so we always show the authoritative timestamp
+                    loadSyncState()
                 }
             }
         }
