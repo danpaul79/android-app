@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 17,
+        versionName = "1.5.3",
+        highlights = listOf(
+            "Fixed bottom nav: 'Dashboard' label no longer wraps — renamed to 'Home'",
+            "Fixed Google Tasks sync not running after app restart (account wasn't restored from DB)",
+            "Sync now self-heals: restores saved account on first sync attempt after restart"
+        )
+    ),
+    ReleaseNote(
         versionCode = 16,
         versionName = "1.5.2",
         highlights = listOf(

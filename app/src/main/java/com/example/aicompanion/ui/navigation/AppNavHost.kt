@@ -66,7 +66,7 @@ data class BottomNavItem(
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem("Dashboard", Icons.Filled.Dashboard, "dashboard"),
+    BottomNavItem("Home", Icons.Filled.Dashboard, "dashboard"),
     BottomNavItem("Inbox", Icons.Filled.Inbox, "inbox"),
     BottomNavItem("Projects", Icons.Filled.Folder, "projects"),
     BottomNavItem("Settings", Icons.Filled.Settings, "settings"),
@@ -213,7 +213,7 @@ fun AppNavHost(
                                         Icon(item.icon, contentDescription = item.label)
                                     }
                                 },
-                                label = { Text(item.label) }
+                                label = { Text(item.label, maxLines = 1, softWrap = false) }
                             )
                         }
                     }

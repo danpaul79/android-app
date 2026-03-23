@@ -80,9 +80,16 @@ class SyncEngine(
             return false
         }
 
+        // Restore account from DB if not set in memory (e.g. after app restart)
         if (tokenManager.getAccount() == null) {
-            Log.d(TAG, "Sync skipped — no account")
-            return false
+            val savedEmail = state.googleAccountEmail
+            if (savedEmail != null) {
+                tokenManager.setAccount(savedEmail)
+                Log.i(TAG, "Restored sync account from DB: $savedEmail")
+            } else {
+                Log.d(TAG, "Sync skipped — no account")
+                return false
+            }
         }
 
         return mutex.withLock {
