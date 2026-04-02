@@ -24,8 +24,10 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -89,6 +91,7 @@ private fun localDateToUtcMidnight(localMillis: Long): Long {
 fun TaskDetailScreen(
     taskId: Long,
     onNavigateBack: () -> Unit,
+    onNavigateToFocus: ((Long) -> Unit)? = null,
     viewModel: TaskDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -335,6 +338,18 @@ fun TaskDetailScreen(
                             label = { Text(label, style = MaterialTheme.typography.labelSmall) }
                         )
                     }
+                }
+            }
+
+            // Focus timer button
+            if (!item.isCompleted && onNavigateToFocus != null) {
+                FilledTonalButton(
+                    onClick = { onNavigateToFocus(item.id) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Start Focus Timer")
                 }
             }
 

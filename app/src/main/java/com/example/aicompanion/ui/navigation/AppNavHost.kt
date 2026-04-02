@@ -50,7 +50,9 @@ import com.example.aicompanion.ui.feedback.FeedbackScreen
 import com.example.aicompanion.ui.settings.HelpScreen
 import com.example.aicompanion.ui.settings.SettingsScreen
 import com.example.aicompanion.ui.settings.TranscriptViewScreen
+import com.example.aicompanion.ui.focus.FocusTimerScreen
 import com.example.aicompanion.ui.plan.PlanMyDayScreen
+import com.example.aicompanion.ui.review.WeeklyReviewScreen
 import com.example.aicompanion.ui.triage.TaskTriageScreen
 import com.example.aicompanion.ui.trash.TrashScreen
 import com.example.aicompanion.ui.insights.InsightsScreen
@@ -260,6 +262,9 @@ fun AppNavHost(
                             },
                             onNavigateToTriage = {
                                 navController.navigate(NavRoutes.TaskTriage.route)
+                            },
+                            onNavigateToWeeklyReview = {
+                                navController.navigate(NavRoutes.WeeklyReview.route)
                             }
                         )
                         1 -> InboxScreen(
@@ -417,7 +422,10 @@ fun AppNavHost(
                 val taskId = backStackEntry.arguments?.getLong("taskId") ?: return@composable
                 TaskDetailScreen(
                     taskId = taskId,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToFocus = { id ->
+                        navController.navigate(NavRoutes.FocusTimer.createRoute(id))
+                    }
                 )
             }
 
@@ -432,6 +440,28 @@ fun AppNavHost(
 
             composable(NavRoutes.TaskTriage.route) {
                 TaskTriageScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTask = { id ->
+                        navController.navigate(NavRoutes.TaskDetail.createRoute(id))
+                    }
+                )
+            }
+
+            composable(
+                route = NavRoutes.FocusTimer.route,
+                arguments = listOf(
+                    navArgument("taskId") { type = NavType.LongType }
+                )
+            ) { backStackEntry ->
+                val taskId = backStackEntry.arguments?.getLong("taskId") ?: return@composable
+                FocusTimerScreen(
+                    taskId = taskId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(NavRoutes.WeeklyReview.route) {
+                WeeklyReviewScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToTask = { id ->
                         navController.navigate(NavRoutes.TaskDetail.createRoute(id))

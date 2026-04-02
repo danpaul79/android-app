@@ -18,6 +18,10 @@ sealed class NavRoutes(val route: String) {
     data object Settings : NavRoutes("settings")
     data object PlanMyDay : NavRoutes("plan_my_day")
     data object TaskTriage : NavRoutes("task_triage")
+    data object FocusTimer : NavRoutes("focus/{taskId}") {
+        fun createRoute(id: Long) = "focus/$id"
+    }
+    data object WeeklyReview : NavRoutes("weekly_review")
     data object Feedback : NavRoutes("feedback")
     data object Help : NavRoutes("help")
     data object TranscriptView : NavRoutes("transcript/{filePath}") {

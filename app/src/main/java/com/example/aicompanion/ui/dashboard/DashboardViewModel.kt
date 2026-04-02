@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.aicompanion.AICompanionApplication
 import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Project
+import com.example.aicompanion.data.repository.TaskRepository
 import com.example.aicompanion.reminder.MorningPlanStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,8 @@ data class DashboardUiState(
     val showCompleted: Boolean = false,
     val todaysPlan: MorningPlanStore.PlanEntry? = null,
     val capacityMinutes: Int? = null,  // from last morning check-in; null = not set yet
-    val triageCount: Int = 0
+    val triageCount: Int = 0,
+    val productivityStats: TaskRepository.ProductivityStats? = null
 ) {
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
     val allItems: List<ActionItem> get() = overdueItems + todayItems + nextWeekItems + futureItems + undatedItems
@@ -86,6 +88,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         loadTodaysPlan()
         _uiState.value = _uiState.value.copy(capacityMinutes = planStore.getLastCapacityMinutes())
         refreshTriageCount()
+        refreshProductivityStats()
+    }
+
+    fun refreshProductivityStats() {
+        viewModelScope.launch {
+            val stats = repo.getProductivityStats()
+            _uiState.value = _uiState.value.copy(productivityStats = stats)
+        }
     }
 
     fun refreshTriageCount() {

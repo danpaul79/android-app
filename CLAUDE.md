@@ -35,6 +35,9 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Task Triage**: guided review screen with two modes — "Needs attention" (stale 7+ days, rescheduled 3+, large undated 60+ min, #waiting-for) and "Overdue & undated" (all overdue + undated tasks); actions: done, keep, set due date, break it down (AI subtask generation), snooze 2w, toggle #waiting-for, trash; accessible via dashboard card, voice command "review my tasks", morning notification
 - **Task event tracking**: records lifecycle events (created, completed, uncompleted, trashed, restored, due date changed, triaged, snoozed) in task_events table; powers triage logic and future pattern learning
 - **Home screen widget**: Jetpack Glance "Today's Plan" widget; shows up to 7 tasks with completion status and effort; auto-refreshes on complete/trash/reschedule; updates every 30 min
+- **Productivity stats**: Dashboard card showing completion streak (consecutive days), tasks done today/this week, and week-over-week trend indicator
+- **Focus Timer**: dedicated timer screen paired with a task; countdown from estimated time or count up if no estimate; pause/resume/stop; overtime indicator; mark task complete when done; accessible from Task Detail
+- **Weekly Review**: end-of-week summary screen; completed tasks, new tasks added, overdue count, active count; per-project completion rate with progress bars; AI-generated review summary via Gemini; accessible from Dashboard overflow menu
 - **Swipe undo**: swipe-to-complete and swipe-to-trash show snackbar with "Undo" button on Dashboard, Inbox, and Project Detail
 - **Lock due date**: lock icon in Task Detail prevents voice commands from changing due date; `dueDateLocked` field in ActionItem
 - **Priority color bars**: left-edge color bar on task cards; red = URGENT, accent = HIGH, subtle = MEDIUM
@@ -175,7 +178,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- App version: 1.5.3 (versionCode 17) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
+- App version: 1.6.0 (versionCode 18) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
 - DB version: 9 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - v6 adds: `task_events` table for lifecycle tracking
@@ -193,6 +196,8 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - **Capture** — voice note recording/transcription/extraction; text input option; accessed via Dashboard top bar or share intent
 - **Task Detail** — view/edit a single task; lock due date; effort chips; repeat schedule (daily/weekly/monthly/yearly); confirmation on trash
 - **Plan My Day** — capacity selection + context filter → AI-picked task list
+- **Focus Timer** — task-paired timer; countdown from estimate or count up; pause/resume/stop; mark complete on finish
+- **Weekly Review** — week summary with stats, project breakdown, completed list, and AI-generated review
 - **Task Triage** — guided card-by-card review of tasks needing attention; AI breakdown
 - **Settings** — bottom nav tab; export/import data; Google Tasks sync; AI enrichment; voice history; morning check-in; Help & Features; Send Feedback
 - **Feedback** — submit bugs/feature requests as GitHub Issues; optional screenshot attachment; auto-populated device info
@@ -219,6 +224,8 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - `domain/command/` - VoiceCommand sealed class, VoiceCommandProcessor (Gemini parsing + task execution, multi-command support; supports set_drop_dead_date)
 - `reminder/` - NotificationHelper, ReminderWorker (hourly due-date reminders), MorningCheckInWorker, MorningActionReceiver, MorningPreferences, MorningNotificationHelper, NudgeWorker, NudgePreferences
 - `ui/plan/` - Plan My Day screen + ViewModel (capacity selection, context filter, AI task picking)
+- `ui/focus/` - Focus Timer screen + ViewModel (task-paired timer with countdown/count-up, pause/resume)
+- `ui/review/` - Weekly Review screen + ViewModel (AI-powered week summary, project breakdown)
 - `ui/triage/` - Task Triage screen + ViewModel + models (guided review, AI breakdown)
 - `ui/theme/` - Custom theme: Inter font (res/font/), deep-blue/coral palette (Color.kt, Type.kt, Theme.kt); ThemePreferences (system/light/dark mode via SharedPreferences); dynamic colors disabled so custom palette is always visible
 - `ui/common/` - Shared composables (TagChips, DateTagsRow)

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Checklist
@@ -41,6 +42,10 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
@@ -98,6 +103,7 @@ import com.example.aicompanion.data.local.entity.ActionItem
 import com.example.aicompanion.data.local.entity.Priority
 import com.example.aicompanion.data.local.entity.effectivePriority
 import com.example.aicompanion.data.local.entity.parsedTags
+import com.example.aicompanion.data.repository.TaskRepository
 import com.example.aicompanion.reminder.MorningPlanStore
 import com.example.aicompanion.ui.common.DateTagsRow
 import java.text.SimpleDateFormat
@@ -126,6 +132,7 @@ fun DashboardScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToPlanMyDay: () -> Unit = {},
     onNavigateToTriage: () -> Unit = {},
+    onNavigateToWeeklyReview: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -176,6 +183,7 @@ fun DashboardScreen(
         viewModel.refreshCapacity()
         viewModel.loadTodaysPlan()
         viewModel.refreshTriageCount()
+        viewModel.refreshProductivityStats()
         onPauseOrDispose {}
     }
 
@@ -326,6 +334,11 @@ fun DashboardScreen(
                                     onClick = { showOverflow = false; onNavigateToTriage() }
                                 )
                                 DropdownMenuItem(
+                                    text = { Text("Weekly Review") },
+                                    leadingIcon = { Icon(Icons.Filled.Summarize, contentDescription = null) },
+                                    onClick = { showOverflow = false; onNavigateToWeeklyReview() }
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Quick Add Task") },
                                     leadingIcon = { Icon(Icons.Filled.Add, contentDescription = null) },
                                     onClick = { showOverflow = false; showQuickAdd = true }
@@ -444,6 +457,17 @@ fun DashboardScreen(
                     }
                 }
 
+
+                // Productivity stats
+                val stats = uiState.productivityStats
+                if (stats != null && (stats.streak > 0 || stats.completedToday > 0) && !uiState.isSelectionMode) {
+                    item {
+                        ProductivityStatsCard(
+                            stats = stats,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)
+                        )
+                    }
+                }
 
                 if (uiState.overdueItems.isNotEmpty()) {
                     item {
@@ -1157,6 +1181,72 @@ private fun CapacityIndicatorRow(
                 else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surface
             )
+        }
+    }
+}
+
+@Composable
+private fun ProductivityStatsCard(
+    stats: TaskRepository.ProductivityStats,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Streak
+            if (stats.streak > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "${stats.streak}d streak",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Today count
+            Text(
+                text = "${stats.completedToday} today",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // Week count + trend
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${stats.completedThisWeek} this week",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (stats.completedLastWeek > 0 || stats.completedThisWeek > 0) {
+                    Spacer(Modifier.width(4.dp))
+                    val (icon, tint) = when {
+                        stats.weekOverWeekDelta > 0 -> Icons.AutoMirrored.Filled.TrendingUp to MaterialTheme.colorScheme.primary
+                        stats.weekOverWeekDelta < 0 -> Icons.AutoMirrored.Filled.TrendingDown to MaterialTheme.colorScheme.error
+                        else -> Icons.AutoMirrored.Filled.TrendingFlat to MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+                }
+            }
         }
     }
 }

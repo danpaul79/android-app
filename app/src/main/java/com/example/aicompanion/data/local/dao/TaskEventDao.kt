@@ -36,6 +36,28 @@ interface TaskEventDao {
 
     @Query("DELETE FROM task_events WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
+
+    @Query("""
+        SELECT DISTINCT DATE(timestamp / 1000, 'unixepoch', 'localtime') as day
+        FROM task_events
+        WHERE eventType = 'COMPLETED'
+        ORDER BY day DESC
+    """)
+    suspend fun getCompletionDays(): List<String>
+
+    @Query("""
+        SELECT COUNT(*) FROM task_events
+        WHERE eventType = 'COMPLETED'
+        AND timestamp >= :since
+    """)
+    suspend fun countCompletionsSince(since: Long): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM task_events
+        WHERE eventType = 'COMPLETED'
+        AND timestamp >= :weekStart AND timestamp < :weekEnd
+    """)
+    suspend fun countCompletionsInRange(weekStart: Long, weekEnd: Long): Int
 }
 
 data class TaskIdCount(val taskId: Long, val cnt: Int)

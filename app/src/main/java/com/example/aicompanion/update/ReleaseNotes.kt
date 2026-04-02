@@ -16,6 +16,15 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 18,
+        versionName = "1.6.0",
+        highlights = listOf(
+            "Productivity Stats: streak counter, daily/weekly completion counts, and trend indicator on Dashboard",
+            "Focus Timer: pair a timer with any task — countdown from estimate or count up; pause/resume/stop; mark complete when done",
+            "Weekly Review: AI-powered week summary with completion stats, project breakdown, and actionable tips"
+        )
+    ),
+    ReleaseNote(
         versionCode = 17,
         versionName = "1.5.3",
         highlights = listOf(

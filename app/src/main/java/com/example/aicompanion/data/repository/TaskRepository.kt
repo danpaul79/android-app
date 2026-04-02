@@ -221,6 +221,8 @@ class TaskRepository(
         markTaskDirty(id)
     }
 
+    suspend fun getTaskByIdSync(id: Long): ActionItem? = actionItemDao.getByIdSync(id)
+
     suspend fun getTasksByIds(ids: List<Long>): List<ActionItem> =
         if (ids.isEmpty()) emptyList() else actionItemDao.getByIds(ids)
 
@@ -668,6 +670,115 @@ class TaskRepository(
     fun searchItems(query: String): Flow<List<ActionItem>> = actionItemDao.searchItems(query)
 
     suspend fun getAllNonTrashedTasks(): List<ActionItem> = actionItemDao.getAllNonTrashed()
+
+    // --- Productivity Stats ---
+
+    data class ProductivityStats(
+        val streak: Int,
+        val completedToday: Int,
+        val completedThisWeek: Int,
+        val completedLastWeek: Int
+    ) {
+        val weekOverWeekDelta: Int get() = completedThisWeek - completedLastWeek
+    }
+
+    suspend fun getProductivityStats(): ProductivityStats {
+        val now = Calendar.getInstance()
+        val dayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        // This week (Monday start)
+        val thisWeekStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            while (get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) add(Calendar.DAY_OF_YEAR, -1)
+        }.timeInMillis
+        val lastWeekStart = thisWeekStart - 7L * 24 * 60 * 60 * 1000
+
+        val completedToday = taskEventDao?.countCompletionsSince(dayStart) ?: 0
+        val completedThisWeek = taskEventDao?.countCompletionsInRange(thisWeekStart, System.currentTimeMillis()) ?: 0
+        val completedLastWeek = taskEventDao?.countCompletionsInRange(lastWeekStart, thisWeekStart) ?: 0
+
+        // Calculate streak from completion days
+        val days = taskEventDao?.getCompletionDays() ?: emptyList()
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        var streak = 0
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val checkCal = Calendar.getInstance()
+        // Start from today, go backwards
+        for (i in 0..365) {
+            checkCal.timeInMillis = System.currentTimeMillis()
+            checkCal.add(Calendar.DAY_OF_YEAR, -i)
+            val dayStr = fmt.format(checkCal.time)
+            if (days.contains(dayStr)) {
+                streak++
+            } else if (i == 0) {
+                // Today hasn't had a completion yet — don't break streak, just skip
+                continue
+            } else {
+                break
+            }
+        }
+
+        return ProductivityStats(
+            streak = streak,
+            completedToday = completedToday,
+            completedThisWeek = completedThisWeek,
+            completedLastWeek = completedLastWeek
+        )
+    }
+
+    // --- Weekly Review ---
+
+    data class WeeklyReviewData(
+        val completedTasks: List<ActionItem>,
+        val newTasksCount: Int,
+        val rolledOverCount: Int,
+        val completionRateByProject: Map<String, Pair<Int, Int>>, // project name -> (completed, total)
+        val totalActiveNow: Int
+    )
+
+    suspend fun getWeeklyReviewData(): WeeklyReviewData {
+        val thisWeekStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            while (get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) add(Calendar.DAY_OF_YEAR, -1)
+        }.timeInMillis
+
+        val allTasks = actionItemDao.getAllNonTrashed()
+        val projects = projectDao.getAllNonTrashed()
+        val projectMap = projects.associate { it.id to it.name }
+
+        val completedThisWeek = allTasks.filter {
+            it.isCompleted && it.completedAt != null && it.completedAt >= thisWeekStart
+        }.sortedByDescending { it.completedAt }
+
+        val newThisWeek = allTasks.count { it.createdAt >= thisWeekStart }
+        val overdue = allTasks.count { !it.isCompleted && it.dueDate != null && it.dueDate < System.currentTimeMillis() }
+        val active = allTasks.count { !it.isCompleted }
+
+        // Completion rate by project
+        val rateByProject = mutableMapOf<String, Pair<Int, Int>>()
+        for (task in allTasks.filter { it.projectId != null }) {
+            val projName = projectMap[task.projectId] ?: continue
+            val (done, total) = rateByProject.getOrDefault(projName, 0 to 0)
+            rateByProject[projName] = if (task.isCompleted && task.completedAt != null && task.completedAt >= thisWeekStart) {
+                (done + 1) to (total + 1)
+            } else {
+                done to (total + 1)
+            }
+        }
+
+        return WeeklyReviewData(
+            completedTasks = completedThisWeek,
+            newTasksCount = newThisWeek,
+            rolledOverCount = overdue,
+            completionRateByProject = rateByProject,
+            totalActiveNow = active
+        )
+    }
 
     // --- Insights ---
 
