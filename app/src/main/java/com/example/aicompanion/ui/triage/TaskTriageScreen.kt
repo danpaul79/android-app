@@ -105,7 +105,7 @@ fun TaskTriageScreen(
     // Date picker dialog
     if (uiState.showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = uiState.currentItem?.task?.dueDate?.let { localDateToUtcMidnight(it) }
+            initialSelectedDateMillis = localDateToUtcMidnight(System.currentTimeMillis())
         )
         DatePickerDialog(
             onDismissRequest = { viewModel.dismissDatePicker() },

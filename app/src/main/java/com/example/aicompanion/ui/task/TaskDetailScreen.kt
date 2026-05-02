@@ -106,7 +106,7 @@ fun TaskDetailScreen(
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = item?.dueDate?.let { localDateToUtcMidnight(it) }
+            initialSelectedDateMillis = localDateToUtcMidnight(System.currentTimeMillis())
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },

@@ -16,6 +16,13 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 19,
+        versionName = "1.6.1",
+        highlights = listOf(
+            "Set due date picker now defaults to today instead of the task's existing due date"
+        )
+    ),
+    ReleaseNote(
         versionCode = 18,
         versionName = "1.6.0",
         highlights = listOf(
