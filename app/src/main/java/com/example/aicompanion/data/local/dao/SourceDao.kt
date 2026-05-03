@@ -20,4 +20,7 @@ interface SourceDao {
         WHERE ai.id = :actionItemId
     """)
     fun getByActionItemId(actionItemId: Long): Flow<Source?>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM sources WHERE sourceRef = :ref AND type = :type)")
+    suspend fun existsByRef(ref: String, type: com.example.aicompanion.data.local.entity.SourceType): Boolean
 }

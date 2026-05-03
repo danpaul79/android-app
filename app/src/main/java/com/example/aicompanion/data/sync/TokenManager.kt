@@ -10,6 +10,9 @@ class TokenManager(private val context: Context) {
 
     companion object {
         const val TASKS_SCOPE = "oauth2:https://www.googleapis.com/auth/tasks"
+        const val GMAIL_SCOPE = "oauth2:https://www.googleapis.com/auth/gmail.readonly"
+        const val COMBINED_SCOPE =
+            "oauth2:https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/gmail.readonly"
     }
 
     private var accountEmail: String? = null
@@ -24,17 +27,10 @@ class TokenManager(private val context: Context) {
         accountEmail = null
     }
 
-    /**
-     * Gets a valid OAuth2 access token for the Google Tasks API.
-     * Uses the Android account manager which handles token refresh automatically.
-     *
-     * @throws UserRecoverableAuthException if user consent is needed (caller should launch the intent)
-     * @throws IllegalStateException if no account is set
-     */
-    suspend fun getAccessToken(): String {
+    suspend fun getAccessToken(scope: String = TASKS_SCOPE): String {
         val email = accountEmail ?: throw IllegalStateException("No Google account set for sync")
         return withContext(Dispatchers.IO) {
-            GoogleAuthUtil.getToken(context, email, TASKS_SCOPE)
+            GoogleAuthUtil.getToken(context, email, scope)
         }
     }
 

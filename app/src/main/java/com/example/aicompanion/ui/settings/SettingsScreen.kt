@@ -294,6 +294,28 @@ fun SettingsScreen(
                 )
             }
 
+            // Gmail Inbox Scan section
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Gmail Inbox Scan",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+
+            item {
+                GmailIngestCard(
+                    gmailState = uiState.gmail,
+                    googleConnected = uiState.sync.syncEnabled && uiState.sync.accountEmail != null,
+                    onConnectGmail = { email -> viewModel.onGoogleSignIn(email) },
+                    onEnabledChange = { viewModel.setGmailEnabled(it) },
+                    onLookbackChange = { viewModel.setGmailLookbackDays(it) },
+                    onScanNow = { viewModel.ingestGmailNow() }
+                )
+            }
+
             // Morning Check-In section
             item {
                 Spacer(Modifier.height(16.dp))
@@ -776,6 +798,147 @@ private fun GoogleTasksSyncCard(
                     Icon(Icons.Filled.Cloud, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Sign in with Google")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GmailIngestCard(
+    gmailState: GmailUiState,
+    googleConnected: Boolean,
+    onConnectGmail: (String) -> Unit,
+    onEnabledChange: (Boolean) -> Unit,
+    onLookbackChange: (Int) -> Unit,
+    onScanNow: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val gmailSignInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            val account = task.getResult(ApiException::class.java)
+            account?.email?.let { onConnectGmail(it) }
+        } catch (e: ApiException) {
+            Log.e("GmailIngest", "Sign-in failed: statusCode=${e.statusCode}, message=${e.message}", e)
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Cloud,
+                    contentDescription = null,
+                    tint = if (gmailState.enabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Scan Gmail for tasks", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Pulls action items from your inbox into Pocket Pilot Inbox",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = gmailState.enabled,
+                    onCheckedChange = onEnabledChange
+                )
+            }
+
+            if (gmailState.enabled) {
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Lookback window",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1, 3, 7).forEach { days ->
+                        FilterChip(
+                            selected = gmailState.lookbackDays == days,
+                            onClick = { onLookbackChange(days) },
+                            label = { Text("${days}d") }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                val statusText = when {
+                    gmailState.isIngesting -> "Scanning..."
+                    gmailState.lastError != null -> "Last error: ${gmailState.lastError.take(60)}"
+                    gmailState.lastIngestTime > 0 ->
+                        "Last scan: ${formatTimeAgo(gmailState.lastIngestTime)} — " +
+                            "${gmailState.lastIngestTaskCount} tasks from ${gmailState.lastIngestMessageCount} emails"
+                    else -> "Not scanned yet"
+                }
+                Text(
+                    statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (gmailState.lastError != null) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (googleConnected) {
+                        OutlinedButton(
+                            onClick = onScanNow,
+                            enabled = !gmailState.isIngesting
+                        ) {
+                            if (gmailState.isIngesting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            } else {
+                                Icon(Icons.Filled.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            Text("Scan now", maxLines = 1)
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                .requestEmail()
+                                .requestScopes(
+                                    Scope("https://www.googleapis.com/auth/gmail.readonly"),
+                                    Scope("https://www.googleapis.com/auth/tasks")
+                                )
+                                .build()
+                            val client = GoogleSignIn.getClient(context, gso)
+                            gmailSignInLauncher.launch(client.signInIntent)
+                        }
+                    ) {
+                        Text(
+                            if (googleConnected) "Re-grant Gmail access" else "Connect Gmail",
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                if (!googleConnected) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Connect Gmail to scan your inbox. The same Google account is used for Google Tasks sync.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

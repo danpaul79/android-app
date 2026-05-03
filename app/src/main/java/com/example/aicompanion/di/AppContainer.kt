@@ -3,9 +3,12 @@ package com.example.aicompanion.di
 import android.content.Context
 import com.example.aicompanion.data.local.AppDatabase
 import com.example.aicompanion.data.repository.TaskRepository
+import com.example.aicompanion.data.sync.GmailApiClient
+import com.example.aicompanion.data.sync.GmailPreferences
 import com.example.aicompanion.data.sync.GoogleTasksApiClient
 import com.example.aicompanion.data.sync.SyncEngine
 import com.example.aicompanion.data.sync.TokenManager
+import com.example.aicompanion.domain.gmail.GmailIngestor
 import com.example.aicompanion.domain.command.VoiceCommandProcessor
 import com.example.aicompanion.domain.extraction.ActionItemExtractor
 import com.example.aicompanion.domain.extraction.GeminiExtractor
@@ -43,5 +46,16 @@ class AppContainer(context: Context) {
         projectDao = database.projectDao(),
         syncStateDao = syncStateDao,
         tokenManager = tokenManager
+    )
+
+    // Gmail ingestion
+    val gmailPreferences = GmailPreferences(context)
+    private val gmailApiClient = GmailApiClient(tokenManager)
+    val gmailIngestor = GmailIngestor(
+        gmailApi = gmailApiClient,
+        taskRepository = taskRepository,
+        sourceDao = database.sourceDao(),
+        extractor = extractor,
+        gmailPrefs = gmailPreferences
     )
 }

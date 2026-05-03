@@ -64,6 +64,16 @@ data class NudgeUiState(
     val hours: Set<Int> = setOf(14)
 )
 
+data class GmailUiState(
+    val enabled: Boolean = false,
+    val isIngesting: Boolean = false,
+    val lastIngestTime: Long = 0L,
+    val lastIngestTaskCount: Int = 0,
+    val lastIngestMessageCount: Int = 0,
+    val lookbackDays: Int = 1,
+    val lastError: String? = null
+)
+
 data class SettingsUiState(
     val voiceNotes: List<VoiceNoteFile> = emptyList(),
     val message: String? = null,
@@ -71,7 +81,8 @@ data class SettingsUiState(
     val enrichment: EnrichmentUiState = EnrichmentUiState(),
     val morning: MorningUiState = MorningUiState(),
     val morningPlanHistory: List<MorningPlanStore.PlanEntry> = emptyList(),
-    val nudge: NudgeUiState = NudgeUiState()
+    val nudge: NudgeUiState = NudgeUiState(),
+    val gmail: GmailUiState = GmailUiState()
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -83,6 +94,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val morningPrefs = MorningPreferences(application)
     private val morningPlanStore = MorningPlanStore(application)
     private val nudgePrefs = NudgePreferences(application)
+    private val gmailIngestor = appContainer.gmailIngestor
+    private val gmailPrefs = appContainer.gmailPreferences
     val themePreferences: ThemePreferences = appContainer.themePreferences
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -96,6 +109,59 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         loadMorningState()
         loadMorningPlanHistory()
         loadNudgeState()
+        loadGmailState()
+    }
+
+    private fun loadGmailState() {
+        _uiState.value = _uiState.value.copy(
+            gmail = GmailUiState(
+                enabled = gmailPrefs.enabled,
+                lastIngestTime = gmailPrefs.lastIngestTime,
+                lastIngestTaskCount = gmailPrefs.lastIngestTaskCount,
+                lastIngestMessageCount = gmailPrefs.lastIngestMessageCount,
+                lookbackDays = gmailPrefs.lookbackDays,
+                lastError = gmailPrefs.lastError
+            )
+        )
+    }
+
+    fun setGmailEnabled(enabled: Boolean) {
+        gmailPrefs.enabled = enabled
+        if (!enabled) gmailPrefs.lastError = null
+        loadGmailState()
+    }
+
+    fun setGmailLookbackDays(days: Int) {
+        gmailPrefs.lookbackDays = days.coerceIn(1, 14)
+        loadGmailState()
+    }
+
+    fun ingestGmailNow() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                gmail = _uiState.value.gmail.copy(isIngesting = true, lastError = null)
+            )
+            try {
+                val result = gmailIngestor.ingestNewEmails()
+                val msg = if (result.errors.isNotEmpty()) {
+                    "Gmail scan: ${result.errors.first().take(120)}"
+                } else {
+                    "Gmail scan: ${result.tasksCreated} tasks from ${result.messagesProcessed} emails (${result.skippedAlreadyProcessed} skipped)"
+                }
+                _uiState.value = _uiState.value.copy(message = msg)
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Gmail ingest failed: ${e.message}", e)
+                gmailPrefs.lastError = e.message
+                _uiState.value = _uiState.value.copy(
+                    message = "Gmail scan failed: ${e.message?.take(120) ?: "unknown"}"
+                )
+            } finally {
+                _uiState.value = _uiState.value.copy(
+                    gmail = _uiState.value.gmail.copy(isIngesting = false)
+                )
+                loadGmailState()
+            }
+        }
     }
 
     private fun loadMorningPlanHistory() {

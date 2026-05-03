@@ -16,6 +16,16 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 20,
+        versionName = "1.7.0",
+        highlights = listOf(
+            "Phase 4a: Gmail Inbox Scan — pull tasks straight out of your email",
+            "Settings → Gmail Inbox Scan: connect Gmail, choose 1/3/7-day lookback, tap Scan now",
+            "Extracted action items land in the Inbox tab tagged with sender + subject",
+            "De-duplicates: emails already scanned are skipped"
+        )
+    ),
+    ReleaseNote(
         versionCode = 19,
         versionName = "1.6.1",
         highlights = listOf(

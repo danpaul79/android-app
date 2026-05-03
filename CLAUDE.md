@@ -1,7 +1,14 @@
-# Pocket Pilot — Personal Task Hub
+# Pocket Pilot — Personal Assistant
 
 ## Vision
-A "second brain" that ingests tasks from multiple sources (voice notes, email, texts, chat), extracts action items using AI, and organizes them into projects. The user interacts primarily with **tasks organized by project**, not with individual voice notes or messages. Sources are just how items arrive.
+A personal **assistant** (not just a task manager) that:
+- Ingests intent from multiple sources (voice notes, email, texts, chat, notifications) and turns it into tasks
+- Helps the user **unpack** vague items — "plan vacation" is a project, what's step one?
+- **Prioritizes** what matters most given deadlines, effort, and capacity
+- Coaches on **how** to tackle work, not just what to do
+- End state: every captured intent becomes a task with a deadline, slotted into the right project
+
+This is a single-user personal-use app, so deep ingestion (notifications, messages, full email content) is acceptable — privacy is not a primary constraint.
 
 ## Current Status
 **Phases 1–3c + recurring tasks + AI Insights complete.** Full capacity-aware scheduling, task triage, home screen widget, living task list, recurring tasks, and AI-powered task insights.
@@ -61,7 +68,9 @@ A "second brain" that ingests tasks from multiple sources (voice notes, email, t
 - **Phase 3c (complete)**: Morning check-in notification, task triage screen, morning review notifications with quick actions, task event tracking
 - **Recurring tasks (complete)**: Repeat schedule on tasks (daily/weekly/monthly/yearly with interval), auto-create next instance on completion, voice command support
 - **Phase 3d (future)**: AI pattern learning, task rot detection
-- **Phase 4**: More input sources — Gmail, SMS, Google Chat
+- **Phase 4a (complete)**: Gmail Inbox Scan — manual pull of action items from email (`category:primary in:inbox`); de-dup via `Source.sourceRef`; lands in Inbox; user-triggered from Settings
+- **Phase 4b (future)**: Background Gmail polling, label-based filters, mark-read on extract
+- **Phase 4c (future)**: NotificationListenerService for SMS/Slack/Teams/etc. (single-user app, privacy not a constraint)
 
 ## Phase 3 — Capacity-Aware Scheduling & Living Task List
 
@@ -178,7 +187,7 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 - ActionItems/Projects with isTrashed=true live in the **Trash** (soft delete)
 - Sources track provenance (where a task came from)
 - Projects organize tasks by life area (Work, Home, Health, etc.)
-- App version: 1.6.1 (versionCode 19) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
+- App version: 1.7.0 (versionCode 20) — bump versionCode for each release and add entry to `update/ReleaseNotes.kt`
 - DB version: 9 (proper migrations — schema exported to `app/schemas/`, no more destructive fallback)
 - v5 adds: `estimatedMinutes INT NOT NULL DEFAULT 0`, `dropDeadDate INTEGER` to action_items
 - v6 adds: `task_events` table for lifecycle tracking
@@ -208,7 +217,8 @@ SyncState (id=1, lastSyncTimestamp, lastSyncedVersion, inboxTaskListId, syncEnab
 
 ## Key Packages
 - `auth/` - Google Sign-In via Credential Manager (dormant, for future Gmail Phase 3)
-- `data/sync/` - Google Tasks bi-directional sync: TokenManager, GoogleTasksApiClient, SyncEngine, SyncWorker, SyncMappers
+- `data/sync/` - Google Tasks bi-directional sync: TokenManager (multi-scope: Tasks + Gmail), GoogleTasksApiClient, SyncEngine, SyncWorker, SyncMappers; Gmail: GmailApiClient, GmailPreferences
+- `domain/gmail/` - GmailIngestor (list inbox messages → Gemini extract → save tasks via Source type=EMAIL; de-dup via sourceRef)
 - `audio/` - MediaRecorder wrapper (AudioRecorder), transcript file helpers
 - `network/` - TranscriptionClient (Deepgram), GeminiClient (extraction), GitHubIssuesClient (feedback)
 - `data/local/` - Room DB, DAOs, entities, type converters
