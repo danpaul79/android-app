@@ -34,8 +34,11 @@ class GmailIngestor(
 
     suspend fun ingestNewEmails(maxMessages: Int = 25): IngestResult {
         val days = gmailPrefs.lookbackDays.coerceIn(1, 14)
-        // Primary tab, inbox, recent — the highest signal-to-noise default
-        val query = "category:primary in:inbox newer_than:${days}d"
+        // Use exclusions instead of category:primary so this works whether
+        // or not inbox tabs are enabled on the account.
+        val query = "in:inbox newer_than:${days}d " +
+            "-category:promotions -category:social -category:updates -category:forums"
+        Log.i(TAG, "Gmail query: $query")
 
         val ids = try {
             gmailApi.listMessageIds(query, maxMessages)
@@ -45,6 +48,7 @@ class GmailIngestor(
             gmailPrefs.lastError = msg
             return IngestResult(0, 0, 0, 0, listOf(msg))
         }
+        Log.i(TAG, "Gmail returned ${ids.size} message IDs")
 
         val projects = taskRepository.getAllProjectNames()
         var processed = 0

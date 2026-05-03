@@ -16,6 +16,14 @@ data class ReleaseNote(
  */
 val RELEASE_NOTES: List<ReleaseNote> = listOf(
     ReleaseNote(
+        versionCode = 21,
+        versionName = "1.7.1",
+        highlights = listOf(
+            "Gmail scan: query no longer requires inbox tabs to be enabled — works in Default view too",
+            "Gmail scan: logs query and result count for easier debugging"
+        )
+    ),
+    ReleaseNote(
         versionCode = 20,
         versionName = "1.7.0",
         highlights = listOf(
